@@ -56,7 +56,7 @@ export default function BuscaRealPanel({ termoInicial }: BuscaRealPanelProps) {
         verdade no INPI, por nome, número de processo ou titular.
       </p>
 
-      <div className="field" style={{ display: "flex", gap: 10, alignItems: "flex-end" }}>
+      <div className="field busca-row">
         <div style={{ flex: 1 }}>
           <label htmlFor="busca-real-termo">Termo de busca</label>
           <input

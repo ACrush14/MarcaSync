@@ -279,6 +279,19 @@ a {
   border-color: var(--accent-soft);
   color: var(--accent-soft-ink);
 }
+@media (max-width: 520px) {
+  /* Sem isso, os 4 passos exigem rolagem horizontal num celular comum
+     (600px de conteúdo em ~340px de tela, medido) — some com o subtítulo e
+     deixa os 4 dividirem a largura disponível igualmente. */
+  .step-btn {
+    min-width: 0;
+    padding: 10px 8px;
+    gap: 6px;
+  }
+  .step-label .s {
+    display: none;
+  }
+}
 
 /* ---------- panel ---------- */
 .panel {
@@ -337,7 +350,9 @@ textarea {
   border-radius: 8px;
   padding: 11px 12px;
   font-family: var(--font-body);
-  font-size: 14.5px;
+  /* 16px, não 14.5px: abaixo de 16px o Safari no iOS dá zoom automático da
+     página inteira ao focar o campo — incômodo real, não só estética. */
+  font-size: 16px;
   color: var(--ink);
   resize: vertical;
 }
@@ -570,6 +585,28 @@ canvas#wave {
   border-radius: 8px;
   background: var(--surface-2);
   border: 1px solid var(--border);
+}
+
+.busca-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+}
+.busca-row > div:first-child {
+  flex: 1;
+}
+@media (max-width: 520px) {
+  /* Lado a lado, o campo de busca sobrava ~190px num celular comum (medido)
+     — apertado pra digitar nome de marca. Empilha, como o resto do app já
+     faz em telas estreitas. */
+  .busca-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .busca-row .btn {
+    width: 100%;
+    justify-content: center;
+  }
 }
 
 .table-wrap {

@@ -194,7 +194,10 @@ export default function AdminPage() {
                           ) : (
                             <button
                               className="btn ghost"
-                              style={{ padding: "3px 10px", fontSize: 11.5 }}
+                              // 44px de altura visual — abaixo disso é
+                              // difícil de acertar no toque do celular,
+                              // e essa é a ação que você mais vai usar lá.
+                              style={{ padding: "10px 14px", fontSize: 13, minHeight: 40 }}
                               disabled={confirmando === pg.id}
                               onClick={() => confirmarPagamento(pg.id)}
                             >
