@@ -40,6 +40,11 @@ npm run build
   não é mock: baixa e faz parsing do XML publicado semanalmente em
   `revistas.inpi.gov.br`, o canal que o próprio INPI declara ser "para uso através de
   aplicativos". Ver seção própria abaixo.
+- **Busca em tempo real na base do INPI** (`src/lib/inpi/busca-client.ts`,
+  `src/app/api/inpi/busca/`, componente `BuscaRealPanel`) — API não documentada
+  publicamente que sustenta o portal `servicos.busca.inpi.gov.br/marcas`, integrada e
+  testada com dado real (ver seção própria abaixo). Aparece no passo "Resultado", como
+  bloco separado da tabela de colidência fonética de exemplo.
 
 ## Integração real com a RPI (`src/lib/inpi/`)
 
@@ -66,52 +71,91 @@ direto na API pra qualquer número de processo real que você digitar.
 
 **O que este canal NÃO resolve:** é o canal certo para *monitoramento* (o que mudou esta
 semana), não para *busca de anterioridade em tempo real* (existe uma marca parecida?).
-Pra isso, na mesma investigação encontrei uma API JSON não documentada que já roda por
-trás do novo portal `servicos.busca.inpi.gov.br/marcas`
-(`POST api-servicos.busca.inpi.gov.br/api/trademarks/search`) — schema rico, inclusive
-com `dispatches` embutido no resultado da busca. Ainda não está integrada aqui de
-propósito: não achei documentação pública, termos de uso pra terceiros, nem confirmação
-de que a URL testada é produção e não homologação (o banner "Ambiente de homologação"
-apareceu na tela). Ver "Próximos passos".
+Isso hoje é coberto pela integração de busca em tempo real, na seção seguinte.
 
-**O que eu não consegui testar de ponta a ponta:** o ambiente onde este código foi
-escrito bloqueia saída de rede para `revistas.inpi.gov.br` (mesma política que bloqueia
-`fonts.googleapis.com` — ver decisão sobre fontes acima). `descobrirEdicaoMaisRecente()`
-e o download do `.zip` foram validados estruturalmente (contagem de `<tr>`, padrão dos
-links `RM<edição>.zip`) via inspeção ao vivo no navegador, mas a chamada HTTP completa
-dentro do Next.js só foi exercitada localmente contra um 403 do próprio bloqueio de rede
-do ambiente de build — não contra uma resposta 200 real. Rode `npm run dev` e teste
-`/rpi-teste` com o número `905922891` (um processo real, despacho `IPAS161`) antes de
-confiar cegamente nisto em produção.
+**Testado de ponta a ponta em 25/08/2026, localmente, com rede sem bloqueio:**
+`GET /api/rpi/lookup?numero=905922891` devolveu a edição real 2903 com o despacho
+`IPAS161` e o titular "POLIMPORT - COMÉRCIO E EXPORTAÇÃO LTDA" — confirmado rodando
+`npm run dev` e abrindo `/rpi-teste`, não apenas por inspeção estrutural. Numa sandbox que
+bloqueie `revistas.inpi.gov.br`, repita esse teste antes de confiar nisto em produção.
+
+## Busca em tempo real (`src/lib/inpi/busca-client.ts`)
+
+API **não documentada publicamente** que sustenta o portal moderno
+`servicos.busca.inpi.gov.br/marcas`. Contrato obtido por engenharia reversa (reprodução
+da chamada que o próprio portal dispara) e **confirmado ao vivo** em 25/08/2026:
+
+```
+POST https://api-servicos.busca.inpi.gov.br/api/trademarks/search
+Content-Type: application/json
+
+{ "state": { "current": 1, "filters": [], "resultsPerPage": 10, "searchTerm": "Nubank",
+  "sortDirection": "", "sortField": "", "sortList": [] },
+  "queryConfig": { "search_fields": { "mark_name": { "weight": 3 }, "process_number": {},
+  "holders.name": {} }, "result_fields": { "mark_name": {"raw":{}}, "process_number":
+  {"raw":{}}, "status": {"raw":{}}, "classification_code": {"raw":{}}, "filing_date":
+  {"raw":{}}, "nature_text": {"raw":{}}, "presentation_text": {"raw":{}}, "holders":
+  {"raw":{}} } } }
+```
+
+Resposta no formato Elastic App Search (`{ raw: valor }` em cada campo). Busca real por
+"Nubank" devolveu 113 resultados, incluindo o processo `907206794`, titular "NU
+PAGAMENTOS S.A. - INSTITUIÇÃO DE PAGAMENTO", status "Registro de marca em vigor" —
+validado tanto via `curl` direto quanto pelo fluxo normal do produto
+(`GET /api/inpi/busca?termo=Nubank&pagina=1`, chamado pelo componente `BuscaRealPanel`
+dentro do passo "Resultado").
+
+**Riscos herdados, sem mitigação total:**
+- Banner "Ambiente de homologação" foi observado no portal na data da descoberta — não
+  há confirmação de que é produção estável.
+- Sem termos de uso conhecidos para consumo por terceiros.
+- A resposta chega com `Access-Control-Allow-Origin: *` (o INPI permite chamada direta
+  do navegador), mas a chamada foi mantida no servidor (`/api/inpi/busca`) mesmo assim,
+  para poder cachear em memória o `Cache-Control: max-age=86400` que o upstream já
+  declara — evita martelar uma API de terceiro sem SLA a cada clique. Mesma ressalva do
+  cache da RPI: é `Map` em memória, não sobrevive a cold start serverless.
+- Timeout de 6s via `AbortController`, sem retry automático (deliberado — retry
+  esconderia sinal de instabilidade de uma API sem SLA conhecido).
+
+Antes de confiar nisto em produção: confirmar com o INPI (ou jurídico) se
+`api-servicos.busca.inpi.gov.br` é de fato produção e se há alguma restrição de uso por
+terceiros — ninguém validou isso ainda, só a mecânica técnica.
 
 ## O que ainda é intencionalmente falso (e por quê)
 
-A base de marcas usada na *busca de anterioridade* (`BASE_MARCAS` em `src/lib/data.ts`,
-usada pelo passo "Consulta"/"Resultado") continua sendo uma lista fixa de exemplo — ela
-alimenta a demonstração de colidência fonética, não o monitoramento. O protocolo gerado
-no passo "Plano" também continua sendo um número aleatório fictício. Isso é proposital:
-a página `/rpi-teste` já prova que a ponta de dados reais funciona; plugar isso na
-`Consulta` principal é o próximo passo listado abaixo, não algo que devesse ser
-apressado só pra "completar a demo".
+A base de marcas usada na *demonstração de colidência fonética* (`BASE_MARCAS` em
+`src/lib/data.ts`, usada pela tabela de similaridade do passo "Resultado") continua
+sendo uma lista fixa de 14 marcas de exemplo — ela existe só pra ilustrar o algoritmo
+fonético com números estáveis e reproduzíveis. A busca por dado real de verdade agora
+tem canal próprio (`BuscaRealPanel`, ver seção acima), lado a lado com a tabela de
+exemplo. O protocolo gerado no passo "Plano" continua sendo um número aleatório
+fictício — ainda não há peticionamento real, ver item 4 abaixo.
 
 ## Próximos passos (nesta ordem)
 
-1. **Confirmar se `api-servicos.busca.inpi.gov.br` é produção ou homologação**, e se
-   existe documentação/termos de uso — antes de decidir se a busca em tempo real do
-   passo "Consulta" vai usar essa API ou continuar só com a RPI semanal.
-2. **Revisar o algoritmo fonético com alguém que entenda fonologia do português** — a
+1. **Confirmar juridicamente o status de `api-servicos.busca.inpi.gov.br`** —
+   produção ou homologação, termos de uso pra terceiros — antes de expor a busca em
+   tempo real (`/api/inpi/busca`) pra usuário final em produção. A integração técnica
+   já está pronta e testada (ver seção acima); o que falta é a confirmação
+   institucional, não código.
+2. **Fundir a demonstração fonética com a busca real num único score de risco** —
+   hoje são dois blocos visualmente separados no passo "Resultado" (dívida de UX já
+   mapeada). O desafio: como combinar similaridade fonética (heurística) com
+   colidência exata da base real (fato) sem confundir o usuário sobre qual é qual.
+3. **Revisar o algoritmo fonético com alguém que entenda fonologia do português** — a
    versão atual é uma heurística de demonstração, não um algoritmo validado
    linguisticamente nem testado contra decisões reais de indeferimento do INPI.
-3. **Desenhar o fluxo de procuração eletrônica** para peticionamento — nunca capturar ou
+4. **Desenhar o fluxo de procuração eletrônica** para peticionamento — nunca capturar ou
    armazenar credenciais gov.br de terceiros. O caminho correto é o cliente cadastrar o
    MarcaSync como procurador dentro do e-Marcas.
-4. **Cache real para a RPI** — o cache em memória de `fetch-rpi.ts` é só pra desenvolvimento
-   (não sobrevive a cold start serverless, não é compartilhado entre instâncias). Produção
-   precisa de Redis/S3 com TTL de 1 semana.
-5. **Persistência real** — hoje todo o estado do wizard é `useState` em memória, perdido a
+5. **Cache real para RPI e busca** — os dois caches em memória (`fetch-rpi.ts`,
+   `busca-client.ts`) são só pra desenvolvimento (não sobrevivem a cold start
+   serverless, não são compartilhados entre instâncias). Produção precisa de Redis/S3,
+   TTL de 1 semana pra RPI e 24h pra busca (espelhando o `Cache-Control` do upstream).
+6. **Persistência real** — hoje todo o estado do wizard é `useState` em memória, perdido a
    cada reload. Entra banco de dados (Postgres) e API assim que houver dado real de
    cliente para guardar — o que inclui decidir como associar processos reais (vindos da
-   RPI) a contas de usuário.
+   RPI/busca) a contas de usuário.
 
 ## Estrutura
 
@@ -122,8 +166,11 @@ src/
     page.tsx           — monta <MarcaSyncApp />
     globals.css         — tokens de design (cores claro/escuro, tipografia) + estilos
     icon.svg             — favicon
-    api/rpi/lookup/
-      route.ts            — GET ?numero=... — consulta real à RPI oficial
+    api/
+      rpi/lookup/
+        route.ts          — GET ?numero=... — consulta real à RPI oficial
+      inpi/busca/
+        route.ts           — GET ?termo=...&pagina=... — busca real em tempo real
     rpi-teste/
       page.tsx             — página de prova viva da integração com a RPI
   components/
@@ -131,7 +178,8 @@ src/
     Stepper.tsx       — navegação entre etapas, com trava de progresso
     ConsultaStep.tsx  — formulário de entrada
     LoadingStep.tsx   — checklist animado da análise
-    ResultadoStep.tsx — resumo de risco, tabela de colidência
+    ResultadoStep.tsx — resumo de risco, tabela de colidência de exemplo
+    BuscaRealPanel.tsx — busca ao vivo na base real de marcas do INPI
     WaveCanvas.tsx     — visualização da assinatura fonética (canvas)
     PlanoStep.tsx      — setup + monitoramento, com toggle funcional
     PainelStep.tsx     — timeline do processo + log de monitoramento da RPI
@@ -140,14 +188,17 @@ src/
     ncl.ts         — inferência de classe NCL + rótulos
     data.ts        — base de marcas de exemplo (só alimenta a demo de colidência)
     analysis.ts    — junta fonética + NCL num único resultado de análise
-    types.ts        — tipos compartilhados
+    types.ts        — tipos compartilhados (fonte única — fonetica.ts importa daqui)
     inpi/
       types.ts        — tipos do XML oficial da RPI
       parse-rpi.ts     — parser de um bloco <processo> (testado contra dado real)
       fetch-rpi.ts      — descoberta de edição + download/parsing sob demanda
+      busca-types.ts     — tipos da busca em tempo real
+      busca-client.ts     — cliente da busca em tempo real (cache + timeout)
 ```
 
-Nota sobre `layout.tsx`: as fontes são carregadas via `<link>` no `<head>`, não com
-`next/font/google`. Motivo documentado no próprio arquivo — `next/font` busca as fontes
-em tempo de *build*, o que quebra builds offline/atrás de proxy corporativo (foi
-exatamente o que aconteceu no ambiente onde este projeto foi montado).
+Nota sobre `layout.tsx`: as fontes usam `next/font/google` (self-hosted em build time).
+Até 25/08/2026 eram carregadas via `<link>` porque o ambiente de build original
+bloqueava `fonts.googleapis.com`; reavaliado e revertido nesta sessão depois de
+confirmar rede livre localmente — ver comentário no próprio arquivo antes de reverter de
+volta para `<link>` num ambiente restrito.

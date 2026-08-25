@@ -1,3 +1,5 @@
+import type { RiskTier, Similaridade } from "./types";
+
 /**
  * Redução fonética simplificada para nomes de marca em PT-BR.
  *
@@ -58,12 +60,6 @@ export function levenshtein(a: string, b: string): number {
   return dp[m]![n]!;
 }
 
-export interface Similaridade {
-  fa: string;
-  fb: string;
-  pct: number;
-}
-
 /** Similaridade fonética entre duas marcas, em percentual (0–100). */
 export function similaridade(a: string, b: string): Similaridade {
   const fa = foneticaBR(a);
@@ -72,14 +68,6 @@ export function similaridade(a: string, b: string): Similaridade {
   const maxLen = Math.max(fa.length, fb.length, 1);
   const pct = Math.max(0, Math.round((1 - dist / maxLen) * 100));
   return { fa, fb, pct };
-}
-
-export type RiskTierKey = "alto" | "moderado" | "baixo";
-
-export interface RiskTier {
-  tier: RiskTierKey;
-  cls: "risk" | "warm" | "safe";
-  label: string;
 }
 
 export function riskTier(pct: number): RiskTier {

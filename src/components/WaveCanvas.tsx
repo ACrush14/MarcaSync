@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import type { RiskTier } from "@/lib/fonetica";
+import type { RiskTier } from "@/lib/types";
 
 interface WaveCanvasProps {
   fa: string;

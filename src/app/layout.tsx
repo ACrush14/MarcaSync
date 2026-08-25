@@ -1,10 +1,35 @@
 import type { Metadata } from "next";
+import { Fraunces, IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 
-// Carregadas via <link>, não next/font/google: next/font busca as fontes em
-// tempo de build, o que quebra em builds offline/atrás de proxy corporativo
-// (aconteceu neste próprio ambiente de desenvolvimento). Via <link>, o
-// navegador busca em runtime — build nunca depende de rede externa.
+// Reavaliado em 25/08/2026: a versão anterior carregava as fontes via <link>
+// no <head> em vez de next/font/google porque o ambiente de build original
+// bloqueava fonts.googleapis.com em tempo de build. Confirmado nesta sessão
+// (rede local sem bloqueio, `curl fonts.googleapis.com` -> 200) que essa
+// premissa não se aplica mais aqui — next/font volta a ser a opção certa:
+// self-hosting automático dos arquivos de fonte (sem round-trip pro Google
+// em runtime), sem FOUC, menos HTML manual. Se este projeto voltar a rodar
+// atrás de um proxy que bloqueie fonts.googleapis.com, reverta para <link>
+// — não assuma que esta decisão vale para todo ambiente.
+const fraunces = Fraunces({
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
+  display: "swap",
+  variable: "--font-fraunces",
+});
+const ibmPlexSans = IBM_Plex_Sans({
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  display: "swap",
+  variable: "--font-plex-sans",
+});
+const ibmPlexMono = IBM_Plex_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  display: "swap",
+  variable: "--font-plex-mono",
+});
+
 export const metadata: Metadata = {
   title: "MarcaSync",
   description:
@@ -17,16 +42,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="pt-BR">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        {/* eslint-disable-next-line @next/next/no-page-custom-font -- regra mira o Pages Router; no App Router, <link> no layout raiz é o padrão correto. */}
-        <link
-          href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
-          rel="stylesheet"
-        />
-      </head>
+    <html
+      lang="pt-BR"
+      className={`${fraunces.variable} ${ibmPlexSans.variable} ${ibmPlexMono.variable}`}
+    >
       <body>{children}</body>
     </html>
   );

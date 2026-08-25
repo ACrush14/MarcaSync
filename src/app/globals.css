@@ -28,9 +28,12 @@
   --shadow-lg: 0 16px 40px -20px rgba(20, 30, 25, 0.35);
 
   --radius: 10px;
-  --font-display: "Fraunces", "Iowan Old Style", Georgia, serif;
-  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
-  --font-mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+  /* --font-fraunces/--font-plex-sans/--font-plex-mono são injetadas pelo
+     next/font/google em layout.tsx (classe no <html>); o fallback dentro do
+     var() cobre o caso raro de o layout renderizar sem essa classe. */
+  --font-display: var(--font-fraunces, "Fraunces"), "Iowan Old Style", Georgia, serif;
+  --font-body: var(--font-plex-sans, "IBM Plex Sans"), "Segoe UI", system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono, "IBM Plex Mono"), "SFMono-Regular", Consolas, monospace;
 }
 
 @media (prefers-color-scheme: dark) {

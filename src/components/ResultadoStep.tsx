@@ -4,6 +4,7 @@ import { riskTier } from "@/lib/fonetica";
 import { CLASS_LABELS } from "@/lib/ncl";
 import type { Analise } from "@/lib/types";
 import WaveCanvas from "./WaveCanvas";
+import BuscaRealPanel from "./BuscaRealPanel";
 
 interface ResultadoStepProps {
   marca: string;
@@ -117,6 +118,8 @@ export default function ResultadoStep({
           </tbody>
         </table>
       </div>
+
+      <BuscaRealPanel termoInicial={marca} />
 
       <div className="cta-row">
         <button className="btn secondary" onClick={onRefazer}>

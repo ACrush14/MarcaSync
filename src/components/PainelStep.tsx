@@ -33,12 +33,12 @@ export default function PainelStep({
   const phases: Array<{ t: string; d: string; status: "done" | "current" | "risk" | "pending"; code?: string }> = [
     { t: "Depósito do pedido", d: fmtDate(deposito), status: "done" },
     { t: "Exame Formal", d: fmtDate(exameFormal), status: "done" },
-    { t: "Publicação na RPI", d: fmtDate(publicacao), status: "done", code: "389" },
+    { t: "Publicação na RPI", d: fmtDate(publicacao), status: "done", code: "IPAS389" },
     {
       t: "Prazo de Oposição (60 dias)",
       d: `até ${fmtDate(fimOposicao)} · faltam ${diasRestantes} dias`,
       status: opposed ? "risk" : "current",
-      ...(opposed ? { code: "394" } : {}),
+      ...(opposed ? { code: "IPAS394" } : {}),
     },
     { t: "Exame de Mérito", d: "pendente", status: "pending" },
     { t: "Deferimento", d: "pendente", status: "pending" },
@@ -47,14 +47,14 @@ export default function PainelStep({
 
   const logBase: Array<{ date: string; text: string; warn: boolean }> = [
     { date: fmtDate(addDays(hoje, -6)), text: "Nenhuma alteração encontrada na RPI desta semana.", warn: false },
-    { date: fmtDate(publicacao), text: "Despacho 389 publicado — pedido em fase de oposição (60 dias).", warn: false },
+    { date: fmtDate(publicacao), text: "Despacho IPAS389 publicado — pedido em fase de oposição (60 dias).", warn: false },
     { date: fmtDate(addDays(publicacao, -7)), text: "Nenhuma alteração encontrada.", warn: false },
     { date: fmtDate(addDays(publicacao, -14)), text: "Nenhuma alteração encontrada.", warn: false },
   ];
   if (opposed) {
     logBase.unshift({
       date: "hoje",
-      text: "Despacho 394 publicado — oposição de terceiro registrada. Prazo de manifestação: 60 dias (Art. 158, LPI).",
+      text: "Despacho IPAS394 publicado — oposição de terceiro registrada. Prazo de manifestação: 60 dias (Art. 158, LPI).",
       warn: true,
     });
   }
