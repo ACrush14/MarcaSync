@@ -3,27 +3,64 @@
 import { useState } from "react";
 
 interface ConsultaStepProps {
+  nomeCliente: string;
+  whatsapp: string;
   marca: string;
   descricao: string;
-  onAnalisar: (marca: string, descricao: string) => void;
+  onAnalisar: (dados: {
+    nomeCliente: string;
+    whatsapp: string;
+    marca: string;
+    descricao: string;
+  }) => void;
 }
 
-export default function ConsultaStep({ marca, descricao, onAnalisar }: ConsultaStepProps) {
+export default function ConsultaStep({
+  nomeCliente,
+  whatsapp,
+  marca,
+  descricao,
+  onAnalisar,
+}: ConsultaStepProps) {
+  const [localNome, setLocalNome] = useState(nomeCliente);
+  const [localWhatsapp, setLocalWhatsapp] = useState(whatsapp);
   const [localMarca, setLocalMarca] = useState(marca);
   const [localDescricao, setLocalDescricao] = useState(descricao);
+
+  const podeAnalisar = localNome.trim() && localWhatsapp.trim() && localMarca.trim();
 
   return (
     <>
       <div className="panel-head">
         <h2>Nova consulta de viabilidade</h2>
         <p className="help">
-          Informe a marca pretendida e descreva o produto ou serviço. O sistema cruza o
-          nome com uma base de marcas por som (não apenas grafia) e infere a classe de
-          Nice automaticamente a partir da descrição.
+          Informe seus dados de contato, a marca pretendida e o produto ou serviço. O
+          sistema cruza o nome com uma base de marcas por som (não apenas grafia) e
+          infere a classe de Nice automaticamente a partir da descrição.
         </p>
       </div>
       <div className="grid-2">
         <div>
+          <div className="field">
+            <label htmlFor="in-nome">Seu nome</label>
+            <input
+              type="text"
+              id="in-nome"
+              value={localNome}
+              onChange={(e) => setLocalNome(e.target.value)}
+              placeholder="Ex.: Ana Ramos"
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="in-whatsapp">Seu WhatsApp</label>
+            <input
+              type="text"
+              id="in-whatsapp"
+              value={localWhatsapp}
+              onChange={(e) => setLocalWhatsapp(e.target.value)}
+              placeholder="Ex.: (85) 91234-5678"
+            />
+          </div>
           <div className="field">
             <label htmlFor="in-marca">Nome da marca pretendida</label>
             <input
@@ -45,8 +82,14 @@ export default function ConsultaStep({ marca, descricao, onAnalisar }: ConsultaS
           </div>
           <button
             className="btn"
+            disabled={!podeAnalisar}
             onClick={() =>
-              onAnalisar(localMarca.trim() || "Marca sem nome", localDescricao.trim())
+              onAnalisar({
+                nomeCliente: localNome.trim(),
+                whatsapp: localWhatsapp.trim(),
+                marca: localMarca.trim() || "Marca sem nome",
+                descricao: localDescricao.trim(),
+              })
             }
           >
             Analisar viabilidade →

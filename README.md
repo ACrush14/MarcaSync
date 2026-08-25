@@ -14,6 +14,8 @@ registro de marcas junto ao INPI. Este repositório contém duas coisas:
 
 ```bash
 npm install
+cp .env.example .env        # se ainda não existir — aponta pro banco local
+npx prisma migrate dev      # cria/atualiza prisma/dev.db (só na 1ª vez ou após mudar o schema)
 npm run dev
 ```
 
@@ -23,6 +25,29 @@ Abra http://localhost:3000. Para checar tipos e build de produção antes de com
 npm run typecheck
 npm run build
 ```
+
+## Banco de dados (`prisma/`)
+
+SQLite local via Prisma — o "caderno de anotações" real do produto. Um arquivo só
+(`prisma/dev.db`, gerado por `npx prisma migrate dev`, nunca commitado — ver
+`.gitignore`), sem servidor de banco pra configurar. Guarda cliente, processo (marca,
+descrição, análise, status, protocolo) e pagamento (setup/monitoramento, confirmado à
+mão depois que o cliente avisa por WhatsApp).
+
+- `prisma/schema.prisma` — os 3 modelos: `Cliente`, `Processo`, `Pagamento`.
+- `src/lib/db.ts` — cliente Prisma (singleton, evita conexões duplicadas no hot reload).
+- `/admin` — lista todos os processos e pagamentos, com botão "Marcar como pago". Sem
+  login ainda — **não exponha essa rota publicamente** antes de ter autenticação (ver
+  "Próximos passos").
+
+Prisma 7 mudou o modelo de configuração: a URL de conexão não vive mais no
+`schema.prisma`, vive em `prisma.config.ts`. Se `npx prisma migrate dev` reclamar de
+schema, veja esse arquivo antes de mexer no `schema.prisma`.
+
+**Quando isto vira Postgres**: SQLite não aguenta escrita concorrente de múltiplos
+processos/instâncias — é suficiente pra um único desenvolvedor local, não pra produção
+com mais de uma pessoa mexendo ao mesmo tempo. Migrar é trocar `provider = "sqlite"` por
+`"postgresql"` no schema e o adapter em `db.ts` — o resto (modelos, rotas) não muda.
 
 ## O que já é funcional (não decorativo)
 
@@ -164,17 +189,22 @@ fictício — ainda não há peticionamento real, ver item 4 abaixo.
    advogado antes de ir pra produção** — não foi escrito nem validado por um. Regra dura
    e não negociável, já cumprida no desenho: nunca capturar ou armazenar credenciais
    gov.br de terceiros.
-5. **Persistência real** — hoje todo o estado do wizard é `useState` em memória, perdido a
-   cada reload. Entra banco de dados (Postgres) e API assim que houver dado real de
-   cliente para guardar. **Bloqueia o item 6** — sem tabela de pedidos/clientes, um
-   webhook de pagamento não tem onde gravar "quem pagou o quê".
-6. **Cobrança automatizada** — hoje é 100% manual (PIX pessoa física). Setup (pagamento
-   único) e monitoramento (recorrente) são produtos Mercado Pago diferentes (Checkout Pro
-   vs. Assinaturas/`preapproval`); ou, mais simples pra validar sem abrir conta em
-   processador de pagamento, gerar o payload PIX "copia e cola" (padrão EMV/BR Code)
-   estático com a chave PIX pessoal — mas mesmo essa opção mais simples precisa do item 5
-   pra confirmação de pagamento não ser 100% manual.
-7. **Cache real para RPI e busca** — os dois caches em memória (`fetch-rpi.ts`,
+5. ~~Persistência real~~ — **feito**: SQLite local via Prisma (`prisma/`, ver seção
+   própria acima), wizard grava cliente/processo/pagamento de verdade, `/admin` lista
+   tudo e confirma pagamento manualmente. Ainda sem autenticação — qualquer um com a URL
+   acessa `/admin` — e ainda SQLite (não aguenta múltiplos escritores concorrentes), não
+   Postgres. Próximo passo real aqui é login, não banco.
+6. **Cobrança automatizada** — hoje é manual: você confirma no `/admin` depois que o
+   cliente avisa por WhatsApp (isso já tem onde gravar — item 5 resolvido). Automação de
+   verdade (cliente paga, sistema confirma sozinho) ainda depende de decidir entre gerar
+   o payload PIX "copia e cola" (padrão EMV/BR Code) estático com a chave PIX pessoal — o
+   mais simples, sem abrir conta em processador — ou Mercado Pago (Checkout Pro pro setup
+   único, Assinaturas/`preapproval` pro monitoramento recorrente — são produtos
+   diferentes, não a mesma integração).
+7. **Autenticação no `/admin`** — hoje qualquer pessoa com a URL vê nome, WhatsApp e
+   valores de todo cliente. Sem risco enquanto só você acessa localmente; vira
+   obrigatório antes de fazer deploy em qualquer lugar público.
+8. **Cache real para RPI e busca** — os dois caches em memória (`fetch-rpi.ts`,
    `busca-client.ts`) são só pra desenvolvimento (não sobrevivem a cold start
    serverless, não são compartilhados entre instâncias). Produção precisa de Redis/S3,
    TTL de 1 semana pra RPI e 24h pra busca (espelhando o `Cache-Control` do upstream).
@@ -195,6 +225,14 @@ src/
         route.ts           — GET ?termo=...&pagina=... — busca real em tempo real
       health/
         route.ts            — GET — healthcheck das duas integrações (status + schema)
+      processos/
+        route.ts             — GET lista, POST cria cliente+processo
+        [id]/route.ts          — PATCH atualiza status/protocolo/monitoramento
+        [id]/pagamentos/route.ts — POST registra cobrança pendente
+      pagamentos/[id]/confirmar/
+        route.ts                — POST marca pagamento como confirmado
+    admin/
+      page.tsx              — "caderno de anotações": lista processos, confirma pagamento
     rpi-teste/
       page.tsx             — página de prova viva da integração com a RPI
   components/
@@ -220,6 +258,9 @@ src/
       busca-types.ts     — tipos da busca em tempo real
       busca-client.ts     — cliente da busca em tempo real (cache + timeout)
       health.ts            — verificações de status+schema das duas integrações
+  lib/db.ts — cliente Prisma (singleton)
+prisma/
+  schema.prisma — modelos Cliente/Processo/Pagamento (ver seção "Banco de dados")
 docs/
   tutorial-procuracao-eletronica.md — rascunho pro cliente autorizar o MarcaSync no INPI
 ```

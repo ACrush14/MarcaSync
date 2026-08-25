@@ -1,0 +1,72 @@
+// Banco local (SQLite) — "caderno de anotações" real do MarcaSync.
+//
+// Deliberadamente simples pra essa fase: sem autenticação, sem multiempresa,
+// um arquivo .db local. Suficiente pra parar de perder informação de cliente
+// a cada reload do navegador. Migrar pra Postgres é reavaliação de quando
+// isto for pra produção de verdade com mais de uma pessoa mexendo ao mesmo
+// tempo — SQLite não aguenta escrita concorrente de vários processos.
+
+datasource db {
+  provider = "sqlite"
+}
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+  runtime  = "nodejs"
+}
+
+/// Quem contratou o serviço — capturado no primeiro passo do wizard (Consulta).
+model Cliente {
+  id        String     @id @default(cuid())
+  nome      String
+  whatsapp  String     @unique
+  email     String?
+  createdAt DateTime   @default(now())
+  processos Processo[]
+}
+
+/// Um pedido de registro de marca em andamento (uma "linha" no caderno).
+model Processo {
+  id             String      @id @default(cuid())
+  clienteId      String
+  cliente        Cliente     @relation(fields: [clienteId], references: [id])
+
+  marca          String
+  descricao      String
+
+  // Resultado da análise (snapshot do momento — não recalcula depois).
+  nclCode        String?
+  nclLabel       String?
+  riscoPct       Int?
+
+  monitoramento  Boolean     @default(false)
+  protocolo      String?     // número interno gerado no passo "Plano"
+  numeroProcesso String?     // número real do INPI, preenchido só quando protocolado de verdade
+
+  // consulta -> resultado -> plano -> protocolado
+  status         String      @default("consulta")
+
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  pagamentos     Pagamento[]
+}
+
+/// Uma cobrança (setup ou mensalidade de monitoramento) — confirmada à mão
+/// por enquanto, depois que o cliente avisa por WhatsApp que pagou.
+model Pagamento {
+  id            String    @id @default(cuid())
+  processoId    String
+  processo      Processo  @relation(fields: [processoId], references: [id])
+
+  tipo          String    // "setup" | "monitoramento"
+  valorCentavos Int
+
+  status        String    @default("pendente") // pendente | confirmado
+  confirmadoEm  DateTime?
+  confirmadoVia String?   // ex.: "whatsapp"
+  notas         String?
+
+  createdAt     DateTime  @default(now())
+}
