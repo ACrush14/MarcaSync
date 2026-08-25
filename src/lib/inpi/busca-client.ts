@@ -34,7 +34,7 @@ import type {
  * escolha (martelar uma API de terceiro sem SLA a cada clique é arriscado).
  */
 
-const SEARCH_URL = "https://api-servicos.busca.inpi.gov.br/api/trademarks/search";
+export const SEARCH_URL = "https://api-servicos.busca.inpi.gov.br/api/trademarks/search";
 const TIMEOUT_MS = 6000;
 const CACHE_TTL_MS = 86_400_000; // 24h — mesmo valor do Cache-Control observado no upstream.
 

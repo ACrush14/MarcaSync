@@ -121,6 +121,19 @@ Antes de confiar nisto em produção: confirmar com o INPI (ou jurídico) se
 `api-servicos.busca.inpi.gov.br` é de fato produção e se há alguma restrição de uso por
 terceiros — ninguém validou isso ainda, só a mecânica técnica.
 
+## Healthcheck (`/api/health`)
+
+`GET /api/health` verifica as duas integrações reais com o INPI e devolve `200` (tudo
+saudável) ou `503` (alguma falhou). Cada checagem valida não só o status HTTP, mas a
+*forma* mínima da resposta — uma API sem contrato formal (a busca em tempo real) pode
+mudar de schema sem avisar e continuar respondendo `200` com corpo diferente; isso pega
+esse caso, não só "está fora do ar".
+
+Pensado pra ser chamado por um monitor externo gratuito (UptimeRobot, Better Uptime,
+cron-job.org) a cada poucos minutos, alertando por e-mail/SMS quando não for `200` — mais
+barato que construir alerta próprio numa fase sem volume de clientes. Ver
+`src/lib/inpi/health.ts`.
+
 ## O que ainda é intencionalmente falso (e por quê)
 
 A base de marcas usada na *demonstração de colidência fonética* (`BASE_MARCAS` em
@@ -145,24 +158,33 @@ fictício — ainda não há peticionamento real, ver item 4 abaixo.
 3. **Revisar o algoritmo fonético com alguém que entenda fonologia do português** — a
    versão atual é uma heurística de demonstração, não um algoritmo validado
    linguisticamente nem testado contra decisões reais de indeferimento do INPI.
-4. **Desenhar o fluxo de procuração eletrônica** para peticionamento — nunca capturar ou
-   armazenar credenciais gov.br de terceiros. O caminho correto é o cliente cadastrar o
-   MarcaSync como procurador dentro do e-Marcas.
-5. **Cache real para RPI e busca** — os dois caches em memória (`fetch-rpi.ts`,
+4. **Fluxo de procuração eletrônica** — rascunho pronto em
+   [`docs/tutorial-procuracao-eletronica.md`](docs/tutorial-procuracao-eletronica.md),
+   montado a partir do Manual de Marcas oficial do INPI. **Precisa de revisão por
+   advogado antes de ir pra produção** — não foi escrito nem validado por um. Regra dura
+   e não negociável, já cumprida no desenho: nunca capturar ou armazenar credenciais
+   gov.br de terceiros.
+5. **Persistência real** — hoje todo o estado do wizard é `useState` em memória, perdido a
+   cada reload. Entra banco de dados (Postgres) e API assim que houver dado real de
+   cliente para guardar. **Bloqueia o item 6** — sem tabela de pedidos/clientes, um
+   webhook de pagamento não tem onde gravar "quem pagou o quê".
+6. **Cobrança automatizada** — hoje é 100% manual (PIX pessoa física). Setup (pagamento
+   único) e monitoramento (recorrente) são produtos Mercado Pago diferentes (Checkout Pro
+   vs. Assinaturas/`preapproval`); ou, mais simples pra validar sem abrir conta em
+   processador de pagamento, gerar o payload PIX "copia e cola" (padrão EMV/BR Code)
+   estático com a chave PIX pessoal — mas mesmo essa opção mais simples precisa do item 5
+   pra confirmação de pagamento não ser 100% manual.
+7. **Cache real para RPI e busca** — os dois caches em memória (`fetch-rpi.ts`,
    `busca-client.ts`) são só pra desenvolvimento (não sobrevivem a cold start
    serverless, não são compartilhados entre instâncias). Produção precisa de Redis/S3,
    TTL de 1 semana pra RPI e 24h pra busca (espelhando o `Cache-Control` do upstream).
-6. **Persistência real** — hoje todo o estado do wizard é `useState` em memória, perdido a
-   cada reload. Entra banco de dados (Postgres) e API assim que houver dado real de
-   cliente para guardar — o que inclui decidir como associar processos reais (vindos da
-   RPI/busca) a contas de usuário.
 
 ## Estrutura
 
 ```
 src/
   app/
-    layout.tsx        — fontes via <link> (ver nota abaixo), metadata, shell HTML
+    layout.tsx        — fontes via next/font/google (ver nota abaixo), metadata, shell HTML
     page.tsx           — monta <MarcaSyncApp />
     globals.css         — tokens de design (cores claro/escuro, tipografia) + estilos
     icon.svg             — favicon
@@ -171,6 +193,8 @@ src/
         route.ts          — GET ?numero=... — consulta real à RPI oficial
       inpi/busca/
         route.ts           — GET ?termo=...&pagina=... — busca real em tempo real
+      health/
+        route.ts            — GET — healthcheck das duas integrações (status + schema)
     rpi-teste/
       page.tsx             — página de prova viva da integração com a RPI
   components/
@@ -195,6 +219,9 @@ src/
       fetch-rpi.ts      — descoberta de edição + download/parsing sob demanda
       busca-types.ts     — tipos da busca em tempo real
       busca-client.ts     — cliente da busca em tempo real (cache + timeout)
+      health.ts            — verificações de status+schema das duas integrações
+docs/
+  tutorial-procuracao-eletronica.md — rascunho pro cliente autorizar o MarcaSync no INPI
 ```
 
 Nota sobre `layout.tsx`: as fontes usam `next/font/google` (self-hosted em build time).

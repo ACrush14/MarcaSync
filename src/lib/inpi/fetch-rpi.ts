@@ -15,7 +15,7 @@ import type { RpiProcesso } from "./types";
  * Encoding é UTF-8 mesmo (a declaração do XML não mente).
  */
 
-const RPI_INDEX_URL = "https://revistas.inpi.gov.br/rpi/";
+export const RPI_INDEX_URL = "https://revistas.inpi.gov.br/rpi/";
 const rpiZipUrl = (edicao: number): string => `https://revistas.inpi.gov.br/txt/RM${edicao}.zip`;
 
 export interface RpiEdicaoRef {
