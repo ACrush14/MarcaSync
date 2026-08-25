@@ -1,0 +1,896 @@
+<title>MarcaSync</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+  /* ---------- tokens ---------- */
+  :root{
+    --bg:#EEF0EA;
+    --surface:#FFFFFF;
+    --surface-2:#F7F7F1;
+    --ink:#1A1F1D;
+    --ink-dim:#5B6459;
+    --ink-faint:#8B9389;
+    --border:#D7DACF;
+    --border-strong:#C1C6B7;
+
+    --accent:#1B4B43;
+    --accent-ink:#FFFFFF;
+    --accent-soft:#DCE8E2;
+    --accent-soft-ink:#1B4B43;
+
+    --warm:#9A5220;
+    --warm-soft:#F3E1D2;
+
+    --safe:#2A6E48;
+    --safe-soft:#DDEDE1;
+
+    --risk:#A3352A;
+    --risk-soft:#F5DEDA;
+
+    --shadow-sm:0 1px 2px rgba(20,30,25,.07);
+    --shadow-lg:0 16px 40px -20px rgba(20,30,25,.35);
+
+    --radius:10px;
+    --font-display:'Fraunces', 'Iowan Old Style', Georgia, serif;
+    --font-body:'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif;
+    --font-mono:'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
+  }
+
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#111815;
+      --surface:#17211D;
+      --surface-2:#1D2925;
+      --ink:#E9EFEA;
+      --ink-dim:#A6B2A9;
+      --ink-faint:#71796F;
+      --border:#2A3630;
+      --border-strong:#374439;
+
+      --accent:#7FCBB0;
+      --accent-ink:#0D1613;
+      --accent-soft:#1E332C;
+      --accent-soft-ink:#8ED4BA;
+
+      --warm:#E6A469;
+      --warm-soft:#3B2A1A;
+
+      --safe:#6DC493;
+      --safe-soft:#1B3327;
+
+      --risk:#E48579;
+      --risk-soft:#3B211E;
+
+      --shadow-sm:0 1px 2px rgba(0,0,0,.4);
+      --shadow-lg:0 20px 45px -20px rgba(0,0,0,.6);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#111815;
+    --surface:#17211D;
+    --surface-2:#1D2925;
+    --ink:#E9EFEA;
+    --ink-dim:#A6B2A9;
+    --ink-faint:#71796F;
+    --border:#2A3630;
+    --border-strong:#374439;
+
+    --accent:#7FCBB0;
+    --accent-ink:#0D1613;
+    --accent-soft:#1E332C;
+    --accent-soft-ink:#8ED4BA;
+
+    --warm:#E6A469;
+    --warm-soft:#3B2A1A;
+
+    --safe:#6DC493;
+    --safe-soft:#1B3327;
+
+    --risk:#E48579;
+    --risk-soft:#3B211E;
+
+    --shadow-sm:0 1px 2px rgba(0,0,0,.4);
+    --shadow-lg:0 20px 45px -20px rgba(0,0,0,.6);
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:var(--font-body);
+    font-size:15px;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+  }
+  h1,h2,h3{font-family:var(--font-display);text-wrap:balance;margin:0;font-weight:600;}
+  p{margin:0;}
+  button{font-family:var(--font-body);}
+  a{color:var(--accent);}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+  ::selection{background:var(--accent-soft);}
+
+  .mono{font-family:var(--font-mono);}
+  .tab-nums{font-variant-numeric:tabular-nums;}
+
+  /* ---------- shell ---------- */
+  .shell{
+    max-width:1040px;
+    margin:0 auto;
+    padding:28px 20px 80px;
+  }
+
+  .topbar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:16px;
+    padding-bottom:20px;
+    flex-wrap:wrap;
+  }
+  .brand{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;}
+  .brand .mark{font-family:var(--font-display);font-weight:700;font-size:22px;letter-spacing:-.01em;}
+  .brand .tag{font-family:var(--font-mono);font-size:11.5px;color:var(--ink-faint);letter-spacing:.03em;}
+
+  .proto-badge{
+    font-family:var(--font-mono);
+    font-size:11px;
+    letter-spacing:.04em;
+    color:var(--warm);
+    background:var(--warm-soft);
+    border-radius:999px;
+    padding:4px 10px;
+    white-space:nowrap;
+  }
+
+  .session-chip{
+    display:flex;align-items:center;gap:8px;
+    font-size:13px;color:var(--ink-dim);
+  }
+  .avatar{
+    width:26px;height:26px;border-radius:50%;
+    background:var(--accent-soft);color:var(--accent-soft-ink);
+    display:flex;align-items:center;justify-content:center;
+    font-size:11px;font-weight:600;font-family:var(--font-body);
+  }
+
+  /* ---------- stepper ---------- */
+  .stepper{
+    display:flex;
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    background:var(--surface);
+    overflow-x:auto;
+    margin-bottom:18px;
+    box-shadow:var(--shadow-sm);
+  }
+  .step-btn{
+    flex:1 1 0;
+    min-width:150px;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:13px 16px;
+    background:none;
+    border:none;
+    border-right:1px solid var(--border);
+    cursor:pointer;
+    text-align:left;
+    color:var(--ink-faint);
+    transition:background .15s ease,color .15s ease;
+  }
+  .step-btn:last-child{border-right:none;}
+  .step-btn:disabled{cursor:not-allowed;}
+  .step-btn:not(:disabled):hover{background:var(--surface-2);}
+  .step-num{
+    width:22px;height:22px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    font-family:var(--font-mono);font-size:11px;
+    border:1px solid var(--border-strong);
+    flex:none;
+  }
+  .step-label{display:flex;flex-direction:column;gap:1px;}
+  .step-label .t{font-size:13px;font-weight:600;}
+  .step-label .s{font-size:11px;color:var(--ink-faint);}
+  .step-btn.current{color:var(--ink);}
+  .step-btn.current .step-num{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);}
+  .step-btn.done{color:var(--ink-dim);}
+  .step-btn.done .step-num{background:var(--accent-soft);border-color:var(--accent-soft);color:var(--accent-soft-ink);}
+
+  /* ---------- panel ---------- */
+  .panel{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    box-shadow:var(--shadow-lg);
+    padding:32px;
+  }
+  @media (max-width:640px){ .panel{padding:22px 18px;} }
+
+  .panel-head{margin-bottom:22px;}
+  .panel-head h2{font-size:22px;}
+  .panel-head .help{color:var(--ink-dim);font-size:13.5px;margin-top:6px;max-width:60ch;}
+
+  .grid-2{display:grid;grid-template-columns:1.3fr 1fr;gap:32px;}
+  @media (max-width:760px){ .grid-2{grid-template-columns:1fr;} }
+
+  label{display:block;font-size:12.5px;font-weight:600;color:var(--ink-dim);margin-bottom:6px;letter-spacing:.01em;}
+  .field{margin-bottom:18px;}
+  input[type="text"], textarea{
+    width:100%;
+    background:var(--surface-2);
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:11px 12px;
+    font-family:var(--font-body);
+    font-size:14.5px;
+    color:var(--ink);
+    resize:vertical;
+  }
+  textarea{min-height:84px;line-height:1.45;}
+  input[type="text"]:focus, textarea:focus{border-color:var(--accent);}
+
+  .btn{
+    display:inline-flex;align-items:center;gap:8px;
+    background:var(--accent);color:var(--accent-ink);
+    border:none;border-radius:8px;
+    padding:11px 18px;
+    font-size:14px;font-weight:600;
+    cursor:pointer;
+    transition:opacity .15s ease, transform .1s ease;
+  }
+  .btn:hover{opacity:.9;}
+  .btn:active{transform:translateY(1px);}
+  .btn.secondary{background:var(--surface-2);color:var(--ink);border:1px solid var(--border-strong);}
+  .btn.ghost{background:none;color:var(--accent);border:1px solid var(--accent-soft);}
+  .btn:disabled{opacity:.5;cursor:not-allowed;}
+
+  .helpbox{
+    background:var(--surface-2);
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:16px 18px;
+  }
+  .helpbox h3{font-size:13px;font-family:var(--font-body);font-weight:600;margin-bottom:10px;}
+  .helpbox ol{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:8px;}
+  .helpbox li{font-size:13px;color:var(--ink-dim);}
+  .helpbox li b{color:var(--ink);font-weight:600;}
+
+  /* ---------- loading ---------- */
+  .loading-wrap{display:flex;flex-direction:column;align-items:center;padding:36px 0 20px;text-align:center;}
+  .loading-wrap h3{font-size:17px;margin-bottom:22px;font-weight:600;font-family:var(--font-body);}
+  .checklist{display:flex;flex-direction:column;gap:12px;width:100%;max-width:400px;}
+  .check-item{
+    display:flex;align-items:center;gap:10px;
+    font-size:13.5px;color:var(--ink-faint);
+    opacity:.4;transition:opacity .25s ease, color .25s ease;
+  }
+  .check-item.active{opacity:1;color:var(--ink);}
+  .check-dot{
+    width:16px;height:16px;border-radius:50%;
+    border:1.5px solid var(--border-strong);
+    flex:none;position:relative;
+  }
+  .check-item.active .check-dot{border-color:var(--accent);background:var(--accent);}
+  .check-item.active .check-dot::after{
+    content:"";position:absolute;inset:0;margin:auto;
+    width:5px;height:8px;border:solid var(--accent-ink);border-width:0 2px 2px 0;
+    transform:rotate(45deg) translate(-1px,-1px);
+  }
+
+  /* ---------- resultado ---------- */
+  .risk-summary{
+    display:flex;gap:20px;flex-wrap:wrap;
+    padding:20px;border-radius:8px;margin-bottom:26px;
+    border:1px solid var(--border);
+  }
+  .risk-summary .metric{flex:1;min-width:160px;}
+  .risk-summary .metric .lbl{font-size:11.5px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;}
+  .risk-summary .metric .val{font-family:var(--font-display);font-size:26px;font-weight:600;}
+  .risk-summary .metric .sub{font-size:12.5px;color:var(--ink-dim);margin-top:2px;}
+
+  .pill{
+    display:inline-flex;align-items:center;gap:5px;
+    border-radius:999px;padding:3px 10px;
+    font-size:11.5px;font-weight:600;letter-spacing:.02em;
+  }
+  .pill.risk{background:var(--risk-soft);color:var(--risk);}
+  .pill.warm{background:var(--warm-soft);color:var(--warm);}
+  .pill.safe{background:var(--safe-soft);color:var(--safe);}
+  .pill.accent{background:var(--accent-soft);color:var(--accent-soft-ink);}
+
+  .wave-section{margin-bottom:28px;}
+  .wave-section h3{font-size:13px;font-family:var(--font-body);font-weight:600;margin-bottom:4px;}
+  .wave-section .sub{font-size:12.5px;color:var(--ink-dim);margin-bottom:12px;}
+  .wave-legend{display:flex;gap:18px;margin-bottom:8px;flex-wrap:wrap;}
+  .wave-legend span{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-dim);}
+  .wave-legend i{width:10px;height:10px;border-radius:2px;display:inline-block;}
+  canvas#wave{width:100%;height:120px;display:block;border-radius:8px;background:var(--surface-2);border:1px solid var(--border);}
+
+  .table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:8px;}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;min-width:520px;}
+  th,td{padding:10px 14px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap;}
+  th{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-faint);font-weight:600;background:var(--surface-2);}
+  tr:last-child td{border-bottom:none;}
+  .simbar{display:inline-flex;align-items:center;gap:8px;}
+  .simbar .track{width:70px;height:6px;background:var(--border);border-radius:3px;overflow:hidden;}
+  .simbar .fill{height:100%;border-radius:3px;background:var(--accent);}
+
+  .cta-row{display:flex;justify-content:flex-end;gap:10px;margin-top:24px;flex-wrap:wrap;}
+
+  /* ---------- plano ---------- */
+  .plans{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px;}
+  @media (max-width:640px){ .plans{grid-template-columns:1fr;} }
+  .plan-card{border:1px solid var(--border);border-radius:10px;padding:20px;}
+  .plan-card h3{font-size:15px;font-family:var(--font-body);font-weight:600;}
+  .plan-card .price{font-family:var(--font-display);font-size:28px;font-weight:600;margin:10px 0 2px;}
+  .plan-card .price small{font-family:var(--font-body);font-size:12px;color:var(--ink-dim);font-weight:500;}
+  .plan-card ul{list-style:none;margin:14px 0 0;padding:0;display:flex;flex-direction:column;gap:8px;}
+  .plan-card li{font-size:13px;color:var(--ink-dim);padding-left:18px;position:relative;}
+  .plan-card li::before{content:"—";position:absolute;left:0;color:var(--ink-faint);}
+
+  .toggle-row{display:flex;align-items:center;justify-content:space-between;margin-top:16px;padding-top:14px;border-top:1px dashed var(--border);}
+  .toggle-row .t{font-size:12.5px;color:var(--ink-dim);}
+  .switch{width:38px;height:22px;border-radius:999px;background:var(--border-strong);position:relative;cursor:pointer;border:none;flex:none;}
+  .switch.on{background:var(--accent);}
+  .switch::after{content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:var(--surface);transition:transform .15s ease;}
+  .switch.on::after{transform:translateX(16px);}
+
+  .summary-strip{
+    display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;
+    background:var(--surface-2);border:1px solid var(--border);border-radius:8px;
+    padding:16px 20px;
+  }
+  .summary-strip .total .lbl{font-size:11.5px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.04em;}
+  .summary-strip .total .amt{font-family:var(--font-display);font-size:20px;font-weight:600;}
+
+  /* ---------- painel ---------- */
+  .proc-head{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:14px;margin-bottom:26px;padding-bottom:18px;border-bottom:1px solid var(--border);}
+  .proc-head .num{font-family:var(--font-mono);font-size:19px;letter-spacing:.02em;}
+  .proc-head .num .lbl{display:block;font-family:var(--font-body);font-size:11px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px;}
+
+  .timeline{display:flex;flex-direction:column;margin-bottom:30px;}
+  .tl-note{font-size:12px;color:var(--ink-faint);margin-bottom:14px;}
+  .tl-item{display:grid;grid-template-columns:22px 1fr;gap:14px;}
+  .tl-rail{display:flex;flex-direction:column;align-items:center;}
+  .tl-dot{width:12px;height:12px;border-radius:50%;border:2px solid var(--border-strong);background:var(--surface);flex:none;margin-top:3px;}
+  .tl-line{width:2px;flex:1;background:var(--border);margin:2px 0;}
+  .tl-item:last-child .tl-line{display:none;}
+  .tl-item.done .tl-dot{background:var(--accent);border-color:var(--accent);}
+  .tl-item.current .tl-dot{background:var(--surface);border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);}
+  .tl-item.risk .tl-dot{background:var(--risk);border-color:var(--risk);}
+  .tl-body{padding-bottom:20px;}
+  .tl-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .tl-title{font-size:14px;font-weight:600;}
+  .tl-date{font-size:12px;color:var(--ink-faint);margin-top:2px;}
+  .tl-code{font-family:var(--font-mono);font-size:10.5px;background:var(--surface-2);border:1px solid var(--border);border-radius:4px;padding:1px 6px;color:var(--ink-dim);}
+
+  .rpi-log-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:10px;}
+  .rpi-log{display:flex;flex-direction:column;border:1px solid var(--border);border-radius:8px;overflow:hidden;}
+  .log-row{display:flex;gap:14px;align-items:baseline;padding:11px 16px;border-bottom:1px solid var(--border);font-size:13px;}
+  .log-row:last-child{border-bottom:none;}
+  .log-row .date{font-family:var(--font-mono);font-size:11.5px;color:var(--ink-faint);flex:none;width:78px;}
+  .log-row.warn{background:var(--risk-soft);}
+  .log-row.warn .date{color:var(--risk);}
+
+  .sim-note{font-size:11.5px;color:var(--ink-faint);margin-top:10px;}
+
+  .footer-note{margin-top:36px;text-align:center;font-size:12px;color:var(--ink-faint);}
+
+  @media (prefers-reduced-motion: reduce){
+    *{animation-duration:0.001ms !important;transition-duration:0.001ms !important;}
+  }
+</style>
+
+<div class="shell">
+
+  <div class="topbar">
+    <div class="brand">
+      <span class="mark">MarcaSync</span>
+      <span class="tag">registro de marcas · automação INPI</span>
+      <span class="proto-badge">protótipo interativo · dados de exemplo</span>
+    </div>
+    <div class="session-chip">
+      <div class="avatar">AR</div>
+      <span>Ana Ramos · Doce Ponto Confeitaria</span>
+    </div>
+  </div>
+
+  <nav class="stepper" id="stepper" aria-label="Etapas do processo"></nav>
+
+  <main class="panel" id="panel"></main>
+
+  <p class="footer-note">Fluxo ilustrativo do produto MarcaSync — nomes, prazos e despachos são exemplos para demonstrar a mecânica do sistema, não dados reais do INPI.</p>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+  const REDUCED_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ---------------- data ---------------- */
+  const BASE_MARCAS = [
+    {name:"Casa do Doce", cls:"30"},
+    {name:"Doce Sabor Nordestino", cls:"30"},
+    {name:"Vita Fresca", cls:"32"},
+    {name:"Nortech Sistemas", cls:"42"},
+    {name:"Bella Pelle", cls:"25"},
+    {name:"Flux Studio", cls:"42"},
+    {name:"Selo Verde Orgânicos", cls:"29"},
+    {name:"Rota Norte Transportes", cls:"39"},
+    {name:"Prisma Consultoria", cls:"35"},
+    {name:"Aura Cosméticos", cls:"3"},
+    {name:"Zenith Fit", cls:"41"},
+    {name:"Cores Vivas Tintas", cls:"2"},
+    {name:"Ponto Certo Assessoria", cls:"35"},
+    {name:"Raiz Nordeste Alimentos", cls:"29"},
+  ];
+
+  const NCL_MAP = [
+    [["software","sistema","app","aplicativo","tecnologia","plataforma"], "42", "Programas de computador e serviços de tecnologia"],
+    [["doce","confeitaria","bolo","padaria","sobremesa","chocolate","doceria"], "30", "Café, cacau e produtos de padaria e confeitaria"],
+    [["bebida","suco","refrigerante","cerveja","drink"], "32", "Cervejas e bebidas não alcoólicas"],
+    [["roupa","vestuario","moda","camiseta","calca"], "25", "Vestuário, calçados e acessórios"],
+    [["consultoria","assessoria","gestao","negocios"], "35", "Publicidade e gestão de negócios"],
+    [["cosmetico","beleza","perfume","maquiagem"], "3", "Cosméticos e produtos de perfumaria"],
+    [["academia","fitness","esporte","treino"], "41", "Educação, treinamento e atividades esportivas"],
+    [["movel","moveis","decoracao"], "20", "Móveis e produtos de decoração"],
+    [["tinta","pintura","verniz"], "2", "Tintas e vernizes"],
+    [["transporte","logistica","entrega"], "39", "Transporte, embalagem e armazenagem"],
+    [["alimento","comida","organico","alimenticio"], "29", "Carnes, alimentos processados e conservas"],
+  ];
+
+  const CLASS_LABELS = {"2":"Tintas e vernizes","3":"Cosméticos e perfumaria","20":"Móveis e decoração","25":"Vestuário","29":"Alimentos processados","30":"Padaria e confeitaria","32":"Bebidas não alcoólicas","35":"Publicidade e gestão","39":"Transporte e logística","41":"Educação e esporte","42":"Tecnologia e software"};
+
+  /* ---------------- algoritmos ---------------- */
+  function stripAccents(s){ return s.normalize('NFD').replace(/[̀-ͯ]/g,''); }
+
+  function foneticaBR(str){
+    let s = stripAccents(str.toLowerCase()).replace(/[^a-z]/g,'');
+    s = s.replace(/ph/g,'f').replace(/lh/g,'L').replace(/nh/g,'N').replace(/ch/g,'X')
+         .replace(/qu/g,'k').replace(/gu(?=[ei])/g,'g').replace(/c(?=[ei])/g,'s')
+         .replace(/c/g,'k').replace(/ç/g,'s').replace(/z/g,'s').replace(/x/g,'s')
+         .replace(/y/g,'i').replace(/w/g,'v').replace(/h/g,'')
+         .replace(/([a-z])\1+/g,'$1');
+    return s;
+  }
+
+  function levenshtein(a,b){
+    const m=a.length,n=b.length;
+    const dp=Array.from({length:m+1},()=>new Array(n+1).fill(0));
+    for(let i=0;i<=m;i++) dp[i][0]=i;
+    for(let j=0;j<=n;j++) dp[0][j]=j;
+    for(let i=1;i<=m;i++) for(let j=1;j<=n;j++){
+      const cost = a[i-1]===b[j-1] ? 0 : 1;
+      dp[i][j]=Math.min(dp[i-1][j]+1, dp[i][j-1]+1, dp[i-1][j-1]+cost);
+    }
+    return dp[m][n];
+  }
+
+  function similaridade(a,b){
+    const fa=foneticaBR(a), fb=foneticaBR(b);
+    const dist=levenshtein(fa,fb);
+    const maxLen=Math.max(fa.length,fb.length,1);
+    return {fa,fb,pct:Math.max(0,Math.round((1-dist/maxLen)*100))};
+  }
+
+  function inferNCL(desc){
+    const text = stripAccents((desc||"").toLowerCase());
+    for(const [keys,code,label] of NCL_MAP){
+      if(keys.some(k=>text.includes(k))) return {code,label,confidence:"alta"};
+    }
+    return {code:"35",label:"Publicidade e gestão de negócios — classe genérica, refine a descrição para maior precisão",confidence:"baixa"};
+  }
+
+  function riskTier(pct){
+    if(pct>=60) return {tier:"alto",cls:"risk",label:"Risco alto"};
+    if(pct>=30) return {tier:"moderado",cls:"warm",label:"Risco moderado"};
+    return {tier:"baixo",cls:"safe",label:"Risco baixo"};
+  }
+
+  /* ---------------- estado ---------------- */
+  const STEPS = [
+    {id:"consulta", t:"Consulta", s:"Nome e descrição"},
+    {id:"resultado", t:"Resultado", s:"Colidência e classe"},
+    {id:"plano", t:"Plano", s:"Setup e monitoramento"},
+    {id:"painel", t:"Painel", s:"Acompanhamento"},
+  ];
+
+  const state = {
+    current: 0,
+    unlocked: 0,
+    marca: "Kaza Doce",
+    descricao: "Confeitaria artesanal com venda de bolos e doces personalizados para encomenda.",
+    analise: null,
+    monitoramento: true,
+    protocolo: null,
+    opposed: false,
+  };
+
+  /* ---------------- render: stepper ---------------- */
+  function renderStepper(){
+    const nav = document.getElementById('stepper');
+    nav.innerHTML = STEPS.map((s,i)=>{
+      const cls = i===state.current ? "current" : (i<state.unlocked ? "done" : "");
+      const disabled = i>state.unlocked ? "disabled" : "";
+      const numContent = i<state.unlocked ? "&#10003;" : (i+1);
+      return `<button class="step-btn ${cls}" ${disabled} data-i="${i}">
+        <span class="step-num">${numContent}</span>
+        <span class="step-label"><span class="t">${s.t}</span><span class="s">${s.s}</span></span>
+      </button>`;
+    }).join("");
+    nav.querySelectorAll('.step-btn').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const i = parseInt(btn.dataset.i,10);
+        if(i<=state.unlocked){ state.current=i; renderAll(); }
+      });
+    });
+  }
+
+  /* ---------------- render: consulta ---------------- */
+  function renderConsulta(){
+    const panel = document.getElementById('panel');
+    panel.innerHTML = `
+      <div class="panel-head">
+        <h2>Nova consulta de viabilidade</h2>
+        <p class="help">Informe a marca pretendida e descreva o produto ou serviço. O sistema cruza o nome com uma base de marcas por som (não apenas grafia) e infere a classe de Nice automaticamente a partir da descrição.</p>
+      </div>
+      <div class="grid-2">
+        <div>
+          <div class="field">
+            <label for="in-marca">Nome da marca pretendida</label>
+            <input type="text" id="in-marca" value="${escapeHtml(state.marca)}" placeholder="Ex.: Doce Ponto" />
+          </div>
+          <div class="field">
+            <label for="in-desc">Descreva o produto ou serviço</label>
+            <textarea id="in-desc" placeholder="Ex.: confeitaria artesanal, venda de bolos sob encomenda...">${escapeHtml(state.descricao)}</textarea>
+          </div>
+          <button class="btn" id="btn-analisar">Analisar viabilidade →</button>
+        </div>
+        <div class="helpbox">
+          <h3>O que acontece nesta etapa</h3>
+          <ol>
+            <li><b>Busca de anterioridade</b> — o nome é comparado foneticamente com marcas já depositadas, não só letra por letra.</li>
+            <li><b>Inferência de classe NCL</b> — a descrição é lida e mapeada para uma das 45 classes de Nice, sem exigir que você saiba o número de cor.</li>
+            <li><b>Leitura da RPI</b> — a mesma base usada aqui alimenta o monitoramento semanal caso você contrate o acompanhamento.</li>
+          </ol>
+        </div>
+      </div>
+    `;
+    document.getElementById('btn-analisar').addEventListener('click', ()=>{
+      state.marca = document.getElementById('in-marca').value.trim() || "Marca sem nome";
+      state.descricao = document.getElementById('in-desc').value.trim();
+      runAnalysis();
+    });
+  }
+
+  /* ---------------- loading + análise ---------------- */
+  function runAnalysis(){
+    const panel = document.getElementById('panel');
+    const items = [
+      "Consultando base de marcas do INPI",
+      "Aplicando algoritmo de colidência fonética",
+      "Inferindo classe NCL pela descrição",
+      "Cruzando com publicações recentes da RPI",
+    ];
+    panel.innerHTML = `
+      <div class="loading-wrap">
+        <h3>Analisando "${escapeHtml(state.marca)}"…</h3>
+        <div class="checklist" id="checklist">
+          ${items.map(t=>`<div class="check-item"><span class="check-dot"></span><span>${t}</span></div>`).join("")}
+        </div>
+      </div>
+    `;
+    const nodes = Array.from(document.querySelectorAll('#checklist .check-item'));
+    const step = REDUCED_MOTION ? 0 : 480;
+    nodes.forEach((node,i)=>{
+      setTimeout(()=>node.classList.add('active'), step*i);
+    });
+    setTimeout(()=>{
+      computeAnalysis();
+      state.unlocked = Math.max(state.unlocked,1);
+      state.current = 1;
+      renderAll();
+    }, step*items.length + (REDUCED_MOTION?0:400));
+  }
+
+  function computeAnalysis(){
+    const matches = BASE_MARCAS.map(m=>{
+      const sim = similaridade(state.marca, m.name);
+      return {...m, ...sim};
+    }).sort((a,b)=>b.pct-a.pct);
+    const ncl = inferNCL(state.descricao);
+    state.analise = {matches, ncl, top: matches[0]};
+  }
+
+  /* ---------------- render: resultado ---------------- */
+  function renderResultado(){
+    const panel = document.getElementById('panel');
+    const {matches, ncl, top} = state.analise;
+    const tier = riskTier(top.pct);
+    panel.innerHTML = `
+      <div class="panel-head">
+        <h2>Resultado da análise</h2>
+        <p class="help">Comparação fonética de "${escapeHtml(state.marca)}" contra a base de marcas e inferência de classe a partir da descrição informada.</p>
+      </div>
+
+      <div class="risk-summary">
+        <div class="metric">
+          <div class="lbl">Nível de colisão</div>
+          <div class="val">${top.pct}%</div>
+          <div class="sub"><span class="pill ${tier.cls}">${tier.label}</span></div>
+        </div>
+        <div class="metric">
+          <div class="lbl">Marca mais próxima</div>
+          <div class="val" style="font-size:18px">${escapeHtml(top.name)}</div>
+          <div class="sub">Classe NCL ${top.cls} · ${CLASS_LABELS[top.cls]||""}</div>
+        </div>
+        <div class="metric">
+          <div class="lbl">Classe sugerida</div>
+          <div class="val" style="font-size:18px">NCL ${ncl.code}</div>
+          <div class="sub">${ncl.label} <span class="pill accent" style="margin-left:4px">confiança ${ncl.confidence}</span></div>
+        </div>
+      </div>
+
+      <div class="wave-section">
+        <h3>Assinatura fonética comparada</h3>
+        <p class="sub">Cada nome é reduzido a um código de som (ex.: "Kaza" e "Casa" geram o mesmo código); a proximidade das barras ilustra a proximidade sonora — o percentual acima é a métrica exata.</p>
+        <div class="wave-legend">
+          <span><i style="background:var(--accent)"></i>${escapeHtml(state.marca)}</span>
+          <span><i style="background:var(--${tier.cls==='safe'?'safe':(tier.cls==='warm'?'warm':'risk')})"></i>${escapeHtml(top.name)}</span>
+        </div>
+        <canvas id="wave" width="1000" height="200"></canvas>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Marca na base</th><th>Classe</th><th>Similaridade fonética</th><th>Risco</th></tr></thead>
+          <tbody>
+            ${matches.slice(0,6).map(m=>{
+              const t = riskTier(m.pct);
+              return `<tr>
+                <td>${escapeHtml(m.name)}</td>
+                <td>NCL ${m.cls}</td>
+                <td class="tab-nums"><span class="simbar"><span class="track"><span class="fill" style="width:${m.pct}%"></span></span>${m.pct}%</span></td>
+                <td><span class="pill ${t.cls}">${t.label}</span></td>
+              </tr>`;
+            }).join("")}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="cta-row">
+        <button class="btn secondary" id="btn-refazer">← Refazer consulta</button>
+        <button class="btn" id="btn-plano">Ver plano de registro →</button>
+      </div>
+    `;
+    drawWave(top, tier);
+    document.getElementById('btn-plano').addEventListener('click', ()=>{
+      state.unlocked = Math.max(state.unlocked,2);
+      state.current = 2;
+      renderAll();
+    });
+    document.getElementById('btn-refazer').addEventListener('click', ()=>{
+      state.current = 0;
+      renderAll();
+    });
+  }
+
+  function drawWave(top, tier){
+    const canvas = document.getElementById('wave');
+    if(!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const cssColor = (name)=>getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    const accent = cssColor('--accent');
+    const matchColor = cssColor(tier.cls==='safe' ? '--safe' : (tier.cls==='warm' ? '--warm' : '--risk'));
+    const W = canvas.width, H = canvas.height, mid = H/2;
+    ctx.clearRect(0,0,W,H);
+
+    function bars(str, n){
+      const codes = str.length ? str : "x";
+      const out = [];
+      for(let i=0;i<n;i++){
+        const c = codes.charCodeAt(i % codes.length);
+        const amp = 8 + (c % 43); // 8..50
+        out.push(amp);
+      }
+      return out;
+    }
+    const n = 44;
+    const a = bars(state.analise.top.fa, n);
+    const b = bars(state.analise.top.fb, n);
+    const gap = W/n;
+    const barW = gap*0.34;
+
+    ctx.globalAlpha = .9;
+    for(let i=0;i<n;i++){
+      const x = i*gap + gap*0.18;
+      const h = a[i]*1.4;
+      ctx.fillStyle = accent;
+      ctx.fillRect(x, mid-h, barW, h);
+    }
+    for(let i=0;i<n;i++){
+      const x = i*gap + gap*0.48;
+      const h = b[i]*1.4;
+      ctx.fillStyle = matchColor;
+      ctx.globalAlpha = .75;
+      ctx.fillRect(x, mid, barW, h);
+    }
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = cssColor('--border');
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0,mid); ctx.lineTo(W,mid); ctx.stroke();
+  }
+
+  /* ---------------- render: plano ---------------- */
+  function renderPlano(){
+    const panel = document.getElementById('panel');
+    panel.innerHTML = `
+      <div class="panel-head">
+        <h2>Plano de registro</h2>
+        <p class="help">Setup cobre a análise já feita, a petição e o protocolo. O monitoramento é opcional e recorrente — desligue para conduzir o acompanhamento manualmente.</p>
+      </div>
+
+      <div class="plans">
+        <div class="plan-card">
+          <h3>Setup — Análise e Protocolo</h3>
+          <div class="price">R$ 499 <small>pagamento único</small></div>
+          <ul>
+            <li>Busca de anterioridade fonética</li>
+            <li>Inferência e conferência da classe NCL</li>
+            <li>Geração da petição e da guia (GRU)</li>
+            <li>Protocolo do pedido no INPI</li>
+          </ul>
+        </div>
+        <div class="plan-card">
+          <h3>Monitoramento RPI</h3>
+          <div class="price">R$ 29 <small>por mês</small></div>
+          <ul>
+            <li>Leitura semanal automática da RPI</li>
+            <li>Alerta de oposição de terceiros</li>
+            <li>Alerta de prazos (oposição, decênio)</li>
+            <li>Notificação por e-mail e push</li>
+          </ul>
+          <div class="toggle-row">
+            <span class="t">Contratar monitoramento</span>
+            <button class="switch ${state.monitoramento?'on':''}" id="switch-mon" role="switch" aria-checked="${state.monitoramento}"></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="summary-strip">
+        <div class="total">
+          <div class="lbl">Total hoje</div>
+          <div class="amt tab-nums">R$ 499,00${state.monitoramento ? ' <span style="font-size:12.5px;color:var(--ink-dim);font-family:var(--font-body);font-weight:500">+ R$ 29/mês a partir da publicação</span>' : ''}</div>
+        </div>
+        <button class="btn" id="btn-confirmar">Confirmar e iniciar protocolo →</button>
+      </div>
+    `;
+    document.getElementById('switch-mon').addEventListener('click', ()=>{
+      state.monitoramento = !state.monitoramento;
+      renderPlano();
+    });
+    document.getElementById('btn-confirmar').addEventListener('click', ()=>{
+      if(!state.protocolo){
+        state.protocolo = "92" + Math.floor(100000000 + Math.random()*899999999);
+      }
+      state.unlocked = Math.max(state.unlocked,3);
+      state.current = 3;
+      renderAll();
+    });
+  }
+
+  /* ---------------- render: painel ---------------- */
+  function fmtDate(d){
+    return d.toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit', year:'numeric'});
+  }
+  function addDays(base, days){ const d = new Date(base); d.setDate(d.getDate()+days); return d; }
+
+  function renderPainel(){
+    const panel = document.getElementById('panel');
+    const hoje = new Date();
+    const deposito = addDays(hoje, -41);
+    const exameFormal = addDays(hoje, -34);
+    const publicacao = addDays(hoje, -13);
+    const fimOposicao = addDays(publicacao, 60);
+    const diasRestantes = Math.max(0, Math.ceil((fimOposicao - hoje)/86400000));
+
+    const phases = [
+      {t:"Depósito do pedido", d: fmtDate(deposito), status:"done"},
+      {t:"Exame Formal", d: fmtDate(exameFormal), status:"done"},
+      {t:"Publicação na RPI", d: fmtDate(publicacao), status:"done", code:"389"},
+      {t:"Prazo de Oposição (60 dias)", d: `até ${fmtDate(fimOposicao)} · faltam ${diasRestantes} dias`, status: state.opposed ? "risk" : "current", code: state.opposed ? "394" : null},
+      {t:"Exame de Mérito", d:"pendente", status:"pending"},
+      {t:"Deferimento", d:"pendente", status:"pending"},
+      {t:"Pagamento do Decênio", d:"pendente", status:"pending"},
+    ];
+
+    const logBase = [
+      {date: fmtDate(addDays(hoje,-6)), text:"Nenhuma alteração encontrada na RPI desta semana.", warn:false},
+      {date: fmtDate(publicacao), text:"Despacho 389 publicado — pedido em fase de oposição (60 dias).", warn:false},
+      {date: fmtDate(addDays(publicacao,-7)), text:"Nenhuma alteração encontrada.", warn:false},
+      {date: fmtDate(addDays(publicacao,-14)), text:"Nenhuma alteração encontrada.", warn:false},
+    ];
+    if(state.opposed){
+      logBase.unshift({date:"hoje", text:"Despacho 394 publicado — oposição de terceiro registrada. Prazo de manifestação: 60 dias (Art. 158, LPI).", warn:true});
+    }
+
+    panel.innerHTML = `
+      <div class="panel-head">
+        <h2>Painel de acompanhamento</h2>
+        <p class="help">Estado do pedido ao longo do ciclo de vida no INPI, com o histórico de leituras semanais da RPI para esta marca.</p>
+      </div>
+
+      <div class="proc-head">
+        <div class="num"><span class="lbl">Protocolo INPI</span>${state.protocolo}</div>
+        <span class="pill ${state.opposed?'risk':'accent'}">${state.opposed ? 'Ação necessária' : (state.monitoramento ? 'Monitoramento ativo' : 'Monitoramento não contratado')}</span>
+      </div>
+
+      <div class="timeline">
+        <p class="tl-note">Datas e despachos ilustrativos — para o processo real, confirme os códigos no Manual de Marcas do INPI.</p>
+        ${phases.map(p=>`
+          <div class="tl-item ${p.status}">
+            <div class="tl-rail"><div class="tl-dot"></div><div class="tl-line"></div></div>
+            <div class="tl-body">
+              <div class="tl-top">
+                <span class="tl-title">${p.t}</span>
+                ${p.code ? `<span class="tl-code">despacho ${p.code}</span>` : ''}
+              </div>
+              <div class="tl-date">${p.d}</div>
+            </div>
+          </div>
+        `).join("")}
+      </div>
+
+      ${state.monitoramento ? `
+      <div class="rpi-log-head">
+        <h3 style="font-size:13px;font-family:var(--font-body);font-weight:600;">Histórico de leituras da RPI</h3>
+        <button class="btn ghost" id="btn-simular" ${state.opposed?'disabled':''}>Simular alerta de oposição</button>
+      </div>
+      <div class="rpi-log">
+        ${logBase.map(l=>`<div class="log-row ${l.warn?'warn':''}"><span class="date mono">${l.date}</span><span>${l.text}</span></div>`).join("")}
+      </div>
+      <p class="sim-note">O botão acima é uma demonstração de como o alerta apareceria aqui — no produto real ele é disparado automaticamente pela leitura semanal da RPI.</p>
+      ` : `
+      <div class="helpbox">
+        <h3>Monitoramento não contratado</h3>
+        <p style="font-size:13px;color:var(--ink-dim)">Sem o monitoramento, você precisa consultar a RPI manualmente todas as terças-feiras para não perder o prazo de oposição ou de pagamento do decênio.</p>
+      </div>
+      `}
+    `;
+    const simBtn = document.getElementById('btn-simular');
+    if(simBtn){
+      simBtn.addEventListener('click', ()=>{
+        state.opposed = true;
+        renderPainel();
+      });
+    }
+  }
+
+  /* ---------------- util ---------------- */
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  }
+
+  function renderAll(){
+    renderStepper();
+    if(state.current===0) renderConsulta();
+    else if(state.current===1) renderResultado();
+    else if(state.current===2) renderPlano();
+    else renderPainel();
+  }
+
+  renderAll();
+
+  if(window.matchMedia){
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', ()=>{
+      if(state.current===1 && state.analise) drawWave(state.analise.top, riskTier(state.analise.top.pct));
+    });
+  }
+})();
+</script>
