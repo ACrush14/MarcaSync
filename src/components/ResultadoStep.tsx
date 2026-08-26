@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { riskTier } from "@/lib/fonetica";
 import type { ColidenciaResultado } from "@/lib/colidencia";
-import WaveCanvas from "./WaveCanvas";
 
 interface ResultadoStepProps {
   descricao: string;
@@ -22,13 +21,6 @@ export default function ResultadoStep({
 }: ResultadoStepProps) {
   const { matches, ncl, top, fonte, avisoFonteReal, termo } = colidencia;
   const tier = top ? riskTier(top.pct) : null;
-  const legendColor = top
-    ? tier!.cls === "safe"
-      ? "var(--safe)"
-      : tier!.cls === "warm"
-        ? "var(--warm)"
-        : "var(--risk)"
-    : "var(--safe)";
 
   const [termoBusca, setTermoBusca] = useState(termo);
   const [buscando, setBuscando] = useState(false);
@@ -117,28 +109,6 @@ export default function ResultadoStep({
           </div>
         </div>
       </div>
-
-      {top && (
-        <div className="wave-section">
-          <h3>Assinatura fonética comparada</h3>
-          <p className="sub">
-            Cada nome é reduzido a um código de som (ex.: &quot;Kaza&quot; e &quot;Casa&quot;
-            geram o mesmo código); a proximidade das barras ilustra a proximidade sonora — o
-            percentual acima é a métrica exata.
-          </p>
-          <div className="wave-legend">
-            <span>
-              <i style={{ background: "var(--accent)" }} />
-              {termo}
-            </span>
-            <span>
-              <i style={{ background: legendColor }} />
-              {top.nome}
-            </span>
-          </div>
-          <WaveCanvas fa={top.fa} fb={top.fb} tier={tier!} />
-        </div>
-      )}
 
       {matches.length > 0 && (
         <div className="table-wrap" style={{ marginBottom: 24 }}>

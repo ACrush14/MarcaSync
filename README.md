@@ -270,7 +270,6 @@ src/
     ConsultaStep.tsx  — formulário de entrada
     LoadingStep.tsx   — checklist animado da análise
     ResultadoStep.tsx — resumo de risco unificado (real com fallback pra demo) + busca de outro termo
-    WaveCanvas.tsx     — visualização da assinatura fonética (canvas)
     PlanoStep.tsx      — setup + monitoramento, com toggle funcional
     PainelStep.tsx     — timeline do processo + log de monitoramento da RPI
   lib/
