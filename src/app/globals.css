@@ -172,12 +172,12 @@ a {
   letter-spacing: 0.03em;
 }
 
-.proto-badge {
+.value-badge {
   font-family: var(--font-mono);
   font-size: 11px;
   letter-spacing: 0.04em;
-  color: var(--warm);
-  background: var(--warm-soft);
+  color: var(--accent-soft-ink);
+  background: var(--accent-soft);
   border-radius: 999px;
   padding: 4px 10px;
   white-space: nowrap;

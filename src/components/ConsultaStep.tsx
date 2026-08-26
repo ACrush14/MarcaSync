@@ -34,9 +34,9 @@ export default function ConsultaStep({
       <div className="panel-head">
         <h2>Nova consulta de viabilidade</h2>
         <p className="help">
-          Informe seus dados de contato, a marca pretendida e o produto ou serviço. O
-          sistema cruza o nome com uma base de marcas por som (não apenas grafia) e
-          infere a classe de Nice automaticamente a partir da descrição.
+          Descubra em segundos se sua marca corre risco de colidir com uma já
+          registrada — direto na base real do INPI, com preço fechado desde já. Sem
+          esperar orçamento por telefone ou WhatsApp.
         </p>
       </div>
       <div className="grid-2">
@@ -111,6 +111,11 @@ export default function ConsultaStep({
             <li>
               <b>Leitura da RPI</b> — a mesma base usada aqui alimenta o monitoramento
               semanal caso você contrate o acompanhamento.
+            </li>
+            <li>
+              <b>Preço na tela, não em orçamento</b> — o valor do registro e do
+              monitoramento aparece já no próximo passo, sem precisar falar com
+              ninguém antes.
             </li>
           </ol>
         </div>

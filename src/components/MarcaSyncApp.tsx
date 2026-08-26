@@ -158,8 +158,8 @@ export default function MarcaSyncApp() {
       <div className="topbar">
         <div className="brand">
           <span className="mark">MarcaSync</span>
-          <span className="tag">registro de marcas · automação INPI</span>
-          <span className="proto-badge">protótipo interativo · dados de exemplo</span>
+          <span className="tag">registro de marcas · resultado em segundos, direto do INPI</span>
+          <span className="value-badge">preço fechado · sem &quot;fale conosco&quot;</span>
         </div>
         <div className="session-chip">
           <div className="avatar">
@@ -227,8 +227,9 @@ export default function MarcaSyncApp() {
       </main>
 
       <p className="footer-note">
-        Fluxo ilustrativo do produto MarcaSync — nomes, prazos e despachos são exemplos
-        para demonstrar a mecânica do sistema, não dados reais do INPI.
+        A busca de anterioridade consulta a base real do INPI. O painel de
+        acompanhamento (prazos, despachos) é ilustrativo — exemplo da mecânica do
+        sistema, não o andamento de um processo real.
       </p>
     </div>
   );
