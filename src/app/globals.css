@@ -610,24 +610,6 @@ th {
 tr:last-child td {
   border-bottom: none;
 }
-.simbar {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-.simbar .track {
-  width: 70px;
-  height: 6px;
-  background: var(--border);
-  border-radius: 3px;
-  overflow: hidden;
-}
-.simbar .fill {
-  height: 100%;
-  border-radius: 3px;
-  background: var(--accent);
-}
-
 .cta-row {
   display: flex;
   justify-content: flex-end;

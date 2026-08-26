@@ -70,7 +70,7 @@ export default function ResultadoStep({
               <div className="val">{top.pct}%</div>
               <div className="sub">
                 <span className={`pill ${tier!.cls}`}>{tier!.label}</span>{" "}
-                <span className="pill accent">{fonte === "real" ? "dado real" : "exemplo"}</span>
+                <span className="pill accent">{fonte === "real" ? "INPI" : "exemplo"}</span>
               </div>
             </div>
             <div className="metric">
@@ -92,7 +92,7 @@ export default function ResultadoStep({
             </div>
             <div className="sub">
               <span className="pill safe">Risco baixo</span>{" "}
-              <span className="pill accent">dado real</span>
+              <span className="pill accent">INPI</span>
             </div>
           </div>
         )}
@@ -139,14 +139,7 @@ export default function ResultadoStep({
                       )}
                     </td>
                     <td>{m.classe ? `NCL ${m.classe}` : "—"}</td>
-                    <td className="tab-nums">
-                      <span className="simbar">
-                        <span className="track">
-                          <span className="fill" style={{ width: `${m.pct}%` }} />
-                        </span>
-                        {m.pct}%
-                      </span>
-                    </td>
+                    <td className="tab-nums">{m.pct}%</td>
                     <td>
                       <span className={`pill ${t.cls}`}>{t.label}</span>
                     </td>
