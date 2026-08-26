@@ -234,6 +234,12 @@ fictício — ainda não há peticionamento real, ver item 4 abaixo.
 3. **Revisar o algoritmo fonético com alguém que entenda fonologia do português** — a
    versão atual é uma heurística de demonstração, não um algoritmo validado
    linguisticamente nem testado contra decisões reais de indeferimento do INPI.
+   Recalibrada em 26/08/2026 (`src/lib/fonetica.ts`) pra não superestimar
+   colidência quando uma marca é a outra + uma palavra extra genuína (ex.:
+   "Ronaldo" vs. "Ronaldo Soluções" caía em 47%, deveria ser bem mais baixo) sem
+   quebrar o caso de mesma sonoridade com grafia diferente (ex.: "Kazamarela"
+   vs. "Casa Amarela" continua em 100%) — ainda heurística, ainda pede revisão
+   por linguista antes de decisão real de negócio.
 4. **Fluxo de procuração eletrônica** — rascunho pronto em
    [`docs/tutorial-procuracao-eletronica.md`](docs/tutorial-procuracao-eletronica.md),
    montado a partir do Manual de Marcas oficial do INPI. **Precisa de revisão por

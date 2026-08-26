@@ -60,13 +60,31 @@ export function levenshtein(a: string, b: string): number {
   return dp[m]![n]!;
 }
 
-/** Similaridade fonética entre duas marcas, em percentual (0–100). */
+/**
+ * Similaridade fonética entre duas marcas, em percentual (0–100).
+ *
+ * A proporção crua `1 - distância/tamanho` trata uma marca que é prefixo
+ * exata da outra com desconto proporcional só ao tamanho do que sobra —
+ * "Ronaldo" vs. "Ronaldo Soluções" dava 47% (a palavra extra "Soluções"
+ * "custava" só 8 dos 15 caracteres). Isso está errado: uma palavra inteira
+ * a mais muda o nome como um todo, não é um desconto de alguns caracteres.
+ * "Kazamarela" vs. "Casa Amarela", por outro lado, tem que continuar dando
+ * quase 100% — é o mesmo conteúdo sonoro, só escrito com espaço diferente.
+ *
+ * Elevar a proporção ao quadrado resolve os dois casos com a mesma fórmula,
+ * sem precisar de lista de palavras genéricas nem separar por espaço: uma
+ * sobreposição quase total (0.9+) muda pouco ao quadrar, uma sobreposição
+ * parcial (0.4–0.7, o caso típico de "nome + palavra extra") cai bem mais —
+ * validado contra "Ronaldo"/"Ronaldo Soluções" (47%→22%, risco baixo, como
+ * devia ser) e "Kazamarela"/"Casa Amarela" (100%→100%, inalterado).
+ */
 export function similaridade(a: string, b: string): Similaridade {
   const fa = foneticaBR(a);
   const fb = foneticaBR(b);
   const dist = levenshtein(fa, fb);
   const maxLen = Math.max(fa.length, fb.length, 1);
-  const pct = Math.max(0, Math.round((1 - dist / maxLen) * 100));
+  const proporcao = Math.max(0, 1 - dist / maxLen);
+  const pct = Math.round(proporcao * proporcao * 100);
   return { fa, fb, pct };
 }
 
