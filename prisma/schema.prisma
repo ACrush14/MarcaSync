@@ -1,13 +1,16 @@
-// Banco local (SQLite) — "caderno de anotações" real do MarcaSync.
+// Postgres (Neon, via integração nativa do Vercel) — "caderno de anotações"
+// real do MarcaSync.
 //
-// Deliberadamente simples pra essa fase: sem autenticação, sem multiempresa,
-// um arquivo .db local. Suficiente pra parar de perder informação de cliente
-// a cada reload do navegador. Migrar pra Postgres é reavaliação de quando
-// isto for pra produção de verdade com mais de uma pessoa mexendo ao mesmo
-// tempo — SQLite não aguenta escrita concorrente de vários processos.
+// Era SQLite local até 26/08/2026; migrado pra Postgres pro deploy no
+// Vercel, porque o Vercel não tem disco persistente (sistema de arquivos é
+// só leitura fora de /tmp) — um arquivo .db local não sobreviveria a um
+// único redeploy. DATABASE_URL (conexão via pooler, pro app em runtime) e
+// DIRECT_URL (conexão direta, só pro Prisma CLI rodar migration) vêm do
+// Neon através da integração do Vercel — ver seção "Banco de dados" do
+// README pra como configurar isso localmente.
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
 }
 
 generator client {

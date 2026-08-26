@@ -21,11 +21,6 @@ yarn-error.log*
 .env
 .env*.local
 
-# banco de dados local (SQLite) — cada máquina/ambiente gera o seu via
-# `npx prisma migrate dev`. Nunca comitar dado real de cliente.
-/prisma/*.db
-/prisma/*.db-journal
-
 # client do Prisma gerado por `npx prisma generate` (roda automaticamente
 # dentro de `migrate dev`) — sempre recriável a partir de prisma/schema.prisma,
 # nunca precisa ir pro histórico do git.
@@ -34,3 +29,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+.vercel
+.env*

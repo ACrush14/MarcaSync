@@ -14,8 +14,8 @@ registro de marcas junto ao INPI. Este repositório contém duas coisas:
 
 ```bash
 npm install
-cp .env.example .env        # se ainda não existir — aponta pro banco local
-npx prisma migrate dev      # cria/atualiza prisma/dev.db (só na 1ª vez ou após mudar o schema)
+cp .env.example .env        # preencha DATABASE_URL/DATABASE_URL_UNPOOLED (ver "Banco de dados")
+npx prisma generate         # sempre rode isso depois de mudar prisma/schema.prisma
 npm run dev
 ```
 
@@ -28,23 +28,36 @@ npm run build
 
 ## Banco de dados (`prisma/`)
 
-SQLite local via Prisma — o "caderno de anotações" real do produto. Um arquivo só
-(`prisma/dev.db`, gerado por `npx prisma migrate dev`, nunca commitado — ver
-`.gitignore`), sem servidor de banco pra configurar. Guarda cliente, processo (marca,
-descrição, análise, status, protocolo) e pagamento (setup/monitoramento, confirmado à
-mão depois que o cliente avisa por WhatsApp).
+Postgres via Neon (integração nativa do Vercel) — o "caderno de anotações" real do
+produto. Guarda cliente, processo (marca, descrição, análise, status, protocolo) e
+pagamento (setup/monitoramento, confirmado à mão depois que o cliente avisa por
+WhatsApp).
+
+Era SQLite local até 26/08/2026 (`prisma/dev.db`, um arquivo só) — migrado pra
+Postgres porque o Vercel não tem disco persistente: sistema de arquivos lá é só
+leitura fora de `/tmp`, um arquivo `.db` local não sobrevive a um redeploy, muito menos
+a instâncias diferentes rodando em paralelo.
 
 - `prisma/schema.prisma` — os 3 modelos: `Cliente`, `Processo`, `Pagamento`.
-- `src/lib/db.ts` — cliente Prisma (singleton, evita conexões duplicadas no hot reload).
+- `src/lib/db.ts` — cliente Prisma (singleton) + `@prisma/adapter-neon` (driver
+  serverless do Neon, baseado em WebSocket — por isso o polyfill `ws` no arquivo,
+  necessário em runtime Node.js).
 - `/admin` — lista todos os processos e pagamentos, com botão "Marcar como pago". Sem
-  login ainda — protegido por senha simples via `src/proxy.ts`, ver seção "Autenticação"
-  abaixo.
+  login próprio — protegido por senha simples via `src/proxy.ts`, ver seção
+  "Autenticação" abaixo.
+
+**Setup**: crie o banco em Vercel → aba **Storage** → **Create Database** → **Postgres**
+(Neon, camada gratuita, sem cartão). O Vercel injeta sozinho `DATABASE_URL` (pooled,
+usada em runtime) e `DATABASE_URL_UNPOOLED` (conexão direta, usada só por
+`prisma migrate`/`prisma.config.ts` — o pooler do Neon não suporta todas as operações
+de migração) — não precisa configurar nada extra no dashboard. Localmente, copie esses
+dois valores pro seu `.env` (ver `.env.example`).
 
 Prisma 7 mudou o modelo de configuração: a URL de conexão não vive mais no
 `schema.prisma`, vive em `prisma.config.ts`. Se `npx prisma migrate dev` reclamar de
 schema, veja esse arquivo antes de mexer no `schema.prisma`.
 
-**Pegadinha real, já caí nela duas vezes**: `npx prisma migrate dev` nem sempre
+**Pegadinha real, já caí nela várias vezes**: `npx prisma migrate dev` nem sempre
 regenera o client automaticamente depois de mudar `schema.prisma` (deveria, às vezes
 não regenera). Se o servidor começar a reclamar de "Unknown argument" num campo que
 você acabou de adicionar, rode `npx prisma generate` manualmente — e se ainda assim
@@ -63,10 +76,25 @@ de deploy público, é fraca de propósito).
 Chamado `proxy.ts`, não `middleware.ts` — o Next.js 16 renomeou a convenção (ver
 [nextjs.org/docs/messages/middleware-to-proxy](https://nextjs.org/docs/messages/middleware-to-proxy)).
 
-**Quando isto vira Postgres**: SQLite não aguenta escrita concorrente de múltiplos
-processos/instâncias — é suficiente pra um único desenvolvedor local, não pra produção
-com mais de uma pessoa mexendo ao mesmo tempo. Migrar é trocar `provider = "sqlite"` por
-`"postgresql"` no schema e o adapter em `db.ts` — o resto (modelos, rotas) não muda.
+## Deploy (Vercel)
+
+Projeto ligado em `andersoncrushlink-7788s-projects/marcasync`, com deploy automático a
+cada push na `main` (integração Git conectada quando o projeto foi criado via
+`vercel link`).
+
+**Variáveis de ambiente já configuradas no Vercel** (Production + Preview):
+`DATABASE_URL`, `DATABASE_URL_UNPOOLED` e as demais do Neon (injetadas sozinhas pela
+integração de Storage), mais `ADMIN_PASSWORD` (adicionada manualmente via
+`vercel env add`).
+
+**Antes de considerar isso pronto pra clientes reais**:
+- Trocar `ADMIN_PASSWORD` por algo mais forte que `2001` — 4 dígitos só era aceitável
+  rodando local.
+- O `/admin` não tem rate limiting no Basic Auth — um site público sem isso é atacável
+  por força bruta, mesmo com senha forte. Considerar um WAF/rate limit (Vercel Firewall,
+  gratuito no plano atual) antes de divulgar a URL amplamente.
+- Redeploy manual, se precisar, sem esperar um push: `vercel --prod` (dentro da pasta do
+  projeto, com o CLI autenticado).
 
 ## O que já é funcional (não decorativo)
 
@@ -212,11 +240,9 @@ fictício — ainda não há peticionamento real, ver item 4 abaixo.
    advogado antes de ir pra produção** — não foi escrito nem validado por um. Regra dura
    e não negociável, já cumprida no desenho: nunca capturar ou armazenar credenciais
    gov.br de terceiros.
-5. ~~Persistência real~~ — **feito**: SQLite local via Prisma (`prisma/`, ver seção
-   própria acima), wizard grava cliente/processo/pagamento de verdade, `/admin` lista
-   tudo e confirma pagamento manualmente. Ainda sem autenticação — qualquer um com a URL
-   acessa `/admin` — e ainda SQLite (não aguenta múltiplos escritores concorrentes), não
-   Postgres. Próximo passo real aqui é login, não banco.
+5. ~~Persistência real~~ — **feito**: Postgres via Neon (`prisma/`, ver seção própria
+   acima), wizard grava cliente/processo/pagamento de verdade, `/admin` lista tudo e
+   confirma pagamento manualmente.
 6. **Cobrança automatizada** — hoje é manual: você confirma no `/admin` depois que o
    cliente avisa por WhatsApp (isso já tem onde gravar — item 5 resolvido). Automação de
    verdade (cliente paga, sistema confirma sozinho) ainda depende de decidir entre gerar
