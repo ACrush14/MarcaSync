@@ -1,14 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Stepper from "./Stepper";
 import ConsultaStep from "./ConsultaStep";
 import LoadingStep from "./LoadingStep";
 import ResultadoStep from "./ResultadoStep";
 import PlanoStep from "./PlanoStep";
 import PainelStep from "./PainelStep";
-import { computeAnalysis } from "@/lib/analysis";
-import type { Analise } from "@/lib/types";
+import type { ColidenciaResultado } from "@/lib/colidencia";
 
 type Phase = "consulta" | "carregando" | "resultado" | "plano" | "painel";
 
@@ -26,7 +25,7 @@ export default function MarcaSyncApp() {
   const [descricao, setDescricao] = useState(
     "Confeitaria artesanal com venda de bolos e doces personalizados para encomenda."
   );
-  const [analise, setAnalise] = useState<Analise | null>(null);
+  const [colidencia, setColidencia] = useState<ColidenciaResultado | null>(null);
   const [monitoramento, setMonitoramento] = useState(true);
   const [protocolo, setProtocolo] = useState<string | null>(null);
   const [opposed, setOpposed] = useState(false);
@@ -36,6 +35,11 @@ export default function MarcaSyncApp() {
   // funcionando (não trava a demonstração), mas fica marcado em erroSalvar.
   const [processoId, setProcessoId] = useState<string | null>(null);
   const [erroSalvar, setErroSalvar] = useState<string | null>(null);
+
+  // A busca (real, com fallback pra demo) começa assim que o usuário clica
+  // "Analisar", em paralelo com a animação do LoadingStep — não espera a
+  // animação acabar pra só então começar a buscar.
+  const colidenciaPromiseRef = useRef<Promise<ColidenciaResultado> | null>(null);
 
   function navigate(i: number) {
     if (i > unlocked) return;
@@ -53,12 +57,28 @@ export default function MarcaSyncApp() {
     setWhatsapp(dados.whatsapp);
     setMarca(dados.marca);
     setDescricao(dados.descricao);
+
+    const params = new URLSearchParams({ marca: dados.marca, descricao: dados.descricao });
+    colidenciaPromiseRef.current = fetch(`/api/colidencia?${params}`).then((r) => r.json());
+
     setPhase("carregando");
   }
 
   async function handleLoadingDone() {
-    const resultado = computeAnalysis(marca, descricao);
-    setAnalise(resultado);
+    let resultado: ColidenciaResultado;
+    try {
+      resultado = colidenciaPromiseRef.current
+        ? await colidenciaPromiseRef.current
+        : await fetch(
+            `/api/colidencia?${new URLSearchParams({ marca, descricao })}`
+          ).then((r) => r.json());
+    } catch {
+      setErroSalvar("Falha ao buscar a colidência (rede indisponível).");
+      setPhase("consulta");
+      return;
+    }
+
+    setColidencia(resultado);
     setUnlocked((u) => Math.max(u, 1));
     setCurrent(1);
     setPhase("resultado");
@@ -74,7 +94,8 @@ export default function MarcaSyncApp() {
           descricao,
           nclCode: resultado.ncl.code,
           nclLabel: resultado.ncl.label,
-          riscoPct: resultado.top.pct,
+          riscoPct: resultado.top?.pct ?? 0,
+          riscoFonte: resultado.fonte,
         }),
       });
       const body = await res.json();
@@ -176,10 +197,11 @@ export default function MarcaSyncApp() {
           />
         )}
         {phase === "carregando" && <LoadingStep marca={marca} onDone={handleLoadingDone} />}
-        {phase === "resultado" && analise && (
+        {phase === "resultado" && colidencia && (
           <ResultadoStep
-            marca={marca}
-            analise={analise}
+            descricao={descricao}
+            colidencia={colidencia}
+            onColidenciaAtualizada={setColidencia}
             onRefazer={() => {
               setCurrent(0);
               setPhase("consulta");

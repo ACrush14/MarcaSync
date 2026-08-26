@@ -27,6 +27,7 @@ interface CriarProcessoBody {
   nclCode?: string;
   nclLabel?: string;
   riscoPct?: number;
+  riscoFonte?: "real" | "demo";
 }
 
 /**
@@ -65,6 +66,7 @@ export async function POST(request: Request) {
       nclCode: body.nclCode ?? null,
       nclLabel: body.nclLabel ?? null,
       riscoPct: typeof body.riscoPct === "number" ? Math.round(body.riscoPct) : null,
+      riscoFonte: body.riscoFonte ?? null,
       status: "resultado",
     },
     include: { cliente: true },

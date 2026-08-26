@@ -1,55 +1,109 @@
 "use client";
 
+import { useState } from "react";
 import { riskTier } from "@/lib/fonetica";
-import { CLASS_LABELS } from "@/lib/ncl";
-import type { Analise } from "@/lib/types";
+import type { ColidenciaResultado } from "@/lib/colidencia";
 import WaveCanvas from "./WaveCanvas";
-import BuscaRealPanel from "./BuscaRealPanel";
 
 interface ResultadoStepProps {
-  marca: string;
-  analise: Analise;
+  descricao: string;
+  colidencia: ColidenciaResultado;
+  onColidenciaAtualizada: (c: ColidenciaResultado) => void;
   onRefazer: () => void;
   onVerPlano: () => void;
 }
 
 export default function ResultadoStep({
-  marca,
-  analise,
+  descricao,
+  colidencia,
+  onColidenciaAtualizada,
   onRefazer,
   onVerPlano,
 }: ResultadoStepProps) {
-  const { matches, ncl, top } = analise;
-  const tier = riskTier(top.pct);
-  const legendColor = tier.cls === "safe" ? "var(--safe)" : tier.cls === "warm" ? "var(--warm)" : "var(--risk)";
+  const { matches, ncl, top, fonte, avisoFonteReal, termo } = colidencia;
+  const tier = top ? riskTier(top.pct) : null;
+  const legendColor = top
+    ? tier!.cls === "safe"
+      ? "var(--safe)"
+      : tier!.cls === "warm"
+        ? "var(--warm)"
+        : "var(--risk)"
+    : "var(--safe)";
+
+  const [termoBusca, setTermoBusca] = useState(termo);
+  const [buscando, setBuscando] = useState(false);
+  const [erroBusca, setErroBusca] = useState<string | null>(null);
+
+  async function refazerBusca() {
+    const alvo = termoBusca.trim();
+    if (!alvo) return;
+    setBuscando(true);
+    setErroBusca(null);
+    try {
+      const params = new URLSearchParams({ marca: alvo, descricao });
+      const res = await fetch(`/api/colidencia?${params.toString()}`);
+      const body = await res.json();
+      if (!res.ok) throw new Error(body?.error ?? "Falha na busca.");
+      onColidenciaAtualizada(body as ColidenciaResultado);
+    } catch (e) {
+      setErroBusca(e instanceof Error ? e.message : "Falha de rede.");
+    } finally {
+      setBuscando(false);
+    }
+  }
 
   return (
     <>
       <div className="panel-head">
         <h2>Resultado da análise</h2>
         <p className="help">
-          Comparação fonética de &quot;{marca}&quot; contra a base de marcas e inferência
-          de classe a partir da descrição informada.
+          Busca de anterioridade de &quot;{termo}&quot; contra a{" "}
+          {fonte === "real" ? "base real do INPI" : "base de demonstração"} e inferência de
+          classe a partir da descrição informada.
         </p>
       </div>
 
+      {fonte === "demo" && avisoFonteReal && (
+        <div className="helpbox" style={{ borderColor: "var(--warm)", marginBottom: 20 }}>
+          <h3 style={{ color: "var(--warm)" }}>Modo demonstração</h3>
+          <p style={{ fontSize: 13, color: "var(--ink-dim)" }}>{avisoFonteReal}</p>
+        </div>
+      )}
+
       <div className="risk-summary">
-        <div className="metric">
-          <div className="lbl">Nível de colisão</div>
-          <div className="val">{top.pct}%</div>
-          <div className="sub">
-            <span className={`pill ${tier.cls}`}>{tier.label}</span>
+        {top ? (
+          <>
+            <div className="metric">
+              <div className="lbl">Nível de colisão</div>
+              <div className="val">{top.pct}%</div>
+              <div className="sub">
+                <span className={`pill ${tier!.cls}`}>{tier!.label}</span>{" "}
+                <span className="pill accent">{fonte === "real" ? "dado real" : "exemplo"}</span>
+              </div>
+            </div>
+            <div className="metric">
+              <div className="lbl">Marca mais próxima</div>
+              <div className="val" style={{ fontSize: 18 }}>
+                {top.nome}
+              </div>
+              <div className="sub">
+                {top.classe ? `NCL ${top.classe}` : "Classe não informada"}
+                {top.status ? ` · ${top.status}` : ""}
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="metric">
+            <div className="lbl">Nível de colisão</div>
+            <div className="val" style={{ fontSize: 19 }}>
+              Nenhuma marca parecida
+            </div>
+            <div className="sub">
+              <span className="pill safe">Risco baixo</span>{" "}
+              <span className="pill accent">dado real</span>
+            </div>
           </div>
-        </div>
-        <div className="metric">
-          <div className="lbl">Marca mais próxima</div>
-          <div className="val" style={{ fontSize: 18 }}>
-            {top.name}
-          </div>
-          <div className="sub">
-            Classe NCL {top.cls} · {CLASS_LABELS[top.cls] ?? ""}
-          </div>
-        </div>
+        )}
         <div className="metric">
           <div className="lbl">Classe sugerida</div>
           <div className="val" style={{ fontSize: 18 }}>
@@ -64,62 +118,101 @@ export default function ResultadoStep({
         </div>
       </div>
 
-      <div className="wave-section">
-        <h3>Assinatura fonética comparada</h3>
-        <p className="sub">
-          Cada nome é reduzido a um código de som (ex.: &quot;Kaza&quot; e &quot;Casa&quot;
-          geram o mesmo código); a proximidade das barras ilustra a proximidade sonora —
-          o percentual acima é a métrica exata.
-        </p>
-        <div className="wave-legend">
-          <span>
-            <i style={{ background: "var(--accent)" }} />
-            {marca}
-          </span>
-          <span>
-            <i style={{ background: legendColor }} />
-            {top.name}
-          </span>
+      {top && (
+        <div className="wave-section">
+          <h3>Assinatura fonética comparada</h3>
+          <p className="sub">
+            Cada nome é reduzido a um código de som (ex.: &quot;Kaza&quot; e &quot;Casa&quot;
+            geram o mesmo código); a proximidade das barras ilustra a proximidade sonora — o
+            percentual acima é a métrica exata.
+          </p>
+          <div className="wave-legend">
+            <span>
+              <i style={{ background: "var(--accent)" }} />
+              {termo}
+            </span>
+            <span>
+              <i style={{ background: legendColor }} />
+              {top.nome}
+            </span>
+          </div>
+          <WaveCanvas fa={top.fa} fb={top.fb} tier={tier!} />
         </div>
-        <WaveCanvas fa={top.fa} fb={top.fb} tier={tier} />
-      </div>
+      )}
 
-      <div className="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Marca na base</th>
-              <th>Classe</th>
-              <th>Similaridade fonética</th>
-              <th>Risco</th>
-            </tr>
-          </thead>
-          <tbody>
-            {matches.slice(0, 6).map((m) => {
-              const t = riskTier(m.pct);
-              return (
-                <tr key={m.name}>
-                  <td>{m.name}</td>
-                  <td>NCL {m.cls}</td>
-                  <td className="tab-nums">
-                    <span className="simbar">
-                      <span className="track">
-                        <span className="fill" style={{ width: `${m.pct}%` }} />
+      {matches.length > 0 && (
+        <div className="table-wrap" style={{ marginBottom: 24 }}>
+          <table>
+            <thead>
+              <tr>
+                <th>Marca {fonte === "real" ? "encontrada" : "na base"}</th>
+                <th>Classe</th>
+                <th>Similaridade fonética</th>
+                <th>Risco</th>
+                {fonte === "real" && <th>Status</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {matches.slice(0, 8).map((m) => {
+                const t = riskTier(m.pct);
+                return (
+                  <tr key={`${m.nome}-${m.numeroProcesso ?? ""}`}>
+                    <td>
+                      {m.nome}
+                      {m.numeroProcesso && (
+                        <>
+                          <br />
+                          <span className="mono" style={{ fontSize: 11, color: "var(--ink-faint)" }}>
+                            processo {m.numeroProcesso}
+                          </span>
+                        </>
+                      )}
+                    </td>
+                    <td>{m.classe ? `NCL ${m.classe}` : "—"}</td>
+                    <td className="tab-nums">
+                      <span className="simbar">
+                        <span className="track">
+                          <span className="fill" style={{ width: `${m.pct}%` }} />
+                        </span>
+                        {m.pct}%
                       </span>
-                      {m.pct}%
-                    </span>
-                  </td>
-                  <td>
-                    <span className={`pill ${t.cls}`}>{t.label}</span>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+                    </td>
+                    <td>
+                      <span className={`pill ${t.cls}`}>{t.label}</span>
+                    </td>
+                    {fonte === "real" && <td style={{ fontSize: 12 }}>{m.status ?? "—"}</td>}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
 
-      <BuscaRealPanel termoInicial={marca} />
+      <div className="wave-section">
+        <h3>Buscar outro termo</h3>
+        <p className="sub">
+          Quer comparar com uma variação de grafia ou outra marca? Busca de novo — o resultado
+          acima é atualizado, sem perder o restante da análise.
+        </p>
+        <div className="field busca-row">
+          <div>
+            <input
+              type="text"
+              value={termoBusca}
+              onChange={(e) => setTermoBusca(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && refazerBusca()}
+              placeholder="Ex.: Kaza Doce, Casa do Doce..."
+            />
+          </div>
+          <button className="btn secondary" onClick={refazerBusca} disabled={buscando}>
+            {buscando ? "Buscando…" : "Buscar de novo →"}
+          </button>
+        </div>
+        {erroBusca && (
+          <p style={{ fontSize: 12, color: "var(--risk)", marginTop: 8 }}>{erroBusca}</p>
+        )}
+      </div>
 
       <div className="cta-row">
         <button className="btn secondary" onClick={onRefazer}>

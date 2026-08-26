@@ -37,12 +37,31 @@ mão depois que o cliente avisa por WhatsApp).
 - `prisma/schema.prisma` — os 3 modelos: `Cliente`, `Processo`, `Pagamento`.
 - `src/lib/db.ts` — cliente Prisma (singleton, evita conexões duplicadas no hot reload).
 - `/admin` — lista todos os processos e pagamentos, com botão "Marcar como pago". Sem
-  login ainda — **não exponha essa rota publicamente** antes de ter autenticação (ver
-  "Próximos passos").
+  login ainda — protegido por senha simples via `src/proxy.ts`, ver seção "Autenticação"
+  abaixo.
 
 Prisma 7 mudou o modelo de configuração: a URL de conexão não vive mais no
 `schema.prisma`, vive em `prisma.config.ts`. Se `npx prisma migrate dev` reclamar de
 schema, veja esse arquivo antes de mexer no `schema.prisma`.
+
+**Pegadinha real, já caí nela duas vezes**: `npx prisma migrate dev` nem sempre
+regenera o client automaticamente depois de mudar `schema.prisma` (deveria, às vezes
+não regenera). Se o servidor começar a reclamar de "Unknown argument" num campo que
+você acabou de adicionar, rode `npx prisma generate` manualmente — e se ainda assim
+persistir, **reinicie o `npm run dev`** (o processo antigo mantém o client velho
+carregado em memória, um `prisma generate` sozinho não é suficiente).
+
+## Autenticação (`src/proxy.ts`)
+
+Basic Auth simples protegendo só `/admin`, `GET /api/processos` (lista todo mundo) e
+`POST /api/pagamentos/:id/confirmar` — o resto da API fica sem senha de propósito,
+porque é o que o wizard público precisa chamar pra funcionar (criar processo, avançar
+etapa, registrar cobrança pendente). Usuário do Basic Auth pode ser qualquer coisa; só
+a senha importa, definida em `ADMIN_PASSWORD` (padrão no código: `2001` — troque antes
+de deploy público, é fraca de propósito).
+
+Chamado `proxy.ts`, não `middleware.ts` — o Next.js 16 renomeou a convenção (ver
+[nextjs.org/docs/messages/middleware-to-proxy](https://nextjs.org/docs/messages/middleware-to-proxy)).
 
 **Quando isto vira Postgres**: SQLite não aguenta escrita concorrente de múltiplos
 processos/instâncias — é suficiente pra um único desenvolvedor local, não pra produção
@@ -176,10 +195,14 @@ fictício — ainda não há peticionamento real, ver item 4 abaixo.
    tempo real (`/api/inpi/busca`) pra usuário final em produção. A integração técnica
    já está pronta e testada (ver seção acima); o que falta é a confirmação
    institucional, não código.
-2. **Fundir a demonstração fonética com a busca real num único score de risco** —
-   hoje são dois blocos visualmente separados no passo "Resultado" (dívida de UX já
-   mapeada). O desafio: como combinar similaridade fonética (heurística) com
-   colidência exata da base real (fato) sem confundir o usuário sobre qual é qual.
+2. ~~Fundir a demonstração fonética com a busca real~~ — **feito**: `/api/colidencia`
+   (`src/lib/colidencia.ts`) tenta a base real do INPI primeiro; só cai pra
+   demonstração de exemplo se a busca real falhar de verdade (rede/timeout/schema) —
+   zero resultados reais não é falha, é "risco baixo" genuíno, e é tratado como tal
+   (não confundir os dois foi a parte que importava aqui). Passo "Resultado" agora
+   mostra uma única tabela/score, com badge indicando a fonte ("dado real" ou
+   "exemplo"), mais uma caixa de "buscar outro termo" que atualiza o mesmo resultado
+   em vez de abrir um bloco novo.
 3. **Revisar o algoritmo fonético com alguém que entenda fonologia do português** — a
    versão atual é uma heurística de demonstração, não um algoritmo validado
    linguisticamente nem testado contra decisões reais de indeferimento do INPI.
@@ -201,9 +224,13 @@ fictício — ainda não há peticionamento real, ver item 4 abaixo.
    mais simples, sem abrir conta em processador — ou Mercado Pago (Checkout Pro pro setup
    único, Assinaturas/`preapproval` pro monitoramento recorrente — são produtos
    diferentes, não a mesma integração).
-7. **Autenticação no `/admin`** — hoje qualquer pessoa com a URL vê nome, WhatsApp e
-   valores de todo cliente. Sem risco enquanto só você acessa localmente; vira
-   obrigatório antes de fazer deploy em qualquer lugar público.
+7. ~~Autenticação no `/admin`~~ — **feito**: Basic Auth via `src/proxy.ts`, protege
+   `/admin` inteiro + `GET /api/processos` + `POST /api/pagamentos/:id/confirmar` (não
+   o resto da API — o wizard público precisa continuar chamando essas rotas sem
+   senha). Senha padrão no código é `2001` (combinado com o usuário) — **4 dígitos é
+   fraco de propósito só enquanto isto roda local**; antes de qualquer deploy
+   público, defina `ADMIN_PASSWORD` no ambiente com algo mais forte, sem mudar
+   nenhum código.
 8. **Cache real para RPI e busca** — os dois caches em memória (`fetch-rpi.ts`,
    `busca-client.ts`) são só pra desenvolvimento (não sobrevivem a cold start
    serverless, não são compartilhados entre instâncias). Produção precisa de Redis/S3,
@@ -225,6 +252,8 @@ src/
         route.ts           — GET ?termo=...&pagina=... — busca real em tempo real
       health/
         route.ts            — GET — healthcheck das duas integrações (status + schema)
+      colidencia/
+        route.ts             — GET ?marca=...&descricao=... — busca unificada (real com fallback pra demo)
       processos/
         route.ts             — GET lista, POST cria cliente+processo
         [id]/route.ts          — PATCH atualiza status/protocolo/monitoramento
@@ -240,17 +269,17 @@ src/
     Stepper.tsx       — navegação entre etapas, com trava de progresso
     ConsultaStep.tsx  — formulário de entrada
     LoadingStep.tsx   — checklist animado da análise
-    ResultadoStep.tsx — resumo de risco, tabela de colidência de exemplo
-    BuscaRealPanel.tsx — busca ao vivo na base real de marcas do INPI
+    ResultadoStep.tsx — resumo de risco unificado (real com fallback pra demo) + busca de outro termo
     WaveCanvas.tsx     — visualização da assinatura fonética (canvas)
     PlanoStep.tsx      — setup + monitoramento, com toggle funcional
     PainelStep.tsx     — timeline do processo + log de monitoramento da RPI
   lib/
     fonetica.ts   — algoritmo de colidência fonética + Levenshtein
     ncl.ts         — inferência de classe NCL + rótulos
-    data.ts        — base de marcas de exemplo (só alimenta a demo de colidência)
-    analysis.ts    — junta fonética + NCL num único resultado de análise
-    types.ts        — tipos compartilhados (fonte única — fonetica.ts importa daqui)
+    data.ts        — base de marcas de exemplo (fallback de colidencia.ts se a busca real falhar)
+    analysis.ts    — colidência fonética contra a base de exemplo (usado só como fallback)
+    colidencia.ts    — busca unificada: real primeiro, cai pra analysis.ts se falhar
+    types.ts          — tipos compartilhados (fonte única — fonetica.ts importa daqui)
     inpi/
       types.ts        — tipos do XML oficial da RPI
       parse-rpi.ts     — parser de um bloco <processo> (testado contra dado real)
@@ -259,6 +288,7 @@ src/
       busca-client.ts     — cliente da busca em tempo real (cache + timeout)
       health.ts            — verificações de status+schema das duas integrações
   lib/db.ts — cliente Prisma (singleton)
+  proxy.ts — Basic Auth do /admin (ver seção "Autenticação")
 prisma/
   schema.prisma — modelos Cliente/Processo/Pagamento (ver seção "Banco de dados")
 docs/

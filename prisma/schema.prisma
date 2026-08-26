@@ -39,6 +39,7 @@ model Processo {
   nclCode        String?
   nclLabel       String?
   riscoPct       Int?
+  riscoFonte     String?     // "real" (busca real no INPI) | "demo" (busca real falhou, ver colidencia.ts)
 
   monitoramento  Boolean     @default(false)
   protocolo      String?     // número interno gerado no passo "Plano"

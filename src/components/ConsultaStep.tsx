@@ -46,6 +46,7 @@ export default function ConsultaStep({
             <input
               type="text"
               id="in-nome"
+              autoComplete="off"
               value={localNome}
               onChange={(e) => setLocalNome(e.target.value)}
               placeholder="Ex.: Ana Ramos"
@@ -56,6 +57,7 @@ export default function ConsultaStep({
             <input
               type="text"
               id="in-whatsapp"
+              autoComplete="off"
               value={localWhatsapp}
               onChange={(e) => setLocalWhatsapp(e.target.value)}
               placeholder="Ex.: (85) 91234-5678"
