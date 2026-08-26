@@ -20,6 +20,7 @@ interface Processo {
   nclCode: string | null;
   monitoramento: boolean;
   protocolo: string | null;
+  logoUrl: string | null;
   createdAt: string;
   cliente: { nome: string; whatsapp: string };
   pagamentos: Pagamento[];
@@ -147,6 +148,7 @@ export default function AdminPage() {
                 <tr>
                   <th>Cliente</th>
                   <th>Marca</th>
+                  <th>Logotipo</th>
                   <th>Etapa</th>
                   <th>Risco</th>
                   <th>Pagamentos</th>
@@ -171,6 +173,27 @@ export default function AdminPage() {
                             protocolo {p.protocolo}
                           </span>
                         </>
+                      )}
+                    </td>
+                    <td>
+                      {p.logoUrl ? (
+                        <a href={p.logoUrl} target="_blank" rel="noreferrer">
+                          {/* eslint-disable-next-line @next/next/no-img-element -- URL externa (Blob), next/image não se aplica */}
+                          <img
+                            src={p.logoUrl}
+                            alt={`Logotipo de ${p.marca}`}
+                            style={{
+                              width: 40,
+                              height: 40,
+                              objectFit: "contain",
+                              borderRadius: 6,
+                              border: "1px solid var(--border)",
+                              background: "var(--surface)",
+                            }}
+                          />
+                        </a>
+                      ) : (
+                        <span style={{ fontSize: 12, color: "var(--ink-faint)" }}>—</span>
                       )}
                     </td>
                     <td>

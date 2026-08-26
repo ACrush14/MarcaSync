@@ -84,8 +84,26 @@ cada push na `main` (integração Git conectada quando o projeto foi criado via
 
 **Variáveis de ambiente já configuradas no Vercel** (Production + Preview):
 `DATABASE_URL`, `DATABASE_URL_UNPOOLED` e as demais do Neon (injetadas sozinhas pela
-integração de Storage), mais `ADMIN_PASSWORD` (adicionada manualmente via
-`vercel env add`).
+integração de Storage), `BLOB_READ_WRITE_TOKEN` (injetada sozinha ao criar o Blob
+store — ver "Upload de logotipo" abaixo), mais `ADMIN_PASSWORD` (adicionada
+manualmente via `vercel env add`).
+
+## Upload de logotipo (`src/lib` + Vercel Blob)
+
+Logotipo da marca (PNG, até 1000×1000px) — só pra marca mista, opcional. Guardado no
+**Vercel Blob** (`marcasync-logos`, acesso público — a URL é aleatória e não listável,
+não precisa de token pra ler), criado via `vercel blob create-store <nome> --access
+public --yes`, que já injeta `BLOB_READ_WRITE_TOKEN` no projeto sozinho.
+
+- `src/components/LogoUpload.tsx` — drag-and-drop, valida tipo e dimensão no navegador
+  antes de enviar (só UX — não impede alguém de mandar outra coisa direto pra API).
+- `src/app/api/processos/[id]/logo/route.ts` — a validação que conta de verdade: lê os
+  8 bytes de assinatura do PNG e a largura/altura direto do chunk `IHDR` (bytes 16–23),
+  sem depender de nenhuma lib de imagem nem confiar no `Content-Type` que o cliente
+  mandou. Testado rejeitando um arquivo `.txt` disfarçado de PNG e um PNG 1001×1001 de
+  verdade antes de considerar pronto.
+- Local: rode `vercel env pull .env.local` (ou copie `BLOB_READ_WRITE_TOKEN` de
+  `vercel env ls`) pra testar upload rodando `npm run dev`.
 
 **Antes de considerar isso pronto pra clientes reais**:
 - Trocar `ADMIN_PASSWORD` por algo mais forte que `2001` — 4 dígitos só era aceitável
@@ -267,6 +285,19 @@ fictício — ainda não há peticionamento real, ver item 4 abaixo.
    `busca-client.ts`) são só pra desenvolvimento (não sobrevivem a cold start
    serverless, não são compartilhados entre instâncias). Produção precisa de Redis/S3,
    TTL de 1 semana pra RPI e 24h pra busca (espelhando o `Cache-Control` do upstream).
+9. **Sem termo de uso, contrato de serviço nem aviso de privacidade** — o produto já
+   coleta nome, WhatsApp, descrição da marca e (desde 26/08/2026) imagem de logotipo
+   de pessoas reais, e envolve cobrança + representação legal perante o INPI. Antes do
+   primeiro cliente pagante: um contrato simples (o que é entregue, o que é cobrado,
+   política de reembolso) e um aviso de privacidade (LGPD) — mesmo que informal no
+   começo, mas por escrito.
+10. **Painel de acompanhamento (`PainelStep.tsx`) é inteiramente ilustrativo** — datas e
+    despachos são calculados a partir de hoje, não vêm de processo real nenhum (isso já
+    é dito no rodapé da própria página). Isso vira risco de expectativa quebrada no
+    momento em que houver cliente pagante de verdade olhando pra essa tela achando que é
+    o andamento real do processo dele — ou liga isso à RPI de verdade (mais trabalho:
+    associar `numeroProcesso` real e consultar `fetch-rpi.ts` periodicamente), ou tira a
+    promessa de "acompanhamento automático" da conversa comercial até isso existir.
 
 ## Estrutura
 
@@ -290,6 +321,7 @@ src/
         route.ts             — GET lista, POST cria cliente+processo
         [id]/route.ts          — PATCH atualiza status/protocolo/monitoramento
         [id]/pagamentos/route.ts — POST registra cobrança pendente
+        [id]/logo/route.ts — POST upload de logotipo (PNG, valida no servidor)
       pagamentos/[id]/confirmar/
         route.ts                — POST marca pagamento como confirmado
     admin/
@@ -302,7 +334,8 @@ src/
     ConsultaStep.tsx  — formulário de entrada
     LoadingStep.tsx   — checklist animado da análise
     ResultadoStep.tsx — resumo de risco unificado (real com fallback pra demo) + busca de outro termo
-    PlanoStep.tsx      — setup + monitoramento, com toggle funcional
+    PlanoStep.tsx      — setup + monitoramento + upload de logotipo
+    LogoUpload.tsx      — drag-and-drop do logotipo (PNG, até 1000x1000)
     PainelStep.tsx     — timeline do processo + log de monitoramento da RPI
   lib/
     fonetica.ts   — algoritmo de colidência fonética + Levenshtein

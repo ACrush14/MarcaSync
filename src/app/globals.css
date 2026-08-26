@@ -713,6 +713,56 @@ tr:last-child td {
   transform: translateX(16px);
 }
 
+.logo-upload-head {
+  margin-bottom: 24px;
+}
+.logo-upload-head h3 {
+  font-size: 15px;
+  font-family: var(--font-body);
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.dropzone {
+  border: 2px dashed var(--border-strong);
+  border-radius: 10px;
+  padding: 24px;
+  text-align: center;
+  cursor: pointer;
+  background: var(--surface-2);
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.dropzone:hover,
+.dropzone.dragging {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.dropzone input[type="file"] {
+  display: none;
+}
+.dropzone .hint {
+  font-size: 12.5px;
+  color: var(--ink-dim);
+  margin-top: 4px;
+}
+.dropzone-preview {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 18px;
+  background: var(--surface-2);
+}
+.dropzone-preview img {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  flex: none;
+}
+
 .summary-strip {
   display: flex;
   align-items: center;

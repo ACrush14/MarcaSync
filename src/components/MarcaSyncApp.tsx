@@ -214,6 +214,7 @@ export default function MarcaSyncApp() {
             monitoramento={monitoramento}
             onToggleMonitoramento={() => setMonitoramento((m) => !m)}
             onConfirmar={handleConfirmarPlano}
+            processoId={processoId}
           />
         )}
         {phase === "painel" && protocolo && (

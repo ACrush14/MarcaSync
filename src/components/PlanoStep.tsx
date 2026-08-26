@@ -1,15 +1,19 @@
 "use client";
 
+import LogoUpload from "./LogoUpload";
+
 interface PlanoStepProps {
   monitoramento: boolean;
   onToggleMonitoramento: () => void;
   onConfirmar: () => void;
+  processoId: string | null;
 }
 
 export default function PlanoStep({
   monitoramento,
   onToggleMonitoramento,
   onConfirmar,
+  processoId,
 }: PlanoStepProps) {
   return (
     <>
@@ -58,6 +62,8 @@ export default function PlanoStep({
           </div>
         </div>
       </div>
+
+      <LogoUpload processoId={processoId} />
 
       <div className="summary-strip">
         <div className="total">

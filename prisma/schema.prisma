@@ -47,6 +47,7 @@ model Processo {
   monitoramento  Boolean     @default(false)
   protocolo      String?     // número interno gerado no passo "Plano"
   numeroProcesso String?     // número real do INPI, preenchido só quando protocolado de verdade
+  logoUrl        String?     // logotipo da marca (PNG, até 1000x1000), Vercel Blob — só marca mista
 
   // consulta -> resultado -> plano -> protocolado
   status         String      @default("consulta")
