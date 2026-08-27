@@ -1,5 +1,5 @@
-import MarcaSyncApp from "@/components/MarcaSyncApp";
+import LandingPage from "@/components/LandingPage";
 
 export default function Home() {
-  return <MarcaSyncApp />;
+  return <LandingPage />;
 }

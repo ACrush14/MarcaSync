@@ -108,7 +108,7 @@ export default function AdminPage() {
           <span className="mark">MarcaSync</span>
           <span className="tag">caderno de anotações · interno</span>
         </div>
-        <Link href="/" className="btn secondary">
+        <Link href="/consulta" className="btn secondary">
           ← Voltar ao protótipo
         </Link>
       </div>

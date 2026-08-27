@@ -298,6 +298,13 @@ fictício — ainda não há peticionamento real, ver item 4 abaixo.
     o andamento real do processo dele — ou liga isso à RPI de verdade (mais trabalho:
     associar `numeroProcesso` real e consultar `fetch-rpi.ts` periodicamente), ou tira a
     promessa de "acompanhamento automático" da conversa comercial até isso existir.
+11. **Landing page (`src/app/page.tsx` → `LandingPage.tsx`) não tem contato direto nem
+    prova social** — de propósito: nenhum número de WhatsApp foi inventado no rodapé
+    (só o CTA pra `/consulta`), e não tem depoimento/estatística de cliente porque
+    ainda não existe nenhum de verdade — inventar isso seria mentira, não decisão de
+    design. Quando houver: (a) adicionar um número de WhatsApp real no rodapé, (b)
+    trocar a seção "Diferente do escritório tradicional" — hoje só argumento — por
+    números reais assim que fizer sentido divulgar.
 
 ## Estrutura
 
@@ -305,7 +312,8 @@ fictício — ainda não há peticionamento real, ver item 4 abaixo.
 src/
   app/
     layout.tsx        — fontes via next/font/google (ver nota abaixo), metadata, shell HTML
-    page.tsx           — monta <MarcaSyncApp />
+    page.tsx           — monta <LandingPage /> — porta de entrada real (marketing)
+    consulta/page.tsx   — monta <MarcaSyncApp /> — o assistente interativo em si
     globals.css         — tokens de design (cores claro/escuro, tipografia) + estilos
     icon.svg             — favicon
     api/
@@ -329,6 +337,7 @@ src/
     rpi-teste/
       page.tsx             — página de prova viva da integração com a RPI
   components/
+    LandingPage.tsx — página de marketing (herói, como funciona, benefícios, preço, FAQ)
     MarcaSyncApp.tsx — orquestrador: estado do wizard (etapa, marca, análise, plano...)
     Stepper.tsx       — navegação entre etapas, com trava de progresso
     ConsultaStep.tsx  — formulário de entrada
