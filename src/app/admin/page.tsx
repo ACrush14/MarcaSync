@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { linkParaCliente } from "@/lib/whatsapp";
 
 interface Pagamento {
   id: string;
@@ -20,10 +21,42 @@ interface Processo {
   nclCode: string | null;
   monitoramento: boolean;
   protocolo: string | null;
+  numeroProcesso: string | null;
   logoUrl: string | null;
   createdAt: string;
   cliente: { nome: string; whatsapp: string };
   pagamentos: Pagamento[];
+}
+
+interface Alerta {
+  id: string;
+  edicao: number;
+  despachoCodigo: string;
+  despachoNome: string;
+  tipo: string;
+  prazoAte: string | null;
+  avisadoEm: string | null;
+  processo: { marca: string; numeroProcesso: string | null; cliente: { nome: string; whatsapp: string } };
+}
+
+interface UltimaLeitura {
+  edicao: number;
+  lidaEm: string;
+  verificados: number;
+  encontrados: number;
+}
+
+function fmtData(iso: string): string {
+  return new Date(iso).toLocaleDateString("pt-BR", { timeZone: "UTC" });
+}
+
+function mensagemAlerta(a: Alerta): string {
+  const prazo = a.prazoAte ? ` Prazo estimado: ${fmtData(a.prazoAte)}.` : "";
+  return (
+    `Olá, ${a.processo.cliente.nome.split(" ")[0]}! Saiu uma movimentação no processo da marca ` +
+    `${a.processo.marca} na RPI nº ${a.edicao}: ${a.despachoNome}.${prazo} ` +
+    `Posso te explicar o que isso significa e o que fazer?`
+  );
 }
 
 function fmtReais(centavos: number): string {
@@ -48,16 +81,74 @@ export default function AdminPage() {
   const [processos, setProcessos] = useState<Processo[] | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [confirmando, setConfirmando] = useState<string | null>(null);
+  const [alertas, setAlertas] = useState<Alerta[]>([]);
+  const [ultimaLeitura, setUltimaLeitura] = useState<UltimaLeitura | null>(null);
+  const [verificando, setVerificando] = useState(false);
+  const [aviso, setAviso] = useState<string | null>(null);
+  const [numeros, setNumeros] = useState<Record<string, string>>({});
+  const [salvandoNumero, setSalvandoNumero] = useState<string | null>(null);
 
   async function carregar() {
     try {
-      const res = await fetch("/api/processos");
+      const [res, resAlertas] = await Promise.all([fetch("/api/processos"), fetch("/api/admin/alertas")]);
       const body = await res.json();
       if (!res.ok) throw new Error(body?.error ?? "Falha ao carregar.");
       setProcessos(body.processos);
+      if (resAlertas.ok) {
+        const a = await resAlertas.json();
+        setAlertas(a.alertas);
+        setUltimaLeitura(a.ultimaLeitura);
+      }
       setErro(null);
     } catch (e) {
       setErro(e instanceof Error ? e.message : "Falha de rede.");
+    }
+  }
+
+  async function verificarRpi() {
+    setVerificando(true);
+    setAviso(null);
+    try {
+      const res = await fetch("/api/admin/monitor", { method: "POST" });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body?.error ?? "Falha ao ler a RPI.");
+      setAviso(
+        body.situacao === "sem-processos"
+          ? `RPI ${body.edicao}: nenhum processo monitorado ainda (preencha o nº do INPI e ligue o monitoramento).`
+          : `RPI ${body.edicao}: ${body.verificados} processo(s) verificado(s), ${body.encontrados} com despacho, ${body.alertasNovos} alerta(s) novo(s).`
+      );
+      await carregar();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : "Falha ao verificar a RPI.");
+    } finally {
+      setVerificando(false);
+    }
+  }
+
+  async function marcarAvisado(id: string) {
+    await fetch(`/api/admin/alertas/${id}`, { method: "POST" });
+    await carregar();
+  }
+
+  async function salvarNumero(id: string) {
+    setSalvandoNumero(id);
+    try {
+      const res = await fetch(`/api/admin/processos/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ numeroProcesso: numeros[id] ?? "" }),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body?.error ?? "Falha ao salvar.");
+      setNumeros((n) => {
+        const { [id]: _, ...resto } = n;
+        return resto;
+      });
+      await carregar();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : "Falha ao salvar o número.");
+    } finally {
+      setSalvandoNumero(null);
     }
   }
 
@@ -69,11 +160,16 @@ export default function AdminPage() {
     let cancelado = false;
     (async () => {
       try {
-        const res = await fetch("/api/processos");
+        const [res, resAlertas] = await Promise.all([fetch("/api/processos"), fetch("/api/admin/alertas")]);
         const body = await res.json();
         if (!res.ok) throw new Error(body?.error ?? "Falha ao carregar.");
+        const a = resAlertas.ok ? await resAlertas.json() : null;
         if (!cancelado) {
           setProcessos(body.processos);
+          if (a) {
+            setAlertas(a.alertas);
+            setUltimaLeitura(a.ultimaLeitura);
+          }
           setErro(null);
         }
       } catch (e) {
@@ -131,6 +227,78 @@ export default function AdminPage() {
           </div>
         )}
 
+        <section aria-labelledby="alertas-titulo" style={{ marginBottom: 28 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 8 }}>
+            <h3 id="alertas-titulo" style={{ margin: 0 }}>
+              Alertas da RPI
+            </h3>
+            <button className="btn ghost" style={{ minHeight: 40, padding: "10px 14px", fontSize: 13 }} disabled={verificando} onClick={verificarRpi}>
+              {verificando ? "Lendo a RPI… (pode levar um minuto)" : "Verificar RPI agora"}
+            </button>
+          </div>
+          <p className="help" style={{ marginBottom: 12 }}>
+            {ultimaLeitura
+              ? `Última leitura automática: RPI ${ultimaLeitura.edicao}, em ${new Date(ultimaLeitura.lidaEm).toLocaleString("pt-BR")} (${ultimaLeitura.verificados} processo(s) verificado(s)). `
+              : "Nenhuma edição lida ainda. "}
+            A leitura roda sozinha todo dia; só entram processos com monitoramento ligado e nº do INPI preenchido abaixo.
+          </p>
+          <div role="status" aria-live="polite">
+            {aviso && <p style={{ fontSize: 13, marginBottom: 12 }}>{aviso}</p>}
+          </div>
+          {alertas.length === 0 ? (
+            <p style={{ fontSize: 13, color: "var(--ink-dim)" }}>Nenhum alerta até agora.</p>
+          ) : (
+            <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 10 }}>
+              {alertas.map((a) => {
+                const href = linkParaCliente(a.processo.cliente.whatsapp, mensagemAlerta(a));
+                return (
+                  <li key={a.id} className="helpbox" style={{ display: "grid", gap: 6, opacity: a.avisadoEm ? 0.65 : 1 }}>
+                    <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                      <strong>{a.processo.marca}</strong>
+                      <span style={{ fontSize: 12.5, color: "var(--ink-dim)" }}>
+                        {a.processo.cliente.nome} · RPI {a.edicao}
+                      </span>
+                      {a.tipo === "oposicao" && <span className="pill risk">oposição</span>}
+                      {a.avisadoEm && <span className="pill safe">avisado</span>}
+                    </div>
+                    <p style={{ fontSize: 13.5, margin: 0 }}>
+                      {a.despachoNome}
+                      <span className="mono" style={{ fontSize: 11.5, color: "var(--ink-faint)" }}>
+                        {" "}
+                        ({a.despachoCodigo})
+                      </span>
+                    </p>
+                    {a.prazoAte && (
+                      <p style={{ fontSize: 12.5, color: "var(--ink-dim)", margin: 0 }}>
+                        Prazo estimado (60 dias da publicação): <strong>{fmtData(a.prazoAte)}</strong> — confira na RPI.
+                      </p>
+                    )}
+                    {!a.avisadoEm && (
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        {href && (
+                          <a
+                            className="btn"
+                            style={{ minHeight: 40, padding: "10px 14px", fontSize: 13 }}
+                            href={href}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={() => marcarAvisado(a.id)}
+                          >
+                            Avisar no WhatsApp →
+                          </a>
+                        )}
+                        <button className="btn ghost" style={{ minHeight: 40, padding: "10px 14px", fontSize: 13 }} onClick={() => marcarAvisado(a.id)}>
+                          Marcar como avisado
+                        </button>
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
+
         {processos === null && !erro && (
           <p style={{ fontSize: 13, color: "var(--ink-dim)" }}>Carregando…</p>
         )}
@@ -151,6 +319,7 @@ export default function AdminPage() {
                   <th>Marca</th>
                   <th>Logotipo</th>
                   <th>Etapa</th>
+                  <th>Nº no INPI</th>
                   <th>Risco</th>
                   <th>Pagamentos</th>
                 </tr>
@@ -199,6 +368,35 @@ export default function AdminPage() {
                     </td>
                     <td>
                       <span className="pill accent">{STATUS_LABEL[p.status] ?? p.status}</span>
+                    </td>
+                    <td>
+                      <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                        <label className="sr-only" htmlFor={`num-${p.id}`}>
+                          Número do processo no INPI — {p.marca}
+                        </label>
+                        <input
+                          id={`num-${p.id}`}
+                          inputMode="numeric"
+                          autoComplete="off"
+                          placeholder="9 dígitos"
+                          value={numeros[p.id] ?? p.numeroProcesso ?? ""}
+                          onChange={(e) => setNumeros((n) => ({ ...n, [p.id]: e.target.value }))}
+                          style={{ width: 120, minHeight: 40 }}
+                        />
+                        {p.id in numeros && numeros[p.id] !== (p.numeroProcesso ?? "") && (
+                          <button
+                            className="btn ghost"
+                            style={{ minHeight: 40, padding: "10px 14px", fontSize: 13 }}
+                            disabled={salvandoNumero === p.id}
+                            onClick={() => salvarNumero(p.id)}
+                          >
+                            {salvandoNumero === p.id ? "Salvando…" : "Salvar"}
+                          </button>
+                        )}
+                      </div>
+                      {p.monitoramento ? (
+                        <span className="pill safe" style={{ marginTop: 4 }}>monitorando</span>
+                      ) : null}
                     </td>
                     <td className="tab-nums">{p.riscoPct != null ? `${p.riscoPct}%` : "—"}</td>
                     <td>

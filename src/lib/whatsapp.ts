@@ -57,3 +57,11 @@ export function linkWhatsapp(d: DadosContato): string | null {
   if (!whatsappConfigurado) return null;
   return `https://wa.me/${NUMERO}?text=${encodeURIComponent(mensagemWhatsapp(d))}`;
 }
+
+/** Link wa.me para falar com o CLIENTE (usado no /admin). Aceita número com máscara, com ou sem DDI. */
+export function linkParaCliente(whatsappCliente: string, texto: string): string | null {
+  let digitos = whatsappCliente.replace(/\D/g, "");
+  if (digitos.length === 10 || digitos.length === 11) digitos = `55${digitos}`;
+  if (digitos.length < 12 || digitos.length > 13) return null;
+  return `https://wa.me/${digitos}?text=${encodeURIComponent(texto)}`;
+}

@@ -56,6 +56,7 @@ model Processo {
   updatedAt      DateTime    @updatedAt
 
   pagamentos     Pagamento[]
+  alertas        Alerta[]
 }
 
 /// Uma cobrança (setup ou mensalidade de monitoramento) — confirmada à mão
@@ -74,4 +75,33 @@ model Pagamento {
   notas         String?
 
   createdAt     DateTime  @default(now())
+}
+
+/// Um despacho da RPI que apareceu para um processo monitorado. A chave
+/// única evita duplicar o aviso se a rotina rodar duas vezes na mesma edição.
+model Alerta {
+  id             String    @id @default(cuid())
+  processoId     String
+  processo       Processo  @relation(fields: [processoId], references: [id])
+
+  edicao         Int
+  dataEdicao     DateTime?
+  despachoCodigo String
+  despachoNome   String
+  tipo           String    // "oposicao" | "despacho"
+  prazoAte       DateTime? // só em oposição: 60 dias da publicação (estimativa, conferir na RPI)
+
+  avisadoEm      DateTime? // marcado à mão no /admin depois de avisar o cliente
+  createdAt      DateTime  @default(now())
+
+  @@unique([processoId, edicao, despachoCodigo])
+  @@index([avisadoEm])
+}
+
+/// Edições da RPI que a rotina de monitoramento já leu por completo.
+model LeituraRpi {
+  edicao      Int      @id
+  lidaEm      DateTime @default(now())
+  verificados Int
+  encontrados Int
 }

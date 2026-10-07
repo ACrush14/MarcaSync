@@ -578,15 +578,15 @@ export default function LandingPage() {
                 <ul>
                   <li>
                     <IconCheck size={16} stroke={1.5} />
-                    Acompanhamento semanal da RPI
+                    Leitura da RPI toda semana, automática
                   </li>
                   <li>
                     <IconCheck size={16} stroke={1.5} />
-                    Aviso de oposição de terceiros
+                    Aviso no WhatsApp de qualquer despacho, inclusive oposição
                   </li>
                   <li>
                     <IconCheck size={16} stroke={1.5} />
-                    Aviso de prazos (oposição e decênio)
+                    Prazo estimado quando houver oposição
                   </li>
                   <li>
                     <IconCheck size={16} stroke={1.5} />

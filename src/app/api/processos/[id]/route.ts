@@ -5,13 +5,12 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 interface AtualizarProcessoBody {
-  status?: "consulta" | "resultado" | "plano" | "contato" | "protocolado";
+  status?: "consulta" | "resultado" | "plano" | "contato";
   monitoramento?: boolean;
   protocolo?: string;
-  numeroProcesso?: string;
 }
 
-const STATUS_VALIDOS = new Set(["consulta", "resultado", "plano", "contato", "protocolado"]);
+const STATUS_VALIDOS = new Set(["consulta", "resultado", "plano", "contato"]);
 
 /**
  * PATCH /api/processos/:id
@@ -37,7 +36,6 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         ...(body.status !== undefined && { status: body.status }),
         ...(body.monitoramento !== undefined && { monitoramento: body.monitoramento }),
         ...(body.protocolo !== undefined && { protocolo: body.protocolo }),
-        ...(body.numeroProcesso !== undefined && { numeroProcesso: body.numeroProcesso }),
       },
       include: { cliente: true, pagamentos: true },
     });

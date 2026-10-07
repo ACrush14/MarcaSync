@@ -49,10 +49,10 @@ export default function PlanoStep({
             R$ 29 <small>por mês</small>
           </div>
           <ul>
-            <li>Leitura semanal automática da RPI</li>
-            <li>Alerta de oposição de terceiros</li>
-            <li>Alerta de prazos (oposição, decênio)</li>
-            <li>Notificação por e-mail e push</li>
+            <li>Leitura semanal da RPI, automática, do seu processo</li>
+            <li>Aviso de qualquer despacho publicado, inclusive oposição de terceiros</li>
+            <li>Prazo estimado de manifestação quando houver oposição</li>
+            <li>Aviso por WhatsApp, com explicação do que fazer</li>
           </ul>
           <div className="toggle-row">
             <span className="t">Contratar monitoramento</span>

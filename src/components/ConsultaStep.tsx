@@ -109,7 +109,7 @@ export default function ConsultaStep({
               45 classes de Nice, sem exigir que você saiba o número de cor.
             </li>
             <li>
-              <b>Leitura da RPI</b> — a mesma base usada aqui alimenta o monitoramento
+              <b>Leitura da RPI</b> — a mesma fonte oficial alimenta o monitoramento
               semanal caso você contrate o acompanhamento.
             </li>
             <li>

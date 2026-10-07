@@ -86,8 +86,8 @@ cada push na `main` (integração Git conectada quando o projeto foi criado via
 `DATABASE_URL`, `DATABASE_URL_UNPOOLED` e as demais do Neon (injetadas sozinhas pela
 integração de Storage), `BLOB_READ_WRITE_TOKEN` (injetada sozinha ao criar o Blob
 store — ver "Upload de logotipo" abaixo), mais `ADMIN_PASSWORD` (adicionada
-manualmente via `vercel env add`) e `NEXT_PUBLIC_WHATSAPP_NUMBER` (ver "Contato pelo
-WhatsApp" — trocar exige novo deploy).
+manualmente via `vercel env add`) `NEXT_PUBLIC_WHATSAPP_NUMBER` (ver "Contato pelo
+WhatsApp" — trocar exige novo deploy) e `CRON_SECRET` (monitoramento da RPI).
 
 ## Upload de logotipo (`src/lib` + Vercel Blob)
 
@@ -133,6 +133,19 @@ sugerida, plano escolhido e uma `Ref.` curta pra achar o pedido no `/admin`.
 número exige novo deploy. Sem a variável, o botão vira "Quero que me chamem" e a
 conversa parte do WhatsApp que o próprio cliente informou na consulta (nunca um link
 quebrado).
+
+## Monitoramento da RPI (automático)
+
+O plano de R$ 29/mês agora tem processo real por trás:
+
+1. Depois de protocolar no INPI, você digita o **nº do processo** na coluna "Nº no INPI" do `/admin` (isso também marca o pedido como *Protocolado*). O cliente precisa ter o monitoramento ligado no plano.
+2. O **Vercel Cron** chama `/api/cron/rpi` todo dia às 12h UTC (`vercel.json`). A RPI sai às terças; rodar todo dia pega edição atrasada. Edição já lida é pulada sem baixar nada (tabela `LeituraRpi`).
+3. A rotina (`src/lib/monitor-rpi.ts`) baixa o XML oficial da edição, procura só os processos monitorados e grava um `Alerta` por despacho (chave única: reprocessar não duplica). Despacho com "oposição" no texto ganha **prazo estimado de 60 dias** da publicação (Lei 9.279/96, art. 158) — é estimativa, confira na RPI.
+4. No `/admin`, seção **Alertas da RPI**: botão "Avisar no WhatsApp" (abre a conversa com o cliente com a mensagem pronta e marca como avisado) e "Verificar RPI agora" para forçar a leitura.
+
+A rota do cron exige `Authorization: Bearer $CRON_SECRET` (a Vercel envia sozinha); sem a variável ela se recusa a rodar. `RPI_BASE_URL` existe só para testar contra uma edição simulada — não defina em produção.
+
+**Limites honestos**: o aviso ao cliente é por WhatsApp, enviado por você (não há e-mail/push nem envio automático de mensagem). Não calcula decênio nem outros prazos — só lista despachos e o prazo de oposição. Se o INPI estiver fora do ar, a rotina falha com 502 e tenta de novo no dia seguinte.
 
 ## Tema
 
@@ -380,6 +393,7 @@ src/
     data.ts        — base de marcas de exemplo (fallback de colidencia.ts se a busca real falhar)
     analysis.ts    — colidência fonética contra a base de exemplo (usado só como fallback)
     colidencia.ts    — busca unificada: real primeiro, cai pra analysis.ts se falhar
+    monitor-rpi.ts    — leitura diária da RPI → alertas dos processos monitorados
     whatsapp.ts      — link wa.me com a mensagem montada a partir da consulta
     planos.ts         — preços (centavos) e formatação em reais
     types.ts          — tipos compartilhados (fonte única — fonetica.ts importa daqui)
