@@ -25,7 +25,7 @@ export default function ResultadoStep({
   whatsappHref,
   onContato,
 }: ResultadoStepProps) {
-  const { matches, ncl, top, fonte, avisoFonteReal, termo } = colidencia;
+  const { matches, ncl, top, fonte, avisoFonteReal, termo, baseLocal } = colidencia;
   const tier = top ? riskTier(top.pct) : null;
 
   const [termoBusca, setTermoBusca] = useState(termo);
@@ -58,6 +58,17 @@ export default function ResultadoStep({
           Busca de anterioridade de &quot;{termo}&quot; contra a{" "}
           {fonte === "real" ? "base real do INPI" : "base de demonstração"} e inferência de
           classe a partir da descrição informada.
+          {baseLocal && (
+            <>
+              {" "}
+              {baseLocal.usadaSozinha
+                ? "A busca ao vivo do INPI não respondeu; usamos a cópia oficial dos dados abertos do INPI"
+                : "Também comparamos com a cópia oficial dos dados abertos do INPI, que acha grafias de som parecido"}
+              {baseLocal.atualizadaEm &&
+                ` (arquivo de ${new Date(baseLocal.atualizadaEm).toLocaleDateString("pt-BR", { timeZone: "UTC" })})`}
+              .
+            </>
+          )}
         </p>
       </div>
 

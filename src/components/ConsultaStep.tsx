@@ -70,7 +70,7 @@ export default function ConsultaStep({
               id="in-marca"
               value={localMarca}
               onChange={(e) => setLocalMarca(e.target.value)}
-              placeholder="Ex.: Doce Ponto"
+              placeholder="Ex.: Kaza Doce"
             />
           </div>
           <div className="field">

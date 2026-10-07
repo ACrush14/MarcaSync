@@ -20,9 +20,9 @@ export default function MarcaSyncApp() {
   const [unlocked, setUnlocked] = useState(0);
   const [phase, setPhase] = useState<Phase>("consulta");
 
-  const [nomeCliente, setNomeCliente] = useState("Ana Ramos");
+  const [nomeCliente, setNomeCliente] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
-  const [marca, setMarca] = useState("Kaza Doce");
+  const [marca, setMarca] = useState("");
   const [descricao, setDescricao] = useState(
     "Confeitaria artesanal com venda de bolos e doces personalizados para encomenda."
   );

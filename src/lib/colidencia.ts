@@ -2,6 +2,7 @@ import { similaridade } from "./fonetica";
 import { computeAnalysis } from "./analysis";
 import { buscarMarcas } from "./inpi/busca-client";
 import { inferNCL } from "./ncl";
+import { buscarMarcasLocais, infoBaseLocal } from "./marcas-locais";
 import type { InferenciaNCL } from "./types";
 
 /**
@@ -34,6 +35,8 @@ export interface ColidenciaMatch {
   fa: string;
   fb: string;
   fonte: FonteColidencia;
+  /** De onde veio o registro: busca ao vivo do INPI ou cópia local dos dados abertos. */
+  origem?: "inpi-busca" | "base-local";
   numeroProcesso?: string;
   status?: string;
   titular?: string;
@@ -45,6 +48,8 @@ export interface ColidenciaResultado {
   matches: ColidenciaMatch[];
   top: ColidenciaMatch | null;
   ncl: InferenciaNCL;
+  /** Presente quando a cópia local dos dados abertos do INPI participou da análise. */
+  baseLocal?: { atualizadaEm: string | null; usadaSozinha: boolean };
   /** Só presente quando fonte === "demo" — explica por que caiu pro fallback. */
   avisoFonteReal?: string;
 }
@@ -55,47 +60,78 @@ export async function calcularColidencia(
 ): Promise<ColidenciaResultado> {
   const ncl = inferNCL(descricao);
 
-  try {
-    const busca = await buscarMarcas(marca, 1, 10);
+  const [ao_vivo, local, info] = await Promise.allSettled([
+    buscarMarcas(marca, 1, 10),
+    buscarMarcasLocais(marca),
+    infoBaseLocal(),
+  ]);
 
-    const matches: ColidenciaMatch[] = busca.resultados
-      .map((r) => {
-        const sim = similaridade(marca, r.marca);
-        return {
-          nome: r.marca,
-          classe: r.classificacao,
-          pct: sim.pct,
-          fa: sim.fa,
-          fb: sim.fb,
-          fonte: "real" as const,
-          numeroProcesso: r.numeroProcesso,
-          status: r.status,
-          titular: r.titulares[0]?.nome,
-        };
-      })
-      .sort((a, b) => b.pct - a.pct);
+  const matchesVivos: ColidenciaMatch[] =
+    ao_vivo.status === "fulfilled"
+      ? ao_vivo.value.resultados.map((r) => {
+          const sim = similaridade(marca, r.marca);
+          return {
+            nome: r.marca,
+            classe: r.classificacao,
+            pct: sim.pct,
+            fa: sim.fa,
+            fb: sim.fb,
+            fonte: "real" as const,
+            origem: "inpi-busca" as const,
+            numeroProcesso: r.numeroProcesso,
+            status: r.status,
+            titular: r.titulares[0]?.nome,
+          };
+        })
+      : [];
 
-    return { fonte: "real", termo: marca, matches, top: matches[0] ?? null, ncl };
-  } catch (err) {
-    const demo = computeAnalysis(marca, descricao);
-    const matches: ColidenciaMatch[] = demo.matches.map((m) => ({
-      nome: m.name,
-      classe: m.cls,
-      pct: m.pct,
-      fa: m.fa,
-      fb: m.fb,
-      fonte: "demo" as const,
-    }));
+  const baseLocal = info.status === "fulfilled" ? info.value : null;
+  const matchesLocais = local.status === "fulfilled" && baseLocal ? local.value : [];
+
+  if (ao_vivo.status === "fulfilled" || (baseLocal && local.status === "fulfilled")) {
+    // Mesmo processo nas duas fontes: vale o registro ao vivo (status mais fresco).
+    const porProcesso = new Map<string, ColidenciaMatch>();
+    for (const m of [...matchesLocais, ...matchesVivos]) {
+      porProcesso.set(m.numeroProcesso ?? `${m.nome}-${porProcesso.size}`, m);
+    }
+    const matches = [...porProcesso.values()].sort((a, b) => b.pct - a.pct).slice(0, 10);
 
     return {
-      fonte: "demo",
+      fonte: "real",
       termo: marca,
       matches,
       top: matches[0] ?? null,
       ncl,
-      avisoFonteReal: `A busca real no INPI não respondeu agora (${
-        err instanceof Error ? err.message : "erro desconhecido"
-      }). O resultado abaixo é uma demonstração com dados de exemplo — não reflete risco real. Tente de novo em instantes.`,
+      ...(baseLocal && local.status === "fulfilled"
+        ? {
+            baseLocal: {
+              atualizadaEm: baseLocal.atualizadaEm,
+              usadaSozinha: ao_vivo.status !== "fulfilled",
+            },
+          }
+        : {}),
     };
   }
+
+  const err = ao_vivo.status === "rejected" ? ao_vivo.reason : null;
+  const demo = computeAnalysis(marca, descricao);
+  const matches: ColidenciaMatch[] = demo.matches.map((m) => ({
+    nome: m.name,
+    classe: m.cls,
+    pct: m.pct,
+    fa: m.fa,
+    fb: m.fb,
+    fonte: "demo" as const,
+  }));
+
+  return {
+    fonte: "demo",
+    termo: marca,
+    matches,
+    top: matches[0] ?? null,
+    ncl,
+    avisoFonteReal: `A busca real no INPI não respondeu agora (${
+      err instanceof Error ? err.message : "erro desconhecido"
+    }). O resultado abaixo é uma demonstração com dados de exemplo — não reflete risco real. Tente de novo em instantes.`,
+  };
 }

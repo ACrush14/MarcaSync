@@ -31,68 +31,68 @@ model Cliente {
 
 /// Um pedido de registro de marca em andamento (uma "linha" no caderno).
 model Processo {
-  id             String      @id @default(cuid())
-  clienteId      String
-  cliente        Cliente     @relation(fields: [clienteId], references: [id])
+  id        String  @id @default(cuid())
+  clienteId String
+  cliente   Cliente @relation(fields: [clienteId], references: [id])
 
-  marca          String
-  descricao      String
+  marca     String
+  descricao String
 
   // Resultado da análise (snapshot do momento — não recalcula depois).
-  nclCode        String?
-  nclLabel       String?
-  riscoPct       Int?
-  riscoFonte     String?     // "real" (busca real no INPI) | "demo" (busca real falhou, ver colidencia.ts)
+  nclCode    String?
+  nclLabel   String?
+  riscoPct   Int?
+  riscoFonte String? // "real" (busca real no INPI) | "demo" (busca real falhou, ver colidencia.ts)
 
-  monitoramento  Boolean     @default(false)
-  protocolo      String?     // número interno gerado no passo "Plano"
-  numeroProcesso String?     // número real do INPI, preenchido só quando protocolado de verdade
-  logoUrl        String?     // logotipo da marca (PNG, até 1000x1000), Vercel Blob — só marca mista
+  monitoramento  Boolean @default(false)
+  protocolo      String? // número interno gerado no passo "Plano"
+  numeroProcesso String? // número real do INPI, preenchido só quando protocolado de verdade
+  logoUrl        String? // logotipo da marca (PNG, até 1000x1000), Vercel Blob — só marca mista
 
   // consulta -> resultado -> plano -> protocolado
-  status         String      @default("consulta")
+  status String @default("consulta")
 
-  createdAt      DateTime    @default(now())
-  updatedAt      DateTime    @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  pagamentos     Pagamento[]
-  alertas        Alerta[]
+  pagamentos Pagamento[]
+  alertas    Alerta[]
 }
 
 /// Uma cobrança (setup ou mensalidade de monitoramento) — confirmada à mão
 /// por enquanto, depois que o cliente avisa por WhatsApp que pagou.
 model Pagamento {
-  id            String    @id @default(cuid())
-  processoId    String
-  processo      Processo  @relation(fields: [processoId], references: [id])
+  id         String   @id @default(cuid())
+  processoId String
+  processo   Processo @relation(fields: [processoId], references: [id])
 
-  tipo          String    // "setup" | "monitoramento"
+  tipo          String // "setup" | "monitoramento"
   valorCentavos Int
 
   status        String    @default("pendente") // pendente | confirmado
   confirmadoEm  DateTime?
-  confirmadoVia String?   // ex.: "whatsapp"
+  confirmadoVia String? // ex.: "whatsapp"
   notas         String?
 
-  createdAt     DateTime  @default(now())
+  createdAt DateTime @default(now())
 }
 
 /// Um despacho da RPI que apareceu para um processo monitorado. A chave
 /// única evita duplicar o aviso se a rotina rodar duas vezes na mesma edição.
 model Alerta {
-  id             String    @id @default(cuid())
-  processoId     String
-  processo       Processo  @relation(fields: [processoId], references: [id])
+  id         String   @id @default(cuid())
+  processoId String
+  processo   Processo @relation(fields: [processoId], references: [id])
 
   edicao         Int
   dataEdicao     DateTime?
   despachoCodigo String
   despachoNome   String
-  tipo           String    // "oposicao" | "despacho"
+  tipo           String // "oposicao" | "despacho"
   prazoAte       DateTime? // só em oposição: 60 dias da publicação (estimativa, conferir na RPI)
 
-  avisadoEm      DateTime? // marcado à mão no /admin depois de avisar o cliente
-  createdAt      DateTime  @default(now())
+  avisadoEm DateTime? // marcado à mão no /admin depois de avisar o cliente
+  createdAt DateTime  @default(now())
 
   @@unique([processoId, edicao, despachoCodigo])
   @@index([avisadoEm])
@@ -104,4 +104,27 @@ model LeituraRpi {
   lidaEm      DateTime @default(now())
   verificados Int
   encontrados Int
+}
+
+/// Cópia local (só marcas vivas, com elemento nominativo) da base oficial de
+/// dados abertos do INPI — ver scripts/ingerir-marcas.mjs. Serve para achar
+/// marcas de som parecido que a busca textual do INPI não traz no top 10.
+model MarcaInpi {
+  numero   String    @id
+  nome     String
+  chave    String // foneticaBR(nome), indexada pra busca por som
+  situacao String // código IPAS (descrição em src/lib/situacoes-inpi.ts)
+  deposito DateTime? @db.Date
+  classes  String? // classes de Nice, ex.: "25,35"
+  lote     Int // execução da ingestão que gravou/confirmou a linha
+
+  @@index([chave(ops: raw("text_pattern_ops"))])
+}
+
+/// Uma linha por ingestão concluída — diz de quando é a base local.
+model IngestaoMarcas {
+  lote            Int      @id
+  concluidaEm     DateTime @default(now())
+  total           Int
+  fonteAtualizada String? // Last-Modified do arquivo do INPI
 }

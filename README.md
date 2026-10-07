@@ -147,6 +147,16 @@ A rota do cron exige `Authorization: Bearer $CRON_SECRET` (a Vercel envia sozinh
 
 **Limites honestos**: o aviso ao cliente é por WhatsApp, enviado por você (não há e-mail/push nem envio automático de mensagem). Não calcula decênio nem outros prazos — só lista despachos e o prazo de oposição. Se o INPI estiver fora do ar, a rotina falha com 502 e tenta de novo no dia seguinte.
 
+## Base local de marcas (dados abertos do INPI)
+
+A busca textual do INPI devolve só o que ela acha mais relevante (top 10) — uma grafia diferente ("Nubanc" para "Nubank") pode ficar de fora. Por isso o app guarda uma cópia local da **base oficial de dados abertos do INPI** (https://dadosabertos.inpi.gov.br/index/marcas/) e compara por **som** (`foneticaBR`) com tudo.
+
+- **O que está lá** (tabela `MarcaInpi`, ~3 milhões de linhas, ~450 MB): marcas **vivas** (registro em vigor ou pedido em andamento) que têm nome — número, nome, situação, data de depósito e classes de Nice. Ficam de fora: extintas/arquivadas/indeferidas, as aguardando recurso contra indeferimento, e marcas só figurativas (sem texto para comparar).
+- **Como entra na análise** (`src/lib/marcas-locais.ts` + `colidencia.ts`): a busca ao vivo do INPI e a base local rodam juntas; o resultado junta as duas (mesmo processo → vale o registro ao vivo) e mostra as 10 mais parecidas. Se a busca ao vivo cair, a base local responde sozinha (resultado continua real, com aviso) — só cai para a demonstração se as duas falharem.
+- **Candidatos**: mesma chave fonética, 1 edição de diferença (troca/falta/sobra de letra), e marcas que começam igual ou estão contidas no nome. Marcas a 2+ edições de distância não entram como candidatas — limite conhecido.
+- **Atualizar** (o INPI republica o arquivo periodicamente; a data aparece na tela de resultado): rode **no seu computador** `npm run ingerir:marcas` (baixa ~5,7 GB, leva ~20 min). Use `-- --dry` para só contar e estimar sem gravar. O script troca a base inteira e se recusa a rodar se passar de 85% do limite do banco (hoje 1 GB no Neon).
+- **Limites honestos**: não é tempo real (só tão nova quanto o último arquivo do INPI); marcas antigas podem estar sem classe de Nice (vêm de outra classificação nacional); o risco mostrado é só similaridade de nome — a decisão de colisão é do INPI.
+
 ## Tema
 
 Branco + tons pastéis (menta, lavanda, pêssego, céu, manteiga), **sem tema escuro** de
@@ -393,6 +403,8 @@ src/
     data.ts        — base de marcas de exemplo (fallback de colidencia.ts se a busca real falhar)
     analysis.ts    — colidência fonética contra a base de exemplo (usado só como fallback)
     colidencia.ts    — busca unificada: real primeiro, cai pra analysis.ts se falhar
+    marcas-locais.ts  — busca por som na cópia local da base de marcas do INPI
+    situacoes-inpi.ts — código IPAS → descrição da situação
     monitor-rpi.ts    — leitura diária da RPI → alertas dos processos monitorados
     whatsapp.ts      — link wa.me com a mensagem montada a partir da consulta
     planos.ts         — preços (centavos) e formatação em reais
