@@ -10,7 +10,7 @@ export const STEPS: StepDef[] = [
   { id: "consulta", t: "Consulta", s: "Nome e descrição" },
   { id: "resultado", t: "Resultado", s: "Colidência e classe" },
   { id: "plano", t: "Plano", s: "Setup e monitoramento" },
-  { id: "painel", t: "Painel", s: "Acompanhamento" },
+  { id: "contato", t: "Contato", s: "Fale comigo" },
 ];
 
 interface StepperProps {

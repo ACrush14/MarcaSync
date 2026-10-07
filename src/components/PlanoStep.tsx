@@ -7,6 +7,8 @@ interface PlanoStepProps {
   onToggleMonitoramento: () => void;
   onConfirmar: () => void;
   processoId: string | null;
+  /** Link wa.me já com o plano escolhido; null se o número não estiver configurado. */
+  whatsappHref: string | null;
 }
 
 export default function PlanoStep({
@@ -14,6 +16,7 @@ export default function PlanoStep({
   onToggleMonitoramento,
   onConfirmar,
   processoId,
+  whatsappHref,
 }: PlanoStepProps) {
   return (
     <>
@@ -85,9 +88,21 @@ export default function PlanoStep({
             )}
           </div>
         </div>
-        <button className="btn" onClick={onConfirmar}>
-          Confirmar e iniciar protocolo →
-        </button>
+        {whatsappHref ? (
+          <a
+            className="btn"
+            href={whatsappHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={onConfirmar}
+          >
+            Quero seguir — falar no WhatsApp →
+          </a>
+        ) : (
+          <button className="btn" onClick={onConfirmar}>
+            Quero seguir — me chamem →
+          </button>
+        )}
       </div>
       <p className="sim-note">
         Preço fechado desde a Consulta — sem taxa extra depois, sem &quot;isso não

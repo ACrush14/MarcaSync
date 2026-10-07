@@ -10,6 +10,10 @@ interface ResultadoStepProps {
   onColidenciaAtualizada: (c: ColidenciaResultado) => void;
   onRefazer: () => void;
   onVerPlano: () => void;
+  /** Link wa.me pro WhatsApp do MarcaSync; null se o número não estiver configurado. */
+  whatsappHref: string | null;
+  /** Chamado quando o cliente decide falar comigo (o <a> abre o WhatsApp sozinho). */
+  onContato: () => void;
 }
 
 export default function ResultadoStep({
@@ -18,6 +22,8 @@ export default function ResultadoStep({
   onColidenciaAtualizada,
   onRefazer,
   onVerPlano,
+  whatsappHref,
+  onContato,
 }: ResultadoStepProps) {
   const { matches, ncl, top, fonte, avisoFonteReal, termo } = colidencia;
   const tier = top ? riskTier(top.pct) : null;
@@ -178,12 +184,27 @@ export default function ResultadoStep({
       </div>
 
       <div className="cta-row">
-        <button className="btn secondary" onClick={onRefazer}>
+        <button className="btn ghost" onClick={onRefazer}>
           ← Refazer consulta
         </button>
-        <button className="btn" onClick={onVerPlano}>
-          Ver plano de registro →
+        <button className="btn secondary" onClick={onVerPlano}>
+          Ver preço do registro
         </button>
+        {whatsappHref ? (
+          <a
+            className="btn"
+            href={whatsappHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={onContato}
+          >
+            Falar comigo no WhatsApp →
+          </a>
+        ) : (
+          <button className="btn" onClick={onContato}>
+            Quero que me chamem →
+          </button>
+        )}
       </div>
     </>
   );

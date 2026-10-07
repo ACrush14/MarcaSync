@@ -6,13 +6,14 @@ import ConsultaStep from "./ConsultaStep";
 import LoadingStep from "./LoadingStep";
 import ResultadoStep from "./ResultadoStep";
 import PlanoStep from "./PlanoStep";
-import PainelStep from "./PainelStep";
+import ContatoStep from "./ContatoStep";
 import type { ColidenciaResultado } from "@/lib/colidencia";
+import { MONITORAMENTO_CENTAVOS, SETUP_CENTAVOS } from "@/lib/planos";
+import { linkWhatsapp } from "@/lib/whatsapp";
 
-type Phase = "consulta" | "carregando" | "resultado" | "plano" | "painel";
+type Phase = "consulta" | "carregando" | "resultado" | "plano" | "contato";
 
-const SETUP_CENTAVOS = 49_900;
-const MONITORAMENTO_CENTAVOS = 2_900;
+const PHASE_POR_PASSO: Phase[] = ["consulta", "resultado", "plano", "contato"];
 
 export default function MarcaSyncApp() {
   const [current, setCurrent] = useState(0);
@@ -27,12 +28,12 @@ export default function MarcaSyncApp() {
   );
   const [colidencia, setColidencia] = useState<ColidenciaResultado | null>(null);
   const [monitoramento, setMonitoramento] = useState(true);
-  const [protocolo, setProtocolo] = useState<string | null>(null);
-  const [opposed, setOpposed] = useState(false);
+  // true quando o cliente chegou ao contato passando pelo Plano (muda a mensagem do WhatsApp)
+  const [planoEscolhido, setPlanoEscolhido] = useState(false);
 
-  // Id do registro no "caderno de anotações" (banco local) — null até a
-  // primeira análise terminar. Se a gravação falhar, o wizard continua
-  // funcionando (não trava a demonstração), mas fica marcado em erroSalvar.
+  // Id do registro no "caderno de anotações" (banco) — null até a primeira
+  // análise terminar. Se a gravação falhar, o wizard continua funcionando,
+  // mas fica marcado em erroSalvar.
   const [processoId, setProcessoId] = useState<string | null>(null);
   const [erroSalvar, setErroSalvar] = useState<string | null>(null);
 
@@ -41,10 +42,15 @@ export default function MarcaSyncApp() {
   // animação acabar pra só então começar a buscar.
   const colidenciaPromiseRef = useRef<Promise<ColidenciaResultado> | null>(null);
 
+  // Cobranças já criadas pra este processo: o cliente pode voltar ao Plano
+  // pelo Stepper e confirmar de novo — sem isso duplicaria o registro.
+  const setupCriadoRef = useRef(false);
+  const monitoramentoCriadoRef = useRef(false);
+
   function navigate(i: number) {
     if (i > unlocked) return;
     setCurrent(i);
-    setPhase(["consulta", "resultado", "plano", "painel"][i] as Phase);
+    setPhase(PHASE_POR_PASSO[i] as Phase);
   }
 
   function handleAnalisar(dados: {
@@ -120,38 +126,72 @@ export default function MarcaSyncApp() {
     }
   }
 
-  async function handleConfirmarPlano() {
-    const novoProtocolo =
-      protocolo ?? `92${Math.floor(100000000 + Math.random() * 899999999)}`;
-    setProtocolo(novoProtocolo);
+  /**
+   * Cliente decidiu falar comigo (botão "WhatsApp" do Resultado ou do
+   * Plano). O <a href="wa.me/…"> dos botões abre a conversa por conta
+   * própria — aqui só avançamos o wizard e anotamos no caderno. `comPlano`
+   * é verdadeiro quando ele passou pelo Plano: aí viram cobranças pendentes
+   * (que eu confirmo à mão no /admin depois do PIX).
+   */
+  async function handleContato(comPlano: boolean) {
+    setPlanoEscolhido(comPlano);
     setUnlocked((u) => Math.max(u, 3));
     setCurrent(3);
-    setPhase("painel");
+    setPhase("contato");
 
     if (!processoId) return;
     try {
       await fetch(`/api/processos/${processoId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "protocolado", protocolo: novoProtocolo, monitoramento }),
+        body: JSON.stringify(
+          comPlano ? { status: "contato", monitoramento } : { status: "contato" }
+        ),
       });
-      await fetch(`/api/processos/${processoId}/pagamentos`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tipo: "setup", valorCentavos: SETUP_CENTAVOS }),
-      });
-      if (monitoramento) {
-        await fetch(`/api/processos/${processoId}/pagamentos`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ tipo: "monitoramento", valorCentavos: MONITORAMENTO_CENTAVOS }),
-        });
+
+      if (comPlano) {
+        const criar = (tipo: "setup" | "monitoramento", valorCentavos: number) =>
+          fetch(`/api/processos/${processoId}/pagamentos`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ tipo, valorCentavos }),
+          });
+        if (!setupCriadoRef.current) {
+          setupCriadoRef.current = true;
+          await criar("setup", SETUP_CENTAVOS);
+        }
+        if (monitoramento && !monitoramentoCriadoRef.current) {
+          monitoramentoCriadoRef.current = true;
+          await criar("monitoramento", MONITORAMENTO_CENTAVOS);
+        }
       }
       setErroSalvar(null);
     } catch {
-      setErroSalvar("Falha ao registrar o(s) pagamento(s) no banco.");
+      setErroSalvar("Falha ao registrar o contato no banco.");
     }
   }
+
+  function novaConsulta() {
+    colidenciaPromiseRef.current = null;
+    setupCriadoRef.current = false;
+    monitoramentoCriadoRef.current = false;
+    setColidencia(null);
+    setPlanoEscolhido(false);
+    setProcessoId(null);
+    setErroSalvar(null);
+    setUnlocked(0);
+    setCurrent(0);
+    setPhase("consulta");
+  }
+
+  const hrefResultado = linkWhatsapp({ nomeCliente, marca, colidencia, processoId });
+  const hrefPlano = linkWhatsapp({
+    nomeCliente,
+    marca,
+    colidencia,
+    processoId,
+    plano: { monitoramento },
+  });
 
   return (
     <div className="shell">
@@ -207,30 +247,33 @@ export default function MarcaSyncApp() {
               setPhase("consulta");
             }}
             onVerPlano={handleVerPlano}
+            whatsappHref={hrefResultado}
+            onContato={() => handleContato(false)}
           />
         )}
         {phase === "plano" && (
           <PlanoStep
             monitoramento={monitoramento}
             onToggleMonitoramento={() => setMonitoramento((m) => !m)}
-            onConfirmar={handleConfirmarPlano}
+            onConfirmar={() => handleContato(true)}
             processoId={processoId}
+            whatsappHref={hrefPlano}
           />
         )}
-        {phase === "painel" && protocolo && (
-          <PainelStep
-            protocolo={protocolo}
-            monitoramento={monitoramento}
-            opposed={opposed}
-            onSimularOposicao={() => setOpposed(true)}
+        {phase === "contato" && (
+          <ContatoStep
+            nomeCliente={nomeCliente}
+            whatsappCliente={whatsapp}
+            marca={marca}
+            whatsappHref={planoEscolhido ? hrefPlano : hrefResultado}
+            onNovaConsulta={novaConsulta}
           />
         )}
       </main>
 
       <p className="footer-note">
-        A busca de anterioridade consulta a base real do INPI. O painel de
-        acompanhamento (prazos, despachos) é ilustrativo — exemplo da mecânica do
-        sistema, não o andamento de um processo real.
+        A busca de anterioridade consulta a base real do INPI e indica risco de colisão; a decisão
+        final é sempre do INPI.
       </p>
     </div>
   );

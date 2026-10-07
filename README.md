@@ -86,7 +86,8 @@ cada push na `main` (integração Git conectada quando o projeto foi criado via
 `DATABASE_URL`, `DATABASE_URL_UNPOOLED` e as demais do Neon (injetadas sozinhas pela
 integração de Storage), `BLOB_READ_WRITE_TOKEN` (injetada sozinha ao criar o Blob
 store — ver "Upload de logotipo" abaixo), mais `ADMIN_PASSWORD` (adicionada
-manualmente via `vercel env add`).
+manualmente via `vercel env add`) e `NEXT_PUBLIC_WHATSAPP_NUMBER` (ver "Contato pelo
+WhatsApp" — trocar exige novo deploy).
 
 ## Upload de logotipo (`src/lib` + Vercel Blob)
 
@@ -114,6 +115,33 @@ public --yes`, que já injeta `BLOB_READ_WRITE_TOKEN` no projeto sozinho.
 - Redeploy manual, se precisar, sem esperar um push: `vercel --prod` (dentro da pasta do
   projeto, com o CLI autenticado).
 
+## Contato pelo WhatsApp
+
+Fluxo: **Consulta → Resultado → Plano → Contato**. O cliente pode ir pro WhatsApp já no
+Resultado ("Falar comigo no WhatsApp") ou depois de ver o preço no Plano. Os botões são
+`<a href="https://wa.me/…">` de verdade (abrem em nova aba, sem bloqueio de pop-up); o
+clique também move o wizard pro passo "Contato" e grava `status = contato` no processo —
+dá pra ver no `/admin` quem já pediu conversa. Pelo Plano, também viram as 2 cobranças
+pendentes (setup e, se ligado, monitoramento), criadas uma única vez mesmo se o cliente
+voltar pelo Stepper e confirmar de novo.
+
+A mensagem (`src/lib/whatsapp.ts`) já vai com nome, marca, risco real do INPI, classe
+sugerida, plano escolhido e uma `Ref.` curta pra achar o pedido no `/admin`.
+
+**Configuração**: `NEXT_PUBLIC_WHATSAPP_NUMBER` (só dígitos, DDI + DDD + número, ex.:
+`5585912345678`). Por ser `NEXT_PUBLIC_`, o Next embute o valor **no build** — trocar o
+número exige novo deploy. Sem a variável, o botão vira "Quero que me chamem" e a
+conversa parte do WhatsApp que o próprio cliente informou na consulta (nunca um link
+quebrado).
+
+## Tema
+
+Branco + tons pastéis (menta, lavanda, pêssego, céu, manteiga), **sem tema escuro** de
+propósito — um único conjunto de tokens em `:root` (`globals.css`) vale pro app inteiro
+e pra landing. `--accent` é só *preenchimento* (botão, passo atual): menta pastel com
+tinta escura por cima; pra *texto* ou foco use `--accent-strong`. Cada par texto×fundo
+foi medido (WCAG) — ver comentário no topo de `LandingPage.css`.
+
 ## O que já é funcional (não decorativo)
 
 - **Colidência fonética real** (`src/lib/fonetica.ts`) — redução fonética simplificada
@@ -123,18 +151,18 @@ public --yes`, que já injeta `BLOB_READ_WRITE_TOKEN` no projeto sozinho.
 - **Inferência de classe NCL** (`src/lib/ncl.ts`) — mapeamento por palavra-chave de uma
   descrição em linguagem natural para uma das classes de Nice. Cobre 11 das 45 classes
   reais, como prova de conceito.
-- **Painel de acompanhamento** (`src/components/PainelStep.tsx`) — linha do tempo do
-  processo com datas calculadas a partir de hoje, contador de prazo de oposição (60
-  dias, Art. 158 da LPI) e simulação interativa de um alerta de oposição de terceiro.
 - **Integração real com a RPI oficial** (`src/lib/inpi/`, `src/app/api/rpi/lookup/`) —
   não é mock: baixa e faz parsing do XML publicado semanalmente em
   `revistas.inpi.gov.br`, o canal que o próprio INPI declara ser "para uso através de
   aplicativos". Ver seção própria abaixo.
 - **Busca em tempo real na base do INPI** (`src/lib/inpi/busca-client.ts`,
-  `src/app/api/inpi/busca/`, componente `BuscaRealPanel`) — API não documentada
-  publicamente que sustenta o portal `servicos.busca.inpi.gov.br/marcas`, integrada e
-  testada com dado real (ver seção própria abaixo). Aparece no passo "Resultado", como
-  bloco separado da tabela de colidência fonética de exemplo.
+  `src/lib/colidencia.ts`, `/api/colidencia`) — API não documentada publicamente que
+  sustenta o portal `servicos.busca.inpi.gov.br/marcas`, integrada e testada com dado
+  real (ver seção própria abaixo). Alimenta o passo "Resultado"; só cai pra base de
+  exemplo se a busca real falhar de verdade.
+- **Contato pelo WhatsApp** (`src/lib/whatsapp.ts`, `ContatoStep.tsx`) — depois da
+  consulta o cliente cai direto numa conversa com o WhatsApp do MarcaSync, com a
+  mensagem já escrita. Ver a seção "Contato pelo WhatsApp".
 
 ## Integração real com a RPI (`src/lib/inpi/`)
 
@@ -229,10 +257,10 @@ barato que construir alerta próprio numa fase sem volume de clientes. Ver
 A base de marcas usada na *demonstração de colidência fonética* (`BASE_MARCAS` em
 `src/lib/data.ts`, usada pela tabela de similaridade do passo "Resultado") continua
 sendo uma lista fixa de 14 marcas de exemplo — ela existe só pra ilustrar o algoritmo
-fonético com números estáveis e reproduzíveis. A busca por dado real de verdade agora
-tem canal próprio (`BuscaRealPanel`, ver seção acima), lado a lado com a tabela de
-exemplo. O protocolo gerado no passo "Plano" continua sendo um número aleatório
-fictício — ainda não há peticionamento real, ver item 4 abaixo.
+fonético com números estáveis e reproduzíveis — hoje só aparece como fallback quando a
+busca real no INPI falha (ver `src/lib/colidencia.ts`), sempre avisando que é exemplo.
+Não há peticionamento automático: o protocolo no INPI é feito à mão, depois da conversa
+no WhatsApp (ver item 4 abaixo).
 
 ## Próximos passos (nesta ordem)
 
@@ -291,20 +319,19 @@ fictício — ainda não há peticionamento real, ver item 4 abaixo.
    primeiro cliente pagante: um contrato simples (o que é entregue, o que é cobrado,
    política de reembolso) e um aviso de privacidade (LGPD) — mesmo que informal no
    começo, mas por escrito.
-10. **Painel de acompanhamento (`PainelStep.tsx`) é inteiramente ilustrativo** — datas e
-    despachos são calculados a partir de hoje, não vêm de processo real nenhum (isso já
-    é dito no rodapé da própria página). Isso vira risco de expectativa quebrada no
-    momento em que houver cliente pagante de verdade olhando pra essa tela achando que é
-    o andamento real do processo dele — ou liga isso à RPI de verdade (mais trabalho:
-    associar `numeroProcesso` real e consultar `fetch-rpi.ts` periodicamente), ou tira a
-    promessa de "acompanhamento automático" da conversa comercial até isso existir.
-11. **Landing page (`src/app/page.tsx` → `LandingPage.tsx`) não tem contato direto nem
-    prova social** — de propósito: nenhum número de WhatsApp foi inventado no rodapé
-    (só o CTA pra `/consulta`), e não tem depoimento/estatística de cliente porque
-    ainda não existe nenhum de verdade — inventar isso seria mentira, não decisão de
-    design. Quando houver: (a) adicionar um número de WhatsApp real no rodapé, (b)
-    trocar a seção "Diferente do escritório tradicional" — hoje só argumento — por
-    números reais assim que fizer sentido divulgar.
+10. ~~Painel de acompanhamento ilustrativo~~ — **removido** em 07/10/2026: o passo 4 do
+    fluxo agora é "Contato" (WhatsApp), não mais uma linha do tempo com datas
+    inventadas. Quando existir acompanhamento real (associar `numeroProcesso` ao
+    cliente e consultar `fetch-rpi.ts` periodicamente), ele volta como feature de
+    verdade — não como ilustração.
+11. **Landing page sem prova social** — de propósito: não tem depoimento nem
+    estatística de cliente porque ainda não existe nenhum de verdade — inventar isso
+    seria mentira, não decisão de design. Quando houver, trocar a seção "Diferença na
+    prática" (hoje só argumento) por números reais. O WhatsApp já está ligado (ver
+    `NEXT_PUBLIC_WHATSAPP_NUMBER`), mas o rodapé ainda não exibe o número em texto.
+12. **Confirmar o número do WhatsApp em produção** — o valor atual veio de um número que
+    o dono do produto citou como seu durante os testes; conferir se é mesmo o comercial
+    antes de divulgar a URL (trocar = atualizar a variável e fazer novo deploy).
 
 ## Estrutura
 
@@ -314,7 +341,7 @@ src/
     layout.tsx        — fontes via next/font/google (ver nota abaixo), metadata, shell HTML
     page.tsx           — monta <LandingPage /> — porta de entrada real (marketing)
     consulta/page.tsx   — monta <MarcaSyncApp /> — o assistente interativo em si
-    globals.css         — tokens de design (cores claro/escuro, tipografia) + estilos
+    globals.css         — tokens (paleta branco + pastel, SEM tema escuro) + estilos do app
     icon.svg             — favicon
     api/
       rpi/lookup/
@@ -337,21 +364,24 @@ src/
     rpi-teste/
       page.tsx             — página de prova viva da integração com a RPI
   components/
-    LandingPage.tsx — página de marketing (herói, como funciona, benefícios, preço, FAQ)
+    LandingPage.tsx — página de marketing (Server Component; FAQ em <details>)
+    LandingPage.css — estilos da landing (classes .lp-*; a paleta vem de :root)
     MarcaSyncApp.tsx — orquestrador: estado do wizard (etapa, marca, análise, plano...)
     Stepper.tsx       — navegação entre etapas, com trava de progresso
     ConsultaStep.tsx  — formulário de entrada
     LoadingStep.tsx   — checklist animado da análise
     ResultadoStep.tsx — resumo de risco unificado (real com fallback pra demo) + busca de outro termo
-    PlanoStep.tsx      — setup + monitoramento + upload de logotipo
+    PlanoStep.tsx      — setup + monitoramento + upload de logotipo + botão WhatsApp
     LogoUpload.tsx      — drag-and-drop do logotipo (PNG, até 1000x1000)
-    PainelStep.tsx     — timeline do processo + log de monitoramento da RPI
+    ContatoStep.tsx    — passo final: conversa no WhatsApp + o que acontece depois
   lib/
     fonetica.ts   — algoritmo de colidência fonética + Levenshtein
     ncl.ts         — inferência de classe NCL + rótulos
     data.ts        — base de marcas de exemplo (fallback de colidencia.ts se a busca real falhar)
     analysis.ts    — colidência fonética contra a base de exemplo (usado só como fallback)
     colidencia.ts    — busca unificada: real primeiro, cai pra analysis.ts se falhar
+    whatsapp.ts      — link wa.me com a mensagem montada a partir da consulta
+    planos.ts         — preços (centavos) e formatação em reais
     types.ts          — tipos compartilhados (fonte única — fonetica.ts importa daqui)
     inpi/
       types.ts        — tipos do XML oficial da RPI

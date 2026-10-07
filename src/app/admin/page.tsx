@@ -34,6 +34,7 @@ const STATUS_LABEL: Record<string, string> = {
   consulta: "Em consulta",
   resultado: "Resultado visto",
   plano: "Vendo plano",
+  contato: "Pediu contato",
   protocolado: "Protocolado",
 };
 

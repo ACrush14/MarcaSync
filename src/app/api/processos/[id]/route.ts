@@ -5,13 +5,13 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 interface AtualizarProcessoBody {
-  status?: "consulta" | "resultado" | "plano" | "protocolado";
+  status?: "consulta" | "resultado" | "plano" | "contato" | "protocolado";
   monitoramento?: boolean;
   protocolo?: string;
   numeroProcesso?: string;
 }
 
-const STATUS_VALIDOS = new Set(["consulta", "resultado", "plano", "protocolado"]);
+const STATUS_VALIDOS = new Set(["consulta", "resultado", "plano", "contato", "protocolado"]);
 
 /**
  * PATCH /api/processos/:id

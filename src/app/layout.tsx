@@ -31,9 +31,16 @@ const ibmPlexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "MarcaSync",
+  title: "MarcaSync — Registro de marcas com busca real no INPI",
   description:
-    "Protótipo funcional da plataforma de automação de registro de marcas no INPI.",
+    "Descubra em segundos se sua marca está livre, direto na base do INPI. Preço fechado na tela e atendimento direto, do protocolo ao registro.",
+  openGraph: {
+    title: "MarcaSync — Registro de marcas com busca real no INPI",
+    description:
+      "Descubra em segundos se sua marca está livre, direto na base do INPI. Preço fechado na tela.",
+    locale: "pt_BR",
+    type: "website",
+  },
 };
 
 export default function RootLayout({
