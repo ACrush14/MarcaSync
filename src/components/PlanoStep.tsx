@@ -55,8 +55,12 @@ export default function PlanoStep({
             <li>Aviso por WhatsApp, com explicação do que fazer</li>
           </ul>
           <div className="toggle-row">
-            <span className="t">Contratar monitoramento</span>
+            <label className="t" htmlFor="sw-monitoramento">
+              Contratar monitoramento
+            </label>
             <button
+              id="sw-monitoramento"
+              type="button"
               className={`switch ${monitoramento ? "on" : ""}`}
               role="switch"
               aria-checked={monitoramento}

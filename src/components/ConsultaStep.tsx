@@ -1,6 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
+
+/** Aceita DDD + número (10–11 dígitos), com ou sem o 55 na frente. */
+function whatsappValido(v: string): boolean {
+  const d = v.replace(/\D/g, "");
+  return /^\d{10,11}$/.test(d) || /^55\d{10,11}$/.test(d);
+}
 
 interface ConsultaStepProps {
   nomeCliente: string;
@@ -27,6 +33,9 @@ export default function ConsultaStep({
   const [localMarca, setLocalMarca] = useState(marca);
   const [localDescricao, setLocalDescricao] = useState(descricao);
 
+  const [erroWhatsapp, setErroWhatsapp] = useState(false);
+  const whatsappRef = useRef<HTMLInputElement>(null);
+
   const podeAnalisar = localNome.trim() && localWhatsapp.trim() && localMarca.trim();
 
   return (
@@ -46,7 +55,7 @@ export default function ConsultaStep({
             <input
               type="text"
               id="in-nome"
-              autoComplete="off"
+              autoComplete="name"
               value={localNome}
               onChange={(e) => setLocalNome(e.target.value)}
               placeholder="Ex.: Ana Ramos"
@@ -55,19 +64,32 @@ export default function ConsultaStep({
           <div className="field">
             <label htmlFor="in-whatsapp">Seu WhatsApp</label>
             <input
-              type="text"
+              ref={whatsappRef}
+              type="tel"
+              inputMode="tel"
               id="in-whatsapp"
-              autoComplete="off"
+              autoComplete="tel"
+              aria-invalid={erroWhatsapp}
+              aria-describedby={erroWhatsapp ? "erro-whatsapp" : undefined}
               value={localWhatsapp}
-              onChange={(e) => setLocalWhatsapp(e.target.value)}
+              onChange={(e) => {
+                setLocalWhatsapp(e.target.value);
+                setErroWhatsapp(false);
+              }}
               placeholder="Ex.: (85) 91234-5678"
             />
+            {erroWhatsapp && (
+              <p id="erro-whatsapp" role="alert" style={{ fontSize: 13, color: "var(--risk)", marginTop: 6 }}>
+                Informe o número com DDD, por exemplo (85) 91234-5678.
+              </p>
+            )}
           </div>
           <div className="field">
             <label htmlFor="in-marca">Nome da marca pretendida</label>
             <input
               type="text"
               id="in-marca"
+              autoComplete="off"
               value={localMarca}
               onChange={(e) => setLocalMarca(e.target.value)}
               placeholder="Ex.: Kaza Doce"
@@ -85,14 +107,19 @@ export default function ConsultaStep({
           <button
             className="btn"
             disabled={!podeAnalisar}
-            onClick={() =>
+            onClick={() => {
+              if (!whatsappValido(localWhatsapp)) {
+                setErroWhatsapp(true);
+                whatsappRef.current?.focus();
+                return;
+              }
               onAnalisar({
                 nomeCliente: localNome.trim(),
                 whatsapp: localWhatsapp.trim(),
                 marca: localMarca.trim() || "Marca sem nome",
                 descricao: localDescricao.trim(),
-              })
-            }
+              });
+            }}
           >
             Analisar viabilidade →
           </button>

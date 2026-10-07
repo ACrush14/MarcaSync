@@ -252,6 +252,9 @@
   letter-spacing: -0.01em;
   line-height: 1;
   text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
 }
 .lp-nav {
   display: flex;

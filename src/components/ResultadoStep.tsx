@@ -128,7 +128,7 @@ export default function ResultadoStep({
       </div>
 
       {matches.length > 0 && (
-        <div className="table-wrap" style={{ marginBottom: 24 }}>
+        <div className="table-wrap table-cards" style={{ marginBottom: 24 }}>
           <table>
             <thead>
               <tr>
@@ -155,12 +155,16 @@ export default function ResultadoStep({
                         </>
                       )}
                     </td>
-                    <td>{m.classe ? `NCL ${m.classe}` : "—"}</td>
-                    <td className="tab-nums">{m.pct}%</td>
-                    <td>
+                    <td data-label="Classe">{m.classe ? `NCL ${m.classe}` : "—"}</td>
+                    <td className="tab-nums" data-label="Similaridade">{m.pct}%</td>
+                    <td data-label="Risco">
                       <span className={`pill ${t.cls}`}>{t.label}</span>
                     </td>
-                    {fonte === "real" && <td style={{ fontSize: 12 }}>{m.status ?? "—"}</td>}
+                    {fonte === "real" && (
+                      <td data-label="Status" style={{ fontSize: 12 }}>
+                        {m.status ?? "—"}
+                      </td>
+                    )}
                   </tr>
                 );
               })}

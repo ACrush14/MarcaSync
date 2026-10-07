@@ -52,6 +52,14 @@ export async function POST(request: Request) {
     );
   }
 
+  const digitos = whatsapp.replace(/\D/g, "");
+  if (!/^(55)?\d{10,11}$/.test(digitos)) {
+    return NextResponse.json(
+      { error: "whatsapp inválido — informe DDD + número." },
+      { status: 400 }
+    );
+  }
+
   const cliente = await prisma.cliente.upsert({
     where: { whatsapp },
     update: { nome: nomeCliente, email: body.email?.trim() || undefined },
