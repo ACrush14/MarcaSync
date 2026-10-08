@@ -128,3 +128,17 @@ model IngestaoMarcas {
   total           Int
   fonteAtualizada String? // Last-Modified do arquivo do INPI
 }
+
+model Evento {
+
+  id String @id @default(cuid())
+  sessaoId String
+  nome String
+  pagina String?
+  origem String?
+  dados Json?
+  createdAt DateTime @default(now())
+
+  @@index ([nome, createdAt])
+  @@index([sessaoId])
+}
