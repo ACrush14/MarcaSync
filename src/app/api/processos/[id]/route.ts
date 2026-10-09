@@ -23,10 +23,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const body = (await request.json()) as AtualizarProcessoBody;
 
   if (body.status && !STATUS_VALIDOS.has(body.status)) {
-    return NextResponse.json(
-      { error: `status inválido: ${body.status}` },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: `status inválido: ${body.status}` }, { status: 400 });
   }
 
   try {

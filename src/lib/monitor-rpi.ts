@@ -32,11 +32,19 @@ function somarDias(d: Date, dias: number): Date {
  *
  * Só baixa o .zip de ~65 MB quando existe ao menos um processo a verificar.
  */
-export async function rodarMonitoramento(opts: { forcar?: boolean } = {}): Promise<ResultadoMonitoramento> {
+export async function rodarMonitoramento(
+  opts: { forcar?: boolean } = {}
+): Promise<ResultadoMonitoramento> {
   const edicao = await descobrirEdicaoMaisRecente();
 
   if (!opts.forcar && (await prisma.leituraRpi.findUnique({ where: { edicao: edicao.numero } }))) {
-    return { edicao: edicao.numero, situacao: "ja-lida", verificados: 0, encontrados: 0, alertasNovos: 0 };
+    return {
+      edicao: edicao.numero,
+      situacao: "ja-lida",
+      verificados: 0,
+      encontrados: 0,
+      alertasNovos: 0,
+    };
   }
 
   const monitorados = await prisma.processo.findMany({
@@ -51,7 +59,13 @@ export async function rodarMonitoramento(opts: { forcar?: boolean } = {}): Promi
   }
 
   if (porNumero.size === 0) {
-    return { edicao: edicao.numero, situacao: "sem-processos", verificados: 0, encontrados: 0, alertasNovos: 0 };
+    return {
+      edicao: edicao.numero,
+      situacao: "sem-processos",
+      verificados: 0,
+      encontrados: 0,
+      alertasNovos: 0,
+    };
   }
 
   const { encontrados } = await buscarProcessosNaEdicao(edicao.numero, [...porNumero.keys()]);
@@ -74,7 +88,9 @@ export async function rodarMonitoramento(opts: { forcar?: boolean } = {}): Promi
     )
   );
 
-  const criados = linhas.length ? await prisma.alerta.createMany({ data: linhas, skipDuplicates: true }) : { count: 0 };
+  const criados = linhas.length
+    ? await prisma.alerta.createMany({ data: linhas, skipDuplicates: true })
+    : { count: 0 };
 
   await prisma.leituraRpi.upsert({
     where: { edicao: edicao.numero },

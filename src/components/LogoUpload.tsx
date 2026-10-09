@@ -43,7 +43,8 @@ export default function LogoUpload({ processoId }: LogoUploadProps) {
     const objectUrl = URL.createObjectURL(file);
     const dimensaoOk = await new Promise<boolean>((resolve) => {
       const img = new window.Image();
-      img.onload = () => resolve(img.naturalWidth <= MAX_DIMENSAO && img.naturalHeight <= MAX_DIMENSAO);
+      img.onload = () =>
+        resolve(img.naturalWidth <= MAX_DIMENSAO && img.naturalHeight <= MAX_DIMENSAO);
       img.onerror = () => resolve(false);
       img.src = objectUrl;
     });
@@ -90,8 +91,8 @@ export default function LogoUpload({ processoId }: LogoUploadProps) {
     <div className="logo-upload-head">
       <h3>Logotipo da marca (opcional)</h3>
       <p className="sub" style={{ fontSize: 12.5, color: "var(--ink-dim)", marginBottom: 12 }}>
-        Só se sua marca tiver um logotipo (marca mista) — nome + imagem, não só nome.
-        PNG, até {MAX_DIMENSAO}×{MAX_DIMENSAO}px.
+        Só se sua marca tiver um logotipo (marca mista) — nome + imagem, não só nome. PNG, até{" "}
+        {MAX_DIMENSAO}×{MAX_DIMENSAO}px.
       </p>
 
       {preview ? (
@@ -100,7 +101,13 @@ export default function LogoUpload({ processoId }: LogoUploadProps) {
           <img src={preview} alt="Prévia do logotipo enviado" />
           <div>
             <div style={{ fontSize: 13, fontWeight: 600 }}>
-              {enviando ? "Enviando…" : enviado ? "Logotipo salvo" : erro ? "Não deu certo" : "Selecionado"}
+              {enviando
+                ? "Enviando…"
+                : enviado
+                  ? "Logotipo salvo"
+                  : erro
+                    ? "Não deu certo"
+                    : "Selecionado"}
             </div>
             <button
               className="btn ghost"
@@ -129,7 +136,9 @@ export default function LogoUpload({ processoId }: LogoUploadProps) {
           onDrop={onDrop}
         >
           <div>Arraste o PNG aqui, ou clique pra escolher</div>
-          <div className="hint">até {MAX_DIMENSAO}×{MAX_DIMENSAO}px</div>
+          <div className="hint">
+            até {MAX_DIMENSAO}×{MAX_DIMENSAO}px
+          </div>
           <input
             ref={inputRef}
             type="file"

@@ -23,10 +23,9 @@ export default function PlanoStep({
       <div className="panel-head">
         <h2>Plano de registro</h2>
         <p className="help">
-          Sem &quot;fale com um consultor&quot; — o valor abaixo é o valor final, sem
-          orçamento por telefone. Setup cobre a análise já feita, a petição e o
-          protocolo. O monitoramento é opcional e recorrente — desligue para conduzir
-          o acompanhamento manualmente.
+          Sem &quot;fale com um consultor&quot; — o valor abaixo é o valor final, sem orçamento por
+          telefone. Setup cobre a análise já feita, a petição e o protocolo. O monitoramento é
+          opcional e recorrente — desligue para conduzir o acompanhamento manualmente.
         </p>
       </div>
 
@@ -109,8 +108,8 @@ export default function PlanoStep({
         )}
       </div>
       <p className="sim-note">
-        Preço fechado desde a Consulta — sem taxa extra depois, sem &quot;isso não
-        estava incluso&quot;.
+        Preço fechado desde a Consulta — sem taxa extra depois, sem &quot;isso não estava
+        incluso&quot;.
       </p>
     </>
   );

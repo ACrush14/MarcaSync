@@ -24,9 +24,7 @@ export default function MarcaSyncApp() {
   const [whatsapp, setWhatsapp] = useState("");
   const [marca, setMarca] = useState("");
   const [descricao, setDescricao] = useState("");
-  const [colidencia, setColidencia] = useState<ColidenciaResultado | null>(
-    null,
-  );
+  const [colidencia, setColidencia] = useState<ColidenciaResultado | null>(null);
   const [monitoramento, setMonitoramento] = useState(true);
   // true quando o cliente chegou ao contato passando pelo Plano (muda a mensagem do WhatsApp)
   const [planoEscolhido, setPlanoEscolhido] = useState(false);
@@ -40,9 +38,7 @@ export default function MarcaSyncApp() {
   // A busca (real, com fallback pra demo) começa assim que o usuário clica
   // "Analisar", em paralelo com a animação do LoadingStep — não espera a
   // animação acabar pra só então começar a buscar.
-  const colidenciaPromiseRef = useRef<Promise<ColidenciaResultado> | null>(
-    null,
-  );
+  const colidenciaPromiseRef = useRef<Promise<ColidenciaResultado> | null>(null);
 
   // Cobranças já criadas pra este processo: o cliente pode voltar ao Plano
   // pelo Stepper e confirmar de novo — sem isso duplicaria o registro.
@@ -70,9 +66,7 @@ export default function MarcaSyncApp() {
       marca: dados.marca,
       descricao: dados.descricao,
     });
-    colidenciaPromiseRef.current = fetch(`/api/colidencia?${params}`).then(
-      (r) => r.json(),
-    );
+    colidenciaPromiseRef.current = fetch(`/api/colidencia?${params}`).then((r) => r.json());
 
     setPhase("carregando");
   }
@@ -82,9 +76,9 @@ export default function MarcaSyncApp() {
     try {
       resultado = colidenciaPromiseRef.current
         ? await colidenciaPromiseRef.current
-        : await fetch(
-            `/api/colidencia?${new URLSearchParams({ marca, descricao })}`,
-          ).then((r) => r.json());
+        : await fetch(`/api/colidencia?${new URLSearchParams({ marca, descricao })}`).then((r) =>
+            r.json()
+          );
     } catch {
       setErroSalvar("Falha ao buscar a colidência (rede indisponível).");
       setPhase("consulta");
@@ -112,14 +106,11 @@ export default function MarcaSyncApp() {
         }),
       });
       const body = await res.json();
-      if (!res.ok)
-        throw new Error(body?.error ?? "Falha ao salvar o processo.");
+      if (!res.ok) throw new Error(body?.error ?? "Falha ao salvar o processo.");
       setProcessoId(body.processo.id);
       setErroSalvar(null);
     } catch (e) {
-      setErroSalvar(
-        e instanceof Error ? e.message : "Falha ao salvar o processo no banco.",
-      );
+      setErroSalvar(e instanceof Error ? e.message : "Falha ao salvar o processo no banco.");
     }
   }
 
@@ -155,17 +146,12 @@ export default function MarcaSyncApp() {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(
-          comPlano
-            ? { status: "contato", monitoramento }
-            : { status: "contato" },
+          comPlano ? { status: "contato", monitoramento } : { status: "contato" }
         ),
       });
 
       if (comPlano) {
-        const criar = (
-          tipo: "setup" | "monitoramento",
-          valorCentavos: number,
-        ) =>
+        const criar = (tipo: "setup" | "monitoramento", valorCentavos: number) =>
           fetch(`/api/processos/${processoId}/pagamentos`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -218,12 +204,8 @@ export default function MarcaSyncApp() {
       <div className="topbar">
         <div className="brand">
           <span className="mark">MarcaSync</span>
-          <span className="tag">
-            registro de marcas · resultado em segundos, direto do INPI
-          </span>
-          <span className="value-badge">
-            preço fechado · sem &quot;fale conosco&quot;
-          </span>
+          <span className="tag">registro de marcas · resultado em segundos, direto do INPI</span>
+          <span className="value-badge">preço fechado · sem &quot;fale conosco&quot;</span>
         </div>
         <div className="session-chip">
           <div className="avatar">
@@ -242,16 +224,11 @@ export default function MarcaSyncApp() {
 
       <main className="panel">
         {erroSalvar && (
-          <div
-            className="helpbox"
-            style={{ borderColor: "var(--risk)", marginBottom: 20 }}
-          >
-            <h3 style={{ color: "var(--risk)" }}>
-              Não consegui salvar no banco
-            </h3>
+          <div className="helpbox" style={{ borderColor: "var(--risk)", marginBottom: 20 }}>
+            <h3 style={{ color: "var(--risk)" }}>Não consegui salvar no banco</h3>
             <p style={{ fontSize: 13, color: "var(--ink-dim)" }}>
-              {erroSalvar} O wizard continua funcionando, mas esse passo não
-              ficou registrado no caderno de anotações.
+              {erroSalvar} O wizard continua funcionando, mas esse passo não ficou registrado no
+              caderno de anotações.
             </p>
           </div>
         )}
@@ -265,9 +242,7 @@ export default function MarcaSyncApp() {
             onAnalisar={handleAnalisar}
           />
         )}
-        {phase === "carregando" && (
-          <LoadingStep marca={marca} onDone={handleLoadingDone} />
-        )}
+        {phase === "carregando" && <LoadingStep marca={marca} onDone={handleLoadingDone} />}
         {phase === "resultado" && colidencia && (
           <ResultadoStep
             descricao={descricao}
@@ -303,8 +278,8 @@ export default function MarcaSyncApp() {
       </main>
 
       <p className="footer-note">
-        A busca de anterioridade consulta a base real do INPI e indica risco de
-        colisão; a decisão final é sempre do INPI.
+        A busca de anterioridade consulta a base real do INPI e indica risco de colisão; a decisão
+        final é sempre do INPI.
       </p>
     </div>
   );

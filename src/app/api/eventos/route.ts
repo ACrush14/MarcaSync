@@ -28,26 +28,16 @@ export async function POST(request: Request) {
   try {
     body = (await request.json()) as EventoBody;
   } catch {
-    return NextResponse.json(
-      { error: "Corpo inválido: envie um JSON." },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: "Corpo inválido: envie um JSON." }, { status: 400 });
   }
 
   const { sessaoId, nome, pagina, origem, dados } = body;
 
-  if (
-    typeof sessaoId !== "string" ||
-    sessaoId.trim() === "" ||
-    sessaoId.length > 64
-  ) {
+  if (typeof sessaoId !== "string" || sessaoId.trim() === "" || sessaoId.length > 64) {
     return NextResponse.json({ error: "sessaoId inválido." }, { status: 400 });
   }
   if (typeof nome !== "string" || !NOMES_VALIDOS.has(nome)) {
-    return NextResponse.json(
-      { error: "nome de evento inválido. " },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: "nome de evento inválido. " }, { status: 400 });
   }
 
   const dadosValidos =
@@ -67,10 +57,7 @@ export async function POST(request: Request) {
       },
     });
   } catch {
-    return NextResponse.json(
-      { error: "Não foi possível registrar o evento." },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Não foi possível registrar o evento." }, { status: 500 });
   }
   return NextResponse.json({ ok: true }, { status: 201 });
 }

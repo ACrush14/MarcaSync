@@ -58,7 +58,8 @@ export async function verificarRpi(): Promise<VerificacaoSaude> {
       return {
         ok: false,
         latenciaMs,
-        detalhe: "respondeu 200, mas nenhum link RM<edição>.zip encontrado — schema pode ter mudado",
+        detalhe:
+          "respondeu 200, mas nenhum link RM<edição>.zip encontrado — schema pode ter mudado",
       };
     }
     return { ok: true, latenciaMs };
@@ -99,7 +100,8 @@ export async function verificarBusca(): Promise<VerificacaoSaude> {
       return {
         ok: false,
         latenciaMs,
-        detalhe: "respondeu 200, mas o corpo não tem o formato esperado (results[]/totalResults) — schema pode ter mudado",
+        detalhe:
+          "respondeu 200, mas o corpo não tem o formato esperado (results[]/totalResults) — schema pode ter mudado",
       };
     }
     return { ok: true, latenciaMs };

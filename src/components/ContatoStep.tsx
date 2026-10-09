@@ -31,9 +31,8 @@ export default function ContatoStep({
       <div className="panel-head">
         <h2>Falta só a nossa conversa{primeiroNome ? `, ${primeiroNome}` : ""}</h2>
         <p className="help">
-          Sua consulta da marca &quot;{marca}&quot; foi registrada. Agora é comigo: falo com
-          você pelo WhatsApp para revisar o resultado, combinar o pagamento e seguir com o
-          registro.
+          Sua consulta da marca &quot;{marca}&quot; foi registrada. Agora é comigo: falo com você
+          pelo WhatsApp para revisar o resultado, combinar o pagamento e seguir com o registro.
         </p>
       </div>
 
@@ -66,8 +65,8 @@ export default function ContatoStep({
             <b>Combinamos o pagamento</b> por PIX — eu confirmo à mão, assim que você avisar.
           </li>
           <li>
-            <b>Reúno o que falta</b> (dados do titular, logotipo se tiver) e protocolo o pedido
-            no INPI.
+            <b>Reúno o que falta</b> (dados do titular, logotipo se tiver) e protocolo o pedido no
+            INPI.
           </li>
           <li>
             <b>Te aviso de cada novidade</b> do processo, até a marca sair.

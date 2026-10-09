@@ -64,10 +64,10 @@ export default function RpiTestePage() {
           <h2>Consulta real à RPI</h2>
           <p className="help">
             Isto não é o fluxo de demonstração — bate direto em{" "}
-            <code className="mono">revistas.inpi.gov.br</code> (a Revista da Propriedade
-            Industrial oficial) e devolve os despachos publicados de verdade para o(s)
-            número(s) de processo informado(s). Existe porque a integração precisava ser
-            provada com dado real, não simulado.
+            <code className="mono">revistas.inpi.gov.br</code> (a Revista da Propriedade Industrial
+            oficial) e devolve os despachos publicados de verdade para o(s) número(s) de processo
+            informado(s). Existe porque a integração precisava ser provada com dado real, não
+            simulado.
           </p>
         </div>
 
@@ -104,8 +104,8 @@ export default function RpiTestePage() {
 
             {resultado.encontrados.length === 0 && (
               <p style={{ fontSize: 13, color: "var(--ink-dim)" }}>
-                Nenhum dos números buscados aparece nesta edição — o que é esperado se o
-                processo não teve nenhuma mudança de status nesta semana.
+                Nenhum dos números buscados aparece nesta edição — o que é esperado se o processo
+                não teve nenhuma mudança de status nesta semana.
               </p>
             )}
 

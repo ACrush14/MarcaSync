@@ -24,11 +24,7 @@ const stagger = (i: number) => ({ "--i": i }) as CSSProperties;
 
 type IconProps = { size?: number; stroke?: number };
 
-function Icon({
-  children,
-  size = 20,
-  stroke = 2,
-}: IconProps & { children: ReactNode }) {
+function Icon({ children, size = 20, stroke = 2 }: IconProps & { children: ReactNode }) {
   return (
     <svg
       width={size}
@@ -148,15 +144,13 @@ const PASSOS = [
     icon: <IconTag />,
     tone: "peach",
     titulo: "Veja o preço",
-    texto:
-      "Setup e monitoramento aparecem fechados na tela, antes de qualquer conversa.",
+    texto: "Setup e monitoramento aparecem fechados na tela, antes de qualquer conversa.",
   },
   {
     icon: <IconChat />,
     tone: "lav",
     titulo: "Fale comigo",
-    texto:
-      "Reviso o resultado com você no WhatsApp e tiro as dúvidas antes de seguir.",
+    texto: "Reviso o resultado com você no WhatsApp e tiro as dúvidas antes de seguir.",
   },
   {
     icon: <IconShield />,
@@ -171,15 +165,13 @@ const BENEFICIOS = [
     icon: <IconLock />,
     tone: "mint",
     titulo: "Exclusividade nacional",
-    texto:
-      "Só você pode usar a marca no ramo registrado, em todo o território brasileiro.",
+    texto: "Só você pode usar a marca no ramo registrado, em todo o território brasileiro.",
   },
   {
     icon: <IconShield />,
     tone: "sky",
     titulo: "Proteção contra cópias",
-    texto:
-      "Base legal para agir contra quem usar seu nome ou se aproveitar da sua reputação.",
+    texto: "Base legal para agir contra quem usar seu nome ou se aproveitar da sua reputação.",
   },
   {
     icon: <IconTrend />,
@@ -192,8 +184,7 @@ const BENEFICIOS = [
     icon: <IconBuilding />,
     tone: "lav",
     titulo: "Segurança para crescer",
-    texto:
-      "Sem o risco de construir uma marca por anos e ter que trocar de nome depois.",
+    texto: "Sem o risco de construir uma marca por anos e ter que trocar de nome depois.",
   },
 ];
 
@@ -257,26 +248,19 @@ export default function LandingPage() {
                 Busca em tempo real na base do INPI
               </p>
               <h1 id="hero-titulo" style={stagger(1)}>
-                Sua marca está livre?{" "}
-                <span className="lp-hl">Descubra em segundos.</span>
+                Sua marca está livre? <span className="lp-hl">Descubra em segundos.</span>
               </h1>
               <p className="lp-lede" style={stagger(2)}>
-                Veja o risco de colisão antes de investir no registro. O preço
-                aparece fechado na tela e, depois, você fala direto comigo pelo
-                WhatsApp — do protocolo até a marca registrada.
+                Veja o risco de colisão antes de investir no registro. O preço aparece fechado na
+                tela e, depois, você fala direto comigo pelo WhatsApp — do protocolo até a marca
+                registrada.
               </p>
               <div className="lp-hero-ctas" style={stagger(3)}>
-                <Link
-                  href="/consulta"
-                  className="lp-btn lp-btn-primary lp-btn-lg"
-                >
+                <Link href="/consulta" className="lp-btn lp-btn-primary lp-btn-lg">
                   Analisar minha marca grátis
                   <IconArrowRight size={18} />
                 </Link>
-                <a
-                  href="#como-funciona"
-                  className="lp-btn lp-btn-ghost lp-btn-lg"
-                >
+                <a href="#como-funciona" className="lp-btn lp-btn-ghost lp-btn-lg">
                   Ver como funciona
                   <IconArrowDown size={18} />
                 </a>
@@ -289,8 +273,7 @@ export default function LandingPage() {
                   <IconCheck size={16} stroke={1.5} /> Resultado em segundos
                 </li>
                 <li>
-                  <IconCheck size={16} stroke={1.5} /> Preço fechado, sem
-                  orçamento
+                  <IconCheck size={16} stroke={1.5} /> Preço fechado, sem orçamento
                 </li>
               </ul>
             </div>
@@ -342,20 +325,14 @@ export default function LandingPage() {
                 </div>
               </div>
 
-              <div
-                className="lp-float lp-float-a lp-tone-lav"
-                aria-hidden="true"
-              >
+              <div className="lp-float lp-float-a lp-tone-lav" aria-hidden="true">
                 <IconLayers size={18} />
                 <div>
                   <b>Classe NCL 30</b>
                   <span>Padaria e confeitaria</span>
                 </div>
               </div>
-              <div
-                className="lp-float lp-float-b lp-tone-mint"
-                aria-hidden="true"
-              >
+              <div className="lp-float lp-float-b lp-tone-mint" aria-hidden="true">
                 <IconTag size={18} />
                 <div>
                   <b>R$ 499</b>
@@ -369,10 +346,7 @@ export default function LandingPage() {
         </section>
 
         {/* ===== Fontes ===== */}
-        <section
-          className="lp-sources"
-          aria-label="Fontes oficiais consultadas"
-        >
+        <section className="lp-sources" aria-label="Fontes oficiais consultadas">
           <div className="lp-container lp-sources-inner">
             <p>Consultamos fontes oficiais:</p>
             <ul>
@@ -390,17 +364,11 @@ export default function LandingPage() {
         </section>
 
         {/* ===== Como funciona ===== */}
-        <section
-          id="como-funciona"
-          className="lp-section"
-          aria-labelledby="t-como"
-        >
+        <section id="como-funciona" className="lp-section" aria-labelledby="t-como">
           <div className="lp-container">
             <div className="lp-section-head">
               <p className="lp-kicker">Como funciona</p>
-              <h2 id="t-como">
-                Do primeiro clique à marca registrada, em quatro passos
-              </h2>
+              <h2 id="t-como">Do primeiro clique à marca registrada, em quatro passos</h2>
             </div>
             <ol className="lp-steps">
               {PASSOS.map((p, i) => (
@@ -438,9 +406,8 @@ export default function LandingPage() {
                 </span>
                 <h3>Uma busca que entende o som</h3>
                 <p>
-                  &ldquo;Kazamarela&rdquo; e &ldquo;Casa Amarela&rdquo; são
-                  marcas diferentes no papel e iguais no ouvido. A busca compara
-                  como o nome soa, não só como se escreve.
+                  &ldquo;Kazamarela&rdquo; e &ldquo;Casa Amarela&rdquo; são marcas diferentes no
+                  papel e iguais no ouvido. A busca compara como o nome soa, não só como se escreve.
                 </p>
                 <div className="lp-visual lp-visual-sound" aria-hidden="true">
                   <span className="lp-chip">kazamarela</span>
@@ -456,8 +423,8 @@ export default function LandingPage() {
                 </span>
                 <h3>Classe de Nice sugerida</h3>
                 <p>
-                  A partir da descrição do que você vende, sugerimos a classe —
-                  e eu confirmo com você antes de protocolar.
+                  A partir da descrição do que você vende, sugerimos a classe — e eu confirmo com
+                  você antes de protocolar.
                 </p>
                 <div className="lp-visual" aria-hidden="true">
                   <span className="lp-pill lp-pill-mint">NCL 30</span>
@@ -471,8 +438,8 @@ export default function LandingPage() {
                 </span>
                 <h3>Logotipo, se tiver</h3>
                 <p>
-                  Marca com imagem? Arraste o PNG (até 1000×1000 px) no passo do
-                  plano. Só nome? Nem precisa.
+                  Marca com imagem? Arraste o PNG (até 1000×1000 px) no passo do plano. Só nome? Nem
+                  precisa.
                 </p>
                 <div className="lp-visual lp-visual-drop" aria-hidden="true">
                   Arraste o PNG aqui
@@ -485,9 +452,8 @@ export default function LandingPage() {
                 </span>
                 <h3>Acompanhamento depois do protocolo</h3>
                 <p>
-                  A RPI, a revista oficial do INPI, sai toda terça. Acompanho o
-                  seu processo nela e aviso sobre oposição de terceiros e prazos
-                  importantes.
+                  A RPI, a revista oficial do INPI, sai toda terça. Acompanho o seu processo nela e
+                  aviso sobre oposição de terceiros e prazos importantes.
                 </p>
               </article>
             </div>
@@ -541,19 +507,13 @@ export default function LandingPage() {
         </section>
 
         {/* ===== Benefícios ===== */}
-        <section
-          className="lp-section lp-band lp-tone-peach"
-          aria-labelledby="t-benef"
-        >
+        <section className="lp-section lp-band lp-tone-peach" aria-labelledby="t-benef">
           <div className="lp-container lp-split">
             <div className="lp-section-head lp-split-head">
               <p className="lp-kicker">Por que registrar</p>
-              <h2 id="t-benef">
-                Sua marca é o ativo que o concorrente não pode copiar
-              </h2>
+              <h2 id="t-benef">Sua marca é o ativo que o concorrente não pode copiar</h2>
               <p className="lp-section-lede">
-                Sem registro, o nome que você construiu pode ser de quem
-                protocolar primeiro.
+                Sem registro, o nome que você construiu pode ser de quem protocolar primeiro.
               </p>
             </div>
             <ul className="lp-benefits">
@@ -604,10 +564,7 @@ export default function LandingPage() {
                     Protocolo do pedido no INPI
                   </li>
                 </ul>
-                <Link
-                  href="/consulta"
-                  className="lp-btn lp-btn-primary lp-btn-lg lp-btn-block"
-                >
+                <Link href="/consulta" className="lp-btn lp-btn-primary lp-btn-lg lp-btn-block">
                   Ver se minha marca está livre
                   <IconArrowRight size={18} />
                 </Link>
@@ -643,11 +600,7 @@ export default function LandingPage() {
         </section>
 
         {/* ===== FAQ ===== */}
-        <section
-          id="duvidas"
-          className="lp-section lp-band lp-tone-sky"
-          aria-labelledby="t-faq"
-        >
+        <section id="duvidas" className="lp-section lp-band lp-tone-sky" aria-labelledby="t-faq">
           <div className="lp-container lp-split lp-split-faq">
             <div className="lp-section-head lp-split-head">
               <p className="lp-kicker">Dúvidas</p>
@@ -689,10 +642,7 @@ export default function LandingPage() {
         <div className="lp-container lp-footer-inner">
           <div className="lp-footer-brand">
             <span className="lp-brand">MarcaSync</span>
-            <p>
-              Busca de anterioridade e registro de marcas junto ao INPI, com
-              preço fechado.
-            </p>
+            <p>Busca de anterioridade e registro de marcas junto ao INPI, com preço fechado.</p>
           </div>
           <nav className="lp-footer-nav" aria-label="Rodapé">
             <a href="#como-funciona">Como funciona</a>
@@ -701,9 +651,8 @@ export default function LandingPage() {
             <Link href="/consulta">Começar consulta</Link>
           </nav>
           <p className="lp-footer-legal">
-            O MarcaSync é um serviço independente, sem vínculo com o INPI. A
-            busca indica risco de colisão a partir de dados públicos; a decisão
-            final é sempre do INPI.
+            O MarcaSync é um serviço independente, sem vínculo com o INPI. A busca indica risco de
+            colisão a partir de dados públicos; a decisão final é sempre do INPI.
             <br />© 2026 MarcaSync
           </p>
         </div>

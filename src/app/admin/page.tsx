@@ -36,7 +36,11 @@ interface Alerta {
   tipo: string;
   prazoAte: string | null;
   avisadoEm: string | null;
-  processo: { marca: string; numeroProcesso: string | null; cliente: { nome: string; whatsapp: string } };
+  processo: {
+    marca: string;
+    numeroProcesso: string | null;
+    cliente: { nome: string; whatsapp: string };
+  };
 }
 
 interface UltimaLeitura {
@@ -90,7 +94,10 @@ export default function AdminPage() {
 
   async function carregar() {
     try {
-      const [res, resAlertas] = await Promise.all([fetch("/api/processos"), fetch("/api/admin/alertas")]);
+      const [res, resAlertas] = await Promise.all([
+        fetch("/api/processos"),
+        fetch("/api/admin/alertas"),
+      ]);
       const body = await res.json();
       if (!res.ok) throw new Error(body?.error ?? "Falha ao carregar.");
       setProcessos(body.processos);
@@ -160,7 +167,10 @@ export default function AdminPage() {
     let cancelado = false;
     (async () => {
       try {
-        const [res, resAlertas] = await Promise.all([fetch("/api/processos"), fetch("/api/admin/alertas")]);
+        const [res, resAlertas] = await Promise.all([
+          fetch("/api/processos"),
+          fetch("/api/admin/alertas"),
+        ]);
         const body = await res.json();
         if (!res.ok) throw new Error(body?.error ?? "Falha ao carregar.");
         const a = resAlertas.ok ? await resAlertas.json() : null;
@@ -214,9 +224,8 @@ export default function AdminPage() {
         <div className="panel-head">
           <h2>Processos</h2>
           <p className="help">
-            Sem tela pública, sem login — só pra você acompanhar quem consultou, em que
-            passo está, e marcar pagamento como confirmado depois que o cliente avisar
-            por WhatsApp.
+            Sem tela pública, sem login — só pra você acompanhar quem consultou, em que passo está,
+            e marcar pagamento como confirmado depois que o cliente avisar por WhatsApp.
           </p>
         </div>
 
@@ -228,11 +237,24 @@ export default function AdminPage() {
         )}
 
         <section aria-labelledby="alertas-titulo" style={{ marginBottom: 28 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 8 }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+              flexWrap: "wrap",
+              marginBottom: 8,
+            }}
+          >
             <h3 id="alertas-titulo" style={{ margin: 0 }}>
               Alertas da RPI
             </h3>
-            <button className="btn ghost" style={{ minHeight: 40, padding: "10px 14px", fontSize: 13 }} disabled={verificando} onClick={verificarRpi}>
+            <button
+              className="btn ghost"
+              style={{ minHeight: 40, padding: "10px 14px", fontSize: 13 }}
+              disabled={verificando}
+              onClick={verificarRpi}
+            >
               {verificando ? "Lendo a RPI… (pode levar um minuto)" : "Verificar RPI agora"}
             </button>
           </div>
@@ -240,7 +262,8 @@ export default function AdminPage() {
             {ultimaLeitura
               ? `Última leitura automática: RPI ${ultimaLeitura.edicao}, em ${new Date(ultimaLeitura.lidaEm).toLocaleString("pt-BR")} (${ultimaLeitura.verificados} processo(s) verificado(s)). `
               : "Nenhuma edição lida ainda. "}
-            A leitura roda sozinha todo dia; só entram processos com monitoramento ligado e nº do INPI preenchido abaixo.
+            A leitura roda sozinha todo dia; só entram processos com monitoramento ligado e nº do
+            INPI preenchido abaixo.
           </p>
           <div role="status" aria-live="polite">
             {aviso && <p style={{ fontSize: 13, marginBottom: 12 }}>{aviso}</p>}
@@ -252,8 +275,14 @@ export default function AdminPage() {
               {alertas.map((a) => {
                 const href = linkParaCliente(a.processo.cliente.whatsapp, mensagemAlerta(a));
                 return (
-                  <li key={a.id} className="helpbox" style={{ display: "grid", gap: 6, opacity: a.avisadoEm ? 0.65 : 1 }}>
-                    <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                  <li
+                    key={a.id}
+                    className="helpbox"
+                    style={{ display: "grid", gap: 6, opacity: a.avisadoEm ? 0.65 : 1 }}
+                  >
+                    <div
+                      style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}
+                    >
                       <strong>{a.processo.marca}</strong>
                       <span style={{ fontSize: 12.5, color: "var(--ink-dim)" }}>
                         {a.processo.cliente.nome} · RPI {a.edicao}
@@ -270,7 +299,8 @@ export default function AdminPage() {
                     </p>
                     {a.prazoAte && (
                       <p style={{ fontSize: 12.5, color: "var(--ink-dim)", margin: 0 }}>
-                        Prazo estimado (60 dias da publicação): <strong>{fmtData(a.prazoAte)}</strong> — confira na RPI.
+                        Prazo estimado (60 dias da publicação):{" "}
+                        <strong>{fmtData(a.prazoAte)}</strong> — confira na RPI.
                       </p>
                     )}
                     {!a.avisadoEm && (
@@ -287,7 +317,11 @@ export default function AdminPage() {
                             Avisar no WhatsApp →
                           </a>
                         )}
-                        <button className="btn ghost" style={{ minHeight: 40, padding: "10px 14px", fontSize: 13 }} onClick={() => marcarAvisado(a.id)}>
+                        <button
+                          className="btn ghost"
+                          style={{ minHeight: 40, padding: "10px 14px", fontSize: 13 }}
+                          onClick={() => marcarAvisado(a.id)}
+                        >
                           Marcar como avisado
                         </button>
                       </div>
@@ -305,8 +339,8 @@ export default function AdminPage() {
 
         {processos?.length === 0 && (
           <p style={{ fontSize: 13, color: "var(--ink-dim)" }}>
-            Nenhum processo ainda — assim que alguém terminar uma análise no protótipo,
-            aparece aqui.
+            Nenhum processo ainda — assim que alguém terminar uma análise no protótipo, aparece
+            aqui.
           </p>
         )}
 
@@ -339,7 +373,10 @@ export default function AdminPage() {
                       {p.protocolo && (
                         <>
                           <br />
-                          <span className="mono" style={{ fontSize: 11.5, color: "var(--ink-faint)" }}>
+                          <span
+                            className="mono"
+                            style={{ fontSize: 11.5, color: "var(--ink-faint)" }}
+                          >
                             protocolo {p.protocolo}
                           </span>
                         </>
@@ -395,7 +432,9 @@ export default function AdminPage() {
                         )}
                       </div>
                       {p.monitoramento ? (
-                        <span className="pill safe" style={{ marginTop: 4 }}>monitorando</span>
+                        <span className="pill safe" style={{ marginTop: 4 }}>
+                          monitorando
+                        </span>
                       ) : null}
                     </td>
                     <td className="tab-nums">{p.riscoPct != null ? `${p.riscoPct}%` : "—"}</td>
@@ -409,7 +448,8 @@ export default function AdminPage() {
                           style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}
                         >
                           <span style={{ fontSize: 12.5 }}>
-                            {pg.tipo === "setup" ? "Setup" : "Monitoramento"} — {fmtReais(pg.valorCentavos)}
+                            {pg.tipo === "setup" ? "Setup" : "Monitoramento"} —{" "}
+                            {fmtReais(pg.valorCentavos)}
                           </span>
                           {pg.status === "confirmado" ? (
                             <span className="pill safe">confirmado</span>
