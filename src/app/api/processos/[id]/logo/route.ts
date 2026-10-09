@@ -40,7 +40,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   const file = formData.get("logo");
   if (!(file instanceof File)) {
-    return NextResponse.json({ error: "Campo \"logo\" ausente ou inválido." }, { status: 400 });
+    return NextResponse.json({ error: 'Campo "logo" ausente ou inválido.' }, { status: 400 });
   }
   if (file.type !== "image/png") {
     return NextResponse.json({ error: "Só aceitamos PNG." }, { status: 400 });
@@ -56,7 +56,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   }
   if (dimensao.width > MAX_DIMENSAO || dimensao.height > MAX_DIMENSAO) {
     return NextResponse.json(
-      { error: `Imagem ${dimensao.width}×${dimensao.height}px — máximo ${MAX_DIMENSAO}×${MAX_DIMENSAO}px.` },
+      {
+        error: `Imagem ${dimensao.width}×${dimensao.height}px — máximo ${MAX_DIMENSAO}×${MAX_DIMENSAO}px.`,
+      },
       { status: 400 }
     );
   }

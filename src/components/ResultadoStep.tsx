@@ -56,8 +56,8 @@ export default function ResultadoStep({
         <h2>Resultado da análise</h2>
         <p className="help">
           Busca de anterioridade de &quot;{termo}&quot; contra a{" "}
-          {fonte === "real" ? "base real do INPI" : "base de demonstração"} e inferência de
-          classe a partir da descrição informada.
+          {fonte === "real" ? "base real do INPI" : "base de demonstração"} e inferência de classe a
+          partir da descrição informada.
           {baseLocal && (
             <>
               {" "}
@@ -149,14 +149,19 @@ export default function ResultadoStep({
                       {m.numeroProcesso && (
                         <>
                           <br />
-                          <span className="mono" style={{ fontSize: 11, color: "var(--ink-faint)" }}>
+                          <span
+                            className="mono"
+                            style={{ fontSize: 11, color: "var(--ink-faint)" }}
+                          >
                             processo {m.numeroProcesso}
                           </span>
                         </>
                       )}
                     </td>
                     <td data-label="Classe">{m.classe ? `NCL ${m.classe}` : "—"}</td>
-                    <td className="tab-nums" data-label="Similaridade">{m.pct}%</td>
+                    <td className="tab-nums" data-label="Similaridade">
+                      {m.pct}%
+                    </td>
                     <td data-label="Risco">
                       <span className={`pill ${t.cls}`}>{t.label}</span>
                     </td>
@@ -176,8 +181,8 @@ export default function ResultadoStep({
       <div className="wave-section">
         <h3>Buscar outro termo</h3>
         <p className="sub">
-          Quer comparar com uma variação de grafia ou outra marca? Busca de novo — o resultado
-          acima é atualizado, sem perder o restante da análise.
+          Quer comparar com uma variação de grafia ou outra marca? Busca de novo — o resultado acima
+          é atualizado, sem perder o restante da análise.
         </p>
         <div className="field busca-row">
           <div>

@@ -23,9 +23,7 @@ export default function MarcaSyncApp() {
   const [nomeCliente, setNomeCliente] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
   const [marca, setMarca] = useState("");
-  const [descricao, setDescricao] = useState(
-    "Confeitaria artesanal com venda de bolos e doces personalizados para encomenda."
-  );
+  const [descricao, setDescricao] = useState("");
   const [colidencia, setColidencia] = useState<ColidenciaResultado | null>(null);
   const [monitoramento, setMonitoramento] = useState(true);
   // true quando o cliente chegou ao contato passando pelo Plano (muda a mensagem do WhatsApp)
@@ -64,7 +62,10 @@ export default function MarcaSyncApp() {
     setMarca(dados.marca);
     setDescricao(dados.descricao);
 
-    const params = new URLSearchParams({ marca: dados.marca, descricao: dados.descricao });
+    const params = new URLSearchParams({
+      marca: dados.marca,
+      descricao: dados.descricao,
+    });
     colidenciaPromiseRef.current = fetch(`/api/colidencia?${params}`).then((r) => r.json());
 
     setPhase("carregando");
@@ -75,9 +76,9 @@ export default function MarcaSyncApp() {
     try {
       resultado = colidenciaPromiseRef.current
         ? await colidenciaPromiseRef.current
-        : await fetch(
-            `/api/colidencia?${new URLSearchParams({ marca, descricao })}`
-          ).then((r) => r.json());
+        : await fetch(`/api/colidencia?${new URLSearchParams({ marca, descricao })}`).then((r) =>
+            r.json()
+          );
     } catch {
       setErroSalvar("Falha ao buscar a colidência (rede indisponível).");
       setPhase("consulta");
@@ -184,7 +185,12 @@ export default function MarcaSyncApp() {
     setPhase("consulta");
   }
 
-  const hrefResultado = linkWhatsapp({ nomeCliente, marca, colidencia, processoId });
+  const hrefResultado = linkWhatsapp({
+    nomeCliente,
+    marca,
+    colidencia,
+    processoId,
+  });
   const hrefPlano = linkWhatsapp({
     nomeCliente,
     marca,
@@ -221,8 +227,8 @@ export default function MarcaSyncApp() {
           <div className="helpbox" style={{ borderColor: "var(--risk)", marginBottom: 20 }}>
             <h3 style={{ color: "var(--risk)" }}>Não consegui salvar no banco</h3>
             <p style={{ fontSize: 13, color: "var(--ink-dim)" }}>
-              {erroSalvar} O wizard continua funcionando, mas esse passo não ficou
-              registrado no caderno de anotações.
+              {erroSalvar} O wizard continua funcionando, mas esse passo não ficou registrado no
+              caderno de anotações.
             </p>
           </div>
         )}

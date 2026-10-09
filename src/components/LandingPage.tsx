@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
 import "./LandingPage.css";
+import TrackView from "./TrackView";
 
 /**
  * Landing page — a porta de entrada do produto (o assistente interativo
@@ -23,11 +24,7 @@ const stagger = (i: number) => ({ "--i": i }) as CSSProperties;
 
 type IconProps = { size?: number; stroke?: number };
 
-function Icon({
-  children,
-  size = 20,
-  stroke = 2,
-}: IconProps & { children: ReactNode }) {
+function Icon({ children, size = 20, stroke = 2 }: IconProps & { children: ReactNode }) {
   return (
     <svg
       width={size}
@@ -180,7 +177,8 @@ const BENEFICIOS = [
     icon: <IconTrend />,
     tone: "butter",
     titulo: "Um negócio que vale mais",
-    texto: "Marca registrada é patrimônio — pesa na hora de vender, franquear ou captar investimento.",
+    texto:
+      "Marca registrada é patrimônio — pesa na hora de vender, franquear ou captar investimento.",
   },
   {
     icon: <IconBuilding />,
@@ -218,6 +216,7 @@ const FAQ = [
 export default function LandingPage() {
   return (
     <div className="lp">
+      <TrackView nome="landing_visita" />
       <a className="lp-skip" href="#conteudo">
         Pular para o conteúdo
       </a>
@@ -249,8 +248,7 @@ export default function LandingPage() {
                 Busca em tempo real na base do INPI
               </p>
               <h1 id="hero-titulo" style={stagger(1)}>
-                Sua marca está livre?{" "}
-                <span className="lp-hl">Descubra em segundos.</span>
+                Sua marca está livre? <span className="lp-hl">Descubra em segundos.</span>
               </h1>
               <p className="lp-lede" style={stagger(2)}>
                 Veja o risco de colisão antes de investir no registro. O preço aparece fechado na
@@ -390,7 +388,11 @@ export default function LandingPage() {
         </section>
 
         {/* ===== Recursos (bento) ===== */}
-        <section id="recursos" className="lp-section lp-band lp-band-neutral lp-tone-lav" aria-labelledby="t-recursos">
+        <section
+          id="recursos"
+          className="lp-section lp-band lp-band-neutral lp-tone-lav"
+          aria-labelledby="t-recursos"
+        >
           <div className="lp-container">
             <div className="lp-section-head">
               <p className="lp-kicker">O que você recebe</p>
@@ -405,8 +407,7 @@ export default function LandingPage() {
                 <h3>Uma busca que entende o som</h3>
                 <p>
                   &ldquo;Kazamarela&rdquo; e &ldquo;Casa Amarela&rdquo; são marcas diferentes no
-                  papel e iguais no ouvido. A busca compara como o nome soa, não só como se
-                  escreve.
+                  papel e iguais no ouvido. A busca compara como o nome soa, não só como se escreve.
                 </p>
                 <div className="lp-visual lp-visual-sound" aria-hidden="true">
                   <span className="lp-chip">kazamarela</span>
@@ -437,8 +438,8 @@ export default function LandingPage() {
                 </span>
                 <h3>Logotipo, se tiver</h3>
                 <p>
-                  Marca com imagem? Arraste o PNG (até 1000×1000 px) no passo do plano. Só nome?
-                  Nem precisa.
+                  Marca com imagem? Arraste o PNG (até 1000×1000 px) no passo do plano. Só nome? Nem
+                  precisa.
                 </p>
                 <div className="lp-visual lp-visual-drop" aria-hidden="true">
                   Arraste o PNG aqui

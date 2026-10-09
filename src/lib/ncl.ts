@@ -10,17 +10,37 @@ import type { InferenciaNCL } from "./types";
  * completo das 45 classes e suas notas explicativas.
  */
 const NCL_MAP: Array<[string[], string, string]> = [
-  [["software", "sistema", "app", "aplicativo", "tecnologia", "plataforma"], "42", "Programas de computador e serviços de tecnologia"],
-  [["doce", "confeitaria", "bolo", "padaria", "sobremesa", "chocolate", "doceria"], "30", "Café, cacau e produtos de padaria e confeitaria"],
-  [["bebida", "suco", "refrigerante", "cerveja", "drink"], "32", "Cervejas e bebidas não alcoólicas"],
+  [
+    ["software", "sistema", "app", "aplicativo", "tecnologia", "plataforma"],
+    "42",
+    "Programas de computador e serviços de tecnologia",
+  ],
+  [
+    ["doce", "confeitaria", "bolo", "padaria", "sobremesa", "chocolate", "doceria"],
+    "30",
+    "Café, cacau e produtos de padaria e confeitaria",
+  ],
+  [
+    ["bebida", "suco", "refrigerante", "cerveja", "drink"],
+    "32",
+    "Cervejas e bebidas não alcoólicas",
+  ],
   [["roupa", "vestuario", "moda", "camiseta", "calca"], "25", "Vestuário, calçados e acessórios"],
   [["consultoria", "assessoria", "gestao", "negocios"], "35", "Publicidade e gestão de negócios"],
   [["cosmetico", "beleza", "perfume", "maquiagem"], "3", "Cosméticos e produtos de perfumaria"],
-  [["academia", "fitness", "esporte", "treino"], "41", "Educação, treinamento e atividades esportivas"],
+  [
+    ["academia", "fitness", "esporte", "treino"],
+    "41",
+    "Educação, treinamento e atividades esportivas",
+  ],
   [["movel", "moveis", "decoracao"], "20", "Móveis e produtos de decoração"],
   [["tinta", "pintura", "verniz"], "2", "Tintas e vernizes"],
   [["transporte", "logistica", "entrega"], "39", "Transporte, embalagem e armazenagem"],
-  [["alimento", "comida", "organico", "alimenticio"], "29", "Carnes, alimentos processados e conservas"],
+  [
+    ["alimento", "comida", "organico", "alimenticio"],
+    "29",
+    "Carnes, alimentos processados e conservas",
+  ],
 ];
 
 function stripAccents(s: string): string {
@@ -36,7 +56,8 @@ export function inferNCL(descricao: string): InferenciaNCL {
   }
   return {
     code: "35",
-    label: "Publicidade e gestão de negócios — classe genérica, refine a descrição para maior precisão",
+    label:
+      "Publicidade e gestão de negócios — classe genérica, refine a descrição para maior precisão",
     confidence: "baixa",
   };
 }

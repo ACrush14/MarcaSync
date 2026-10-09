@@ -14,10 +14,14 @@ export const dynamic = "force-dynamic";
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const body = (await request.json()) as { numeroProcesso?: unknown };
-  const numero = typeof body.numeroProcesso === "string" ? body.numeroProcesso.replace(/\D/g, "") : null;
+  const numero =
+    typeof body.numeroProcesso === "string" ? body.numeroProcesso.replace(/\D/g, "") : null;
 
   if (numero === null || (numero !== "" && !/^\d{6,10}$/.test(numero))) {
-    return NextResponse.json({ error: "Número inválido — use de 6 a 10 dígitos." }, { status: 400 });
+    return NextResponse.json(
+      { error: "Número inválido — use de 6 a 10 dígitos." },
+      { status: 400 }
+    );
   }
 
   try {

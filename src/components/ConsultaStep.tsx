@@ -43,9 +43,9 @@ export default function ConsultaStep({
       <div className="panel-head">
         <h2>Nova consulta de viabilidade</h2>
         <p className="help">
-          Descubra em segundos se sua marca corre risco de colidir com uma já
-          registrada — direto na base real do INPI, com preço fechado desde já. Sem
-          esperar orçamento por telefone ou WhatsApp.
+          Descubra em segundos se sua marca corre risco de colidir com uma já registrada — direto na
+          base real do INPI, com preço fechado desde já. Sem esperar orçamento por telefone ou
+          WhatsApp.
         </p>
       </div>
       <div className="grid-2">
@@ -79,7 +79,11 @@ export default function ConsultaStep({
               placeholder="Ex.: (85) 91234-5678"
             />
             {erroWhatsapp && (
-              <p id="erro-whatsapp" role="alert" style={{ fontSize: 13, color: "var(--risk)", marginTop: 6 }}>
+              <p
+                id="erro-whatsapp"
+                role="alert"
+                style={{ fontSize: 13, color: "var(--risk)", marginTop: 6 }}
+              >
                 Informe o número com DDD, por exemplo (85) 91234-5678.
               </p>
             )}
@@ -128,21 +132,20 @@ export default function ConsultaStep({
           <h3>O que acontece nesta etapa</h3>
           <ol>
             <li>
-              <b>Busca de anterioridade</b> — o nome é comparado foneticamente com marcas
-              já depositadas, não só letra por letra.
+              <b>Busca de anterioridade</b> — o nome é comparado foneticamente com marcas já
+              depositadas, não só letra por letra.
             </li>
             <li>
-              <b>Inferência de classe NCL</b> — a descrição é lida e mapeada para uma das
-              45 classes de Nice, sem exigir que você saiba o número de cor.
+              <b>Inferência de classe NCL</b> — a descrição é lida e mapeada para uma das 45 classes
+              de Nice, sem exigir que você saiba o número de cor.
             </li>
             <li>
-              <b>Leitura da RPI</b> — a mesma fonte oficial alimenta o monitoramento
-              semanal caso você contrate o acompanhamento.
+              <b>Leitura da RPI</b> — a mesma fonte oficial alimenta o monitoramento semanal caso
+              você contrate o acompanhamento.
             </li>
             <li>
-              <b>Preço na tela, não em orçamento</b> — o valor do registro e do
-              monitoramento aparece já no próximo passo, sem precisar falar com
-              ninguém antes.
+              <b>Preço na tela, não em orçamento</b> — o valor do registro e do monitoramento
+              aparece já no próximo passo, sem precisar falar com ninguém antes.
             </li>
           </ol>
         </div>
