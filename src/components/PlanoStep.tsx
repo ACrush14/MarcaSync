@@ -1,6 +1,8 @@
 "use client";
 
 import LogoUpload from "./LogoUpload";
+import TrackView from "./TrackView";
+import { track } from "@/lib/track";
 
 interface PlanoStepProps {
   monitoramento: boolean;
@@ -20,6 +22,7 @@ export default function PlanoStep({
 }: PlanoStepProps) {
   return (
     <>
+      <TrackView nome="plano_visto" />
       <div className="panel-head">
         <h2>Plano de registro</h2>
         <p className="help">
@@ -97,7 +100,10 @@ export default function PlanoStep({
             href={whatsappHref}
             target="_blank"
             rel="noopener noreferrer"
-            onClick={onConfirmar}
+            onClick={() => {
+              track("whatsapp_clicado", { onde: "plano" });
+              onConfirmar();
+            }}
           >
             Quero seguir — falar no WhatsApp →
           </a>

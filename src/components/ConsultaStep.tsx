@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { track } from "@/lib/track";
 
 /** Aceita DDD + número (10–11 dígitos), com ou sem o 55 na frente. */
 function whatsappValido(v: string): boolean {
@@ -117,6 +118,7 @@ export default function ConsultaStep({
                 whatsappRef.current?.focus();
                 return;
               }
+              track("consulta_enviada");
               onAnalisar({
                 nomeCliente: localNome.trim(),
                 whatsapp: localWhatsapp.trim(),

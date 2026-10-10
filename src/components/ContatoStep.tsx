@@ -1,5 +1,8 @@
 "use client";
 
+import TrackView from "./TrackView";
+import { track } from "@/lib/track";
+
 interface ContatoStepProps {
   nomeCliente: string;
   /** WhatsApp que o próprio cliente informou na consulta. */
@@ -28,6 +31,7 @@ export default function ContatoStep({
 
   return (
     <>
+      <TrackView nome="contato_visto" />
       <div className="panel-head">
         <h2>Falta só a nossa conversa{primeiroNome ? `, ${primeiroNome}` : ""}</h2>
         <p className="help">
@@ -38,7 +42,13 @@ export default function ContatoStep({
 
       {whatsappHref ? (
         <div className="contato-cta">
-          <a className="btn" href={whatsappHref} target="_blank" rel="noopener noreferrer">
+          <a
+            className="btn"
+            href={whatsappHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => track("whatsapp_clicado", { onde: "contato" })}
+          >
             Abrir conversa no WhatsApp →
           </a>
           <p className="sim-note">
