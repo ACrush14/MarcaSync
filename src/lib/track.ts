@@ -19,7 +19,7 @@ export function track(nome: string, dados?: Record<string, unknown>): void {
     sessaoId: obterSessaoId(),
     nome: nome,
     pagina: window.location.pathname,
-    dados: dados,
+    dados: { ...dados, dispositivo: obterDispositivo() },
   };
 
   fetch("/api/eventos", {
@@ -28,4 +28,8 @@ export function track(nome: string, dados?: Record<string, unknown>): void {
     body: JSON.stringify(corpo),
     keepalive: true,
   }).catch(() => {});
+}
+
+function obterDispositivo(): "mobile" | "desktop" {
+  return window.matchMedia("(max-width: 768px)").matches ? "mobile" : "desktop";
 }
