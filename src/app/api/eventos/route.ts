@@ -14,6 +14,7 @@ const NOMES_VALIDOS = new Set([
   "plano_visto",
   "whatsapp_clicado",
   "contato_visto",
+  "consulta_enviada",
 ]);
 
 interface EventoBody {

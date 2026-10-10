@@ -4,6 +4,7 @@ import { useState } from "react";
 import { riskTier } from "@/lib/fonetica";
 import type { ColidenciaResultado } from "@/lib/colidencia";
 import TrackView from "./TrackView";
+import { track } from "@/lib/track";
 
 interface ResultadoStepProps {
   descricao: string;
@@ -218,7 +219,10 @@ export default function ResultadoStep({
             href={whatsappHref}
             target="_blank"
             rel="noopener noreferrer"
-            onClick={onContato}
+            onClick={() => {
+              track("whatsapp_clicado", { onde: "resultado" });
+              onContato();
+            }}
           >
             Falar comigo no WhatsApp →
           </a>
