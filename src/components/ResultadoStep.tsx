@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { riskTier } from "@/lib/fonetica";
 import type { ColidenciaResultado } from "@/lib/colidencia";
+import TrackView from "./TrackView";
 
 interface ResultadoStepProps {
   descricao: string;
@@ -52,6 +53,7 @@ export default function ResultadoStep({
 
   return (
     <>
+      <TrackView nome="resultado_visto" />
       <div className="panel-head">
         <h2>Resultado da análise</h2>
         <p className="help">

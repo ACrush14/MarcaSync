@@ -10,6 +10,7 @@ import ContatoStep from "./ContatoStep";
 import type { ColidenciaResultado } from "@/lib/colidencia";
 import { MONITORAMENTO_CENTAVOS, SETUP_CENTAVOS } from "@/lib/planos";
 import { linkWhatsapp } from "@/lib/whatsapp";
+import TrackView from "./TrackView";
 
 type Phase = "consulta" | "carregando" | "resultado" | "plano" | "contato";
 
@@ -201,6 +202,7 @@ export default function MarcaSyncApp() {
 
   return (
     <div className="shell">
+      <TrackView nome="consulta_iniciada" />
       <div className="topbar">
         <div className="brand">
           <span className="mark">MarcaSync</span>

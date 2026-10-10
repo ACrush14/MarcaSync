@@ -1,6 +1,7 @@
 "use client";
 
 import LogoUpload from "./LogoUpload";
+import TrackView from "./TrackView";
 
 interface PlanoStepProps {
   monitoramento: boolean;
@@ -20,6 +21,7 @@ export default function PlanoStep({
 }: PlanoStepProps) {
   return (
     <>
+      <TrackView nome="plano_visto" />
       <div className="panel-head">
         <h2>Plano de registro</h2>
         <p className="help">
