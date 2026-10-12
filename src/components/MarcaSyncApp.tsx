@@ -281,7 +281,8 @@ export default function MarcaSyncApp() {
 
       <p className="footer-note">
         A busca de anterioridade consulta a base real do INPI e indica risco de colisão; a decisão
-        final é sempre do INPI.
+        final é sempre do INPI. Medimos as etapas do site com um código anônimo no navegador, que
+        não é ligado ao seu nome nem ao seu telefone.
       </p>
     </div>
   );
