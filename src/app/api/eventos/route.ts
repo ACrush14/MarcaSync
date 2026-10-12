@@ -6,6 +6,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const MAX_PAGINA = 200;
+const MAX_ORIGEM = 100;
 
 const NOMES_VALIDOS = new Set([
   "landing_visita",
@@ -53,8 +54,8 @@ export async function POST(request: Request) {
       data: {
         sessaoId: sessaoId.trim(),
         nome,
-        pagina: typeof pagina === "string" ? pagina.slice(0, 200) : null,
-        origem: typeof origem === "string" ? origem.slice(0, 100) : null,
+        pagina: typeof pagina === "string" ? pagina.slice(0, MAX_PAGINA) : null,
+        origem: typeof origem === "string" ? origem.slice(0, MAX_ORIGEM) : null,
         dados: dadosValidos ? (dados as Prisma.InputJsonObject) : undefined,
       },
     });

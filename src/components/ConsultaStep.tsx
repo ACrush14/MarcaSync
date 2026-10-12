@@ -138,8 +138,8 @@ export default function ConsultaStep({
               depositadas, não só letra por letra.
             </li>
             <li>
-              <b>Inferência de classe NCL</b> — a descrição é lida e mapeada para uma das 45 classes
-              de Nice, sem exigir que você saiba o número de cor.
+              <b>Inferência de classe NCL</b> — a classe de Nice mais provável (hoje cobrimos as 11
+              mais comuns)
             </li>
             <li>
               <b>Leitura da RPI</b> — a mesma fonte oficial alimenta o monitoramento semanal caso
