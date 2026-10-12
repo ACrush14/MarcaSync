@@ -10,3 +10,6 @@ export const MONITORAMENTO_CENTAVOS = 2_900;
 export function fmtReais(centavos: number): string {
   return (centavos / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
+
+// teste do CI: erro de tipo proposital (será descartado)
+export const erroProposito: string = 5;
