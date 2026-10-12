@@ -7,6 +7,10 @@ export const dynamic = "force-dynamic";
 
 const MAX_PAGINA = 200;
 const MAX_ORIGEM = 100;
+const MAX_POR_SESSAO = 20;
+const MAX_GLOBAL = 300;
+const MAX_CORPO_BYTES = 4096;
+const JANELA_MS = 60_000;
 
 const NOMES_VALIDOS = new Set([
   "landing_visita",
@@ -27,6 +31,10 @@ interface EventoBody {
 }
 
 export async function POST(request: Request) {
+  const tamanho = Number(request.headers.get("content-length") ?? 0);
+  if (tamanho > MAX_CORPO_BYTES) {
+    return NextResponse.json({ error: "Pedido grande demais" }, { status: 413 });
+  }
   let body: EventoBody;
   try {
     body = (await request.json()) as EventoBody;
@@ -41,6 +49,21 @@ export async function POST(request: Request) {
   }
   if (typeof nome !== "string" || !NOMES_VALIDOS.has(nome)) {
     return NextResponse.json({ error: "nome de evento inválido. " }, { status: 400 });
+  }
+
+  const inicioJanela = new Date(Date.now() - JANELA_MS);
+  const daSessao = await prisma.evento.count({
+    where: { sessaoId: sessaoId.trim(), createdAt: { gte: inicioJanela } },
+  });
+  const noTotal = await prisma.evento.count({
+    where: { createdAt: { gte: inicioJanela } },
+  });
+
+  if (daSessao >= MAX_POR_SESSAO || noTotal >= MAX_GLOBAL) {
+    return NextResponse.json(
+      { error: "Muitos eventos. Tente de novo em instantes." },
+      { status: 429, headers: { "Retry-After": "60" } }
+    );
   }
 
   const dadosValidos =
