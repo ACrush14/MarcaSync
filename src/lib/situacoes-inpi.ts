@@ -17,5 +17,5 @@ const SITUACOES: Record<string, string> = {
 };
 
 export function descreverSituacao(codigo: string): string {
-  return SITUACOES[codigo] ?? `Situação ${codigo}`;
+  return SITUACOES[codigo] ?? `Situação não informada pelo INPI`;
 }
