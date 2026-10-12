@@ -31,6 +31,7 @@ const ibmPlexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://www.marcasync.com.br"),
   title: "MarcaSync — Registro de marcas com busca real no INPI",
   description:
     "Descubra em segundos se sua marca está livre, direto na base do INPI. Preço fechado na tela e atendimento direto, do protocolo ao registro.",

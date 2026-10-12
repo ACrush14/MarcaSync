@@ -652,7 +652,10 @@ export default function LandingPage() {
           </nav>
           <p className="lp-footer-legal">
             O MarcaSync é um serviço independente, sem vínculo com o INPI. A busca indica risco de
-            colisão a partir de dados públicos; a decisão final é sempre do INPI.
+            colisão a partir de dados públicos; a decisão final é sempre do INPI. Para entender
+            quais telas funcionam, guardamos um código anônimo no seu navegador e registramos as
+            etapas que você percorre. Esse código não é ligado ao seu nome nem ao seu telefone. Os
+            dados que você informa na consulta são usados só para falar com você.
             <br />© 2026 MarcaSync
           </p>
         </div>
