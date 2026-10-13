@@ -29,6 +29,8 @@ export function proxy(request: NextRequest) {
   const protegido =
     pathname.startsWith("/admin") ||
     pathname.startsWith("/api/admin/") ||
+    pathname.startsWith("/api/rpi") ||
+    pathname.startsWith("/rpi-teste") ||
     (pathname === "/api/processos" && request.method === "GET") ||
     (/^\/api\/pagamentos\/[^/]+\/confirmar$/.test(pathname) && request.method === "POST");
 
@@ -50,5 +52,12 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/api/admin/:path*", "/api/processos", "/api/pagamentos/:path*"],
+  matcher: [
+    "/admin/:path*",
+    "/api/admin/:path*",
+    "/api/processos",
+    "/api/pagamentos/:path*",
+    "/api/rpi/:path*",
+    "/rpi-teste",
+  ],
 };
