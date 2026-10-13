@@ -31,9 +31,12 @@ model Cliente {
 
 /// Um pedido de registro de marca em andamento (uma "linha" no caderno).
 model Processo {
-  id        String  @id @default(cuid())
-  clienteId String
-  cliente   Cliente @relation(fields: [clienteId], references: [id])
+  id                   String             @id @default(cuid())
+  clienteId            String
+  cliente              Cliente            @relation(fields: [clienteId], references: [id])
+  situacaoInpi         String?
+  situacaoVerificadaEm DateTime?
+  situacoes            SituacaoProcesso[]
 
   marca     String
   descricao String
@@ -84,15 +87,16 @@ model Alerta {
   processoId String
   processo   Processo @relation(fields: [processoId], references: [id])
 
-  edicao         Int
+  edicao         Int?
   dataEdicao     DateTime?
-  despachoCodigo String
-  despachoNome   String
+  despachoCodigo String?
+  despachoNome   String?
   tipo           String // "oposicao" | "despacho"
   prazoAte       DateTime? // só em oposição: 60 dias da publicação (estimativa, conferir na RPI)
-
-  avisadoEm DateTime? // marcado à mão no /admin depois de avisar o cliente
-  createdAt DateTime  @default(now())
+  origem         String    @default("rpi")
+  situacaoNova   String?
+  avisadoEm      DateTime? // marcado à mão no /admin depois de avisar o cliente
+  createdAt      DateTime  @default(now())
 
   @@unique([processoId, edicao, despachoCodigo])
   @@index([avisadoEm])
@@ -130,15 +134,25 @@ model IngestaoMarcas {
 }
 
 model Evento {
-
-  id String @id @default(cuid())
-  sessaoId String
-  nome String
-  pagina String?
-  origem String?
-  dados Json?
+  id        String   @id @default(cuid())
+  sessaoId  String
+  nome      String
+  pagina    String?
+  origem    String?
+  dados     Json?
   createdAt DateTime @default(now())
 
-  @@index ([nome, createdAt])
+  @@index([nome, createdAt])
   @@index([sessaoId])
+}
+
+model SituacaoProcesso {
+  id         String   @id @default(cuid())
+  processoId String
+  processo   Processo @relation(fields: [processoId], references: [id])
+  situacao   String
+  origem     String // "consulta" | "rpi"
+  vistaEm    DateTime @default(now())
+
+  @@index([processoId, vistaEm])
 }
