@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { rodarMonitoramento } from "@/lib/monitor-rpi";
+import { verificarSituacoes } from "@/lib/monitor-situacoes";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,9 +25,14 @@ export async function GET(request: Request) {
   }
 
   try {
-    return NextResponse.json(await rodarMonitoramento());
+    const situacoes = await verificarSituacoes();
+
+    const rpi = await rodarMonitoramento().catch((err: unknown) => ({
+      erro: err instanceof Error ? err.message : "Erro ao ler a RPI.",
+    }));
+    return NextResponse.json({ situacoes, rpi });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Erro ao ler a RPI.";
-    return NextResponse.json({ error: message }, { status: 502 });
+    const message = err instanceof Error ? err.message : "Erro ao verificar situações.";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
