@@ -1,12 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-// Senha do /admin. "2001" é o valor combinado com o usuário para uso local
-// — 4 dígitos é trivial de força-bruta, aceitável só enquanto isto não sai
-// do seu computador. Antes de qualquer deploy público, defina ADMIN_PASSWORD
-// no ambiente com algo bem mais forte (não precisa mudar nenhum código).
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? "2001";
-
 function pedirAutenticacao() {
   return new NextResponse("Autenticação necessária.", {
     status: 401,
@@ -36,6 +30,11 @@ export function proxy(request: NextRequest) {
 
   if (!protegido) return NextResponse.next();
 
+  const senhaAdmin = process.env.ADMIN_PASSWORD;
+  if (!senhaAdmin) {
+    return new NextResponse("ADMIN_PASSWORD não configurado.", { status: 500 });
+  }
+
   const auth = request.headers.get("authorization");
   if (!auth?.startsWith("Basic ")) return pedirAutenticacao();
 
@@ -46,7 +45,7 @@ export function proxy(request: NextRequest) {
     return pedirAutenticacao();
   }
 
-  if (senha !== ADMIN_PASSWORD) return pedirAutenticacao();
+  if (senha !== senhaAdmin) return pedirAutenticacao();
 
   return NextResponse.next();
 }
