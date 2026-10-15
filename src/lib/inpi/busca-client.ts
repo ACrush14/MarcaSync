@@ -165,3 +165,40 @@ export async function buscarMarcas(
   respostaCache.set(key, { at: Date.now(), resposta });
   return resposta;
 }
+
+/**
+ * Situação atual de UM processo, direto do INPI. Sem cache: o objetivo é
+ * detectar mudança. Devolve null se o INPI não achou o número; lança
+ * BuscaInpiError se a rede falhar.
+ */
+
+export async function consultarSituacao(numeroProcesso: string): Promise<string | null> {
+  const numero = numeroProcesso.replace(/\D/g, "");
+  if (!numero) {
+    throw new BuscaInpiError("Informe o numero do processo.");
+  }
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
+  let res: Response;
+  try {
+    res = await fetch(SEARCH_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(buildPayload(numero, 1, 5)),
+      signal: controller.signal,
+      cache: "no-store",
+    });
+  } catch {
+    throw new BuscaInpiError("Não consegui consultar o INPI agora.");
+  } finally {
+    clearTimeout(timeout);
+  }
+
+  if (!res.ok) {
+    throw new BuscaInpiError(`O INPI respondeu com status ${res.status}.`);
+  }
+  const body = (await res.json()) as RespostaBruta;
+  const achado = (body.results ?? []).map(mapResultado).find((r) => r.numeroProcesso === numero);
+  return achado?.status || null;
+}
