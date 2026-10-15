@@ -30,10 +30,12 @@ interface Processo {
 
 interface Alerta {
   id: string;
-  edicao: number;
-  despachoCodigo: string;
-  despachoNome: string;
+  edicao: number | null;
+  despachoCodigo: string | null;
+  despachoNome: string | null;
   tipo: string;
+  origem: string;
+  situacaoNova: string | null;
   prazoAte: string | null;
   avisadoEm: string | null;
   processo: {
@@ -55,6 +57,13 @@ function fmtData(iso: string): string {
 }
 
 function mensagemAlerta(a: Alerta): string {
+  if (a.tipo === "situacao") {
+    return (
+      `Olá, ${a.processo.cliente.nome.split(" ")[0]}! A situação do processo da marca ` +
+      `${a.processo.marca} mudou para: ${a.situacaoNova}. ` +
+      `Posso te explicar o que isso significa?`
+    );
+  }
   const prazo = a.prazoAte ? ` Prazo estimado: ${fmtData(a.prazoAte)}.` : "";
   return (
     `Olá, ${a.processo.cliente.nome.split(" ")[0]}! Saiu uma movimentação no processo da marca ` +
@@ -285,18 +294,31 @@ export default function AdminPage() {
                     >
                       <strong>{a.processo.marca}</strong>
                       <span style={{ fontSize: 12.5, color: "var(--ink-dim)" }}>
-                        {a.processo.cliente.nome} · RPI {a.edicao}
+                        {a.processo.cliente.nome} ·{" "}
+                        {a.origem === "consulta" ? " consulta direta" : `RPI ${a.edicao}`}
                       </span>
                       {a.tipo === "oposicao" && <span className="pill risk">oposição</span>}
+                      {a.tipo === "situacao" && <span className="pill">mudou de situação</span>}
                       {a.avisadoEm && <span className="pill safe">avisado</span>}
                     </div>
                     <p style={{ fontSize: 13.5, margin: 0 }}>
-                      {a.despachoNome}
-                      <span className="mono" style={{ fontSize: 11.5, color: "var(--ink-faint)" }}>
-                        {" "}
-                        ({a.despachoCodigo})
-                      </span>
-                    </p>
+                      {a.tipo === "situacao" ? (
+                        <>
+                          Nova situação: <strong>{a.situacaoNova}</strong>
+                        </>
+                      ) : (
+                        <>
+                          {a.despachoNome}
+                          <span
+                            className="mono"
+                            style={{ fontSize: 11.5, color: "var(--ink-faint)" }}
+                          >
+                            {" "}
+                            ({a.despachoCodigo})
+                          </span>
+                        </>
+                      )}
+                    </p>{" "}
                     {a.prazoAte && (
                       <p style={{ fontSize: 12.5, color: "var(--ink-dim)", margin: 0 }}>
                         Prazo estimado (60 dias da publicação):{" "}
