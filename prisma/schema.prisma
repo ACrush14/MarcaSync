@@ -156,3 +156,15 @@ model SituacaoProcesso {
 
   @@index([processoId, vistaEm])
 }
+
+///limita a quantidade de tentativas para o admin.
+///ele pega numero de vezes tentadas x IP. O horário é para dar um cooldown
+///de 15 minutos após o IP ser barrado.
+
+model TentativaAdmin {
+  id String @id @default(cuid())
+  ip String
+  createdAt DateTime @default(now())
+
+  @@index([ip, createdAt])
+}
