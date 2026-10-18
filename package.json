@@ -9,7 +9,8 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "ingerir:marcas": "node --max-old-space-size=12288 scripts/ingerir-marcas.mjs"
+    "ingerir:marcas": "node --max-old-space-size=12288 scripts/ingerir-marcas.mjs",
+    "test": "vitest run"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
@@ -36,7 +37,8 @@
     "postcss": "8.5.26",
     "prisma": "7.10.0",
     "tailwindcss": "4.3.3",
-    "typescript": "6.0.3"
+    "typescript": "6.0.3",
+    "vitest": "^5.0.5"
   },
   "overrides": {
     "deepmerge-ts": "^8.0.2"
