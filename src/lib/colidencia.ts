@@ -4,6 +4,7 @@ import { buscarMarcas } from "./inpi/busca-client";
 import { inferNCL } from "./ncl";
 import { buscarMarcasLocais, infoBaseLocal } from "./marcas-locais";
 import type { InferenciaNCL } from "./types";
+import { mesmaArea } from "./classes";
 
 /**
  * Junta a busca de anterioridade real (base real do INPI) com a
@@ -35,6 +36,7 @@ export interface ColidenciaMatch {
   fa: string;
   fb: string;
   fonte: FonteColidencia;
+  mesmaArea?: boolean | null;
   /** De onde veio o registro: busca ao vivo do INPI ou cópia local dos dados abertos. */
   origem?: "inpi-busca" | "base-local";
   numeroProcesso?: string;
@@ -52,6 +54,13 @@ export interface ColidenciaResultado {
   baseLocal?: { atualizadaEm: string | null; usadaSozinha: boolean };
   /** Só presente quando fonte === "demo" — explica por que caiu pro fallback. */
   avisoFonteReal?: string;
+}
+
+function comArea(matches: ColidenciaMatch[], ncl: InferenciaNCL): ColidenciaMatch[] {
+  return matches.map((m) => ({
+    ...m,
+    mesmaArea: mesmaArea(m.classe, ncl.code, ncl.confidence),
+  }));
 }
 
 export async function calcularColidencia(
@@ -94,7 +103,10 @@ export async function calcularColidencia(
     for (const m of [...matchesLocais, ...matchesVivos]) {
       porProcesso.set(m.numeroProcesso ?? `${m.nome}-${porProcesso.size}`, m);
     }
-    const matches = [...porProcesso.values()].sort((a, b) => b.pct - a.pct).slice(0, 10);
+    const matches = comArea(
+      [...porProcesso.values()].sort((a, b) => b.pct - a.pct).slice(0, 10),
+      ncl
+    );
 
     return {
       fonte: "real",
@@ -115,14 +127,17 @@ export async function calcularColidencia(
 
   const err = ao_vivo.status === "rejected" ? ao_vivo.reason : null;
   const demo = computeAnalysis(marca, descricao);
-  const matches: ColidenciaMatch[] = demo.matches.map((m) => ({
-    nome: m.name,
-    classe: m.cls,
-    pct: m.pct,
-    fa: m.fa,
-    fb: m.fb,
-    fonte: "demo" as const,
-  }));
+  const matches = comArea(
+    demo.matches.map((m) => ({
+      nome: m.name,
+      classe: m.cls,
+      pct: m.pct,
+      fa: m.fa,
+      fb: m.fb,
+      fonte: "demo" as const,
+    })),
+    ncl
+  );
 
   return {
     fonte: "demo",
