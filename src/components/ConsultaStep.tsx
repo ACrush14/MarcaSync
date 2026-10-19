@@ -2,12 +2,7 @@
 
 import { useRef, useState } from "react";
 import { track } from "@/lib/track";
-
-/** Aceita DDD + número (10–11 dígitos), com ou sem o 55 na frente. */
-function whatsappValido(v: string): boolean {
-  const d = v.replace(/\D/g, "");
-  return /^\d{10,11}$/.test(d) || /^55\d{10,11}$/.test(d);
-}
+import { whatsappValido } from "@/lib/whatsapp";
 
 interface ConsultaStepProps {
   nomeCliente: string;
