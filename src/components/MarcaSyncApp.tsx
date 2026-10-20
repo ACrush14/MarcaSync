@@ -10,6 +10,7 @@ import ContatoStep from "./ContatoStep";
 import type { ColidenciaResultado } from "@/lib/colidencia";
 import { MONITORAMENTO_CENTAVOS, SETUP_CENTAVOS } from "@/lib/planos";
 import { linkWhatsapp } from "@/lib/whatsapp";
+import { pctDoRisco } from "@/lib/risco-area";
 import TrackView from "./TrackView";
 
 type Phase = "consulta" | "carregando" | "resultado" | "plano" | "contato";
@@ -102,7 +103,7 @@ export default function MarcaSyncApp() {
           descricao,
           nclCode: resultado.ncl.code,
           nclLabel: resultado.ncl.label,
-          riscoPct: resultado.top?.pct ?? 0,
+          riscoPct: pctDoRisco(resultado.risco),
           riscoFonte: resultado.fonte,
         }),
       });

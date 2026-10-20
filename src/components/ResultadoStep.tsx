@@ -85,9 +85,23 @@ export default function ResultadoStep({
   whatsappHref,
   onContato,
 }: ResultadoStepProps) {
-  const { matches, ncl, top, fonte, avisoFonteReal, termo, baseLocal } = colidencia;
-  const tier = top ? riskTier(top.pct) : null;
+  const { matches, ncl, fonte, avisoFonteReal, termo, baseLocal, risco } = colidencia;
   const grupos = agruparPorArea(matches);
+  // `principal` é a marca que define o nível de colisão: a mais parecida entre as do mesmo
+  // ramo e as sem classe (que não dá para descartar). Sem separação por ramo, é a `top`.
+  const principal = risco.principal;
+  const porRamo = risco.modo === "por-ramo";
+  const tier = principal ? riskTier(principal.pct) : null;
+  // A resposta chega por JSON, então comparamos a marca pelo nome e pelo número do processo.
+  const principalConfirmada =
+    !!principal &&
+    risco.noRamo?.nome === principal.nome &&
+    risco.noRamo?.numeroProcesso === principal.numeroProcesso;
+  const rotuloColisao = !porRamo
+    ? "Nível de colisão"
+    : principalConfirmada
+      ? "Nível de colisão no seu ramo"
+      : "Nível de colisão (classe não confirmada)";
 
   const [termoBusca, setTermoBusca] = useState(termo);
   const [buscando, setBuscando] = useState(false);
@@ -142,27 +156,53 @@ export default function ResultadoStep({
       )}
 
       <div className="risk-summary">
-        {top ? (
+        {principal ? (
           <>
             <div className="metric">
-              <div className="lbl">Nível de colisão</div>
-              <div className="val">{top.pct}%</div>
+              <div className="lbl">{rotuloColisao}</div>
+              <div className="val">{principal.pct}%</div>
               <div className="sub">
                 <span className={`pill ${tier!.cls}`}>{tier!.label}</span>{" "}
                 <span className="pill accent">{fonte === "real" ? "INPI" : "exemplo"}</span>
+                {porRamo && !principalConfirmada && (
+                  <>
+                    <br />
+                    Marca sem classe informada: não dá para descartar que seja do seu ramo.
+                  </>
+                )}
               </div>
             </div>
             <div className="metric">
               <div className="lbl">Marca mais próxima</div>
               <div className="val" style={{ fontSize: 18 }}>
-                {top.nome}
+                {principal.nome}
               </div>
               <div className="sub">
-                {top.classe ? `NCL ${top.classe}` : "Classe não informada"}
-                {top.status ? ` · ${top.status}` : ""}
+                {principal.classe ? `NCL ${principal.classe}` : "Classe não informada"}
+                {principal.status ? ` · ${principal.status}` : ""}
+                {porRamo && risco.outrosRamos && (
+                  <>
+                    <br />
+                    Em outros ramos: até {risco.outrosRamos.pct}% ({risco.outrosRamos.nome}).
+                  </>
+                )}
               </div>
             </div>
           </>
+        ) : porRamo && risco.outrosRamos ? (
+          <div className="metric">
+            <div className="lbl">Nível de colisão no seu ramo</div>
+            <div className="val" style={{ fontSize: 19 }}>
+              Nenhuma marca parecida
+            </div>
+            <div className="sub">
+              <span className="pill safe">Risco baixo no seu ramo</span>{" "}
+              <span className="pill accent">{fonte === "real" ? "INPI" : "exemplo"}</span>
+              <br />
+              Em outros ramos: até {risco.outrosRamos.pct}% ({risco.outrosRamos.nome}, NCL{" "}
+              {risco.outrosRamos.classe}). O INPI também compara classes relacionadas.
+            </div>
+          </div>
         ) : (
           <div className="metric">
             <div className="lbl">Nível de colisão</div>

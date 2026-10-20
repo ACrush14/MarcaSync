@@ -33,6 +33,13 @@ function linhaRisco(c: ColidenciaResultado | null): string | null {
   if (!c) return null;
   if (c.fonte === "demo") return "A busca real no INPI estava indisponível na hora da consulta.";
   if (!c.top) return "Nenhuma marca parecida encontrada na base do INPI.";
+  const r = c.risco;
+  if (r.modo === "por-ramo") {
+    if (!r.principal) {
+      return `Nenhuma marca parecida no meu ramo (NCL ${c.ncl.code}); há parecidas em outros ramos: até ${r.outrosRamos?.pct ?? 0}%.`;
+    }
+    return `Risco de colisão no meu ramo (NCL ${c.ncl.code}): ${r.principal.pct}% (base do INPI) — mais próxima: ${r.principal.nome}.`;
+  }
   return `Risco de colisão: ${c.top.pct}% (base do INPI) — mais próxima: ${c.top.nome}.`;
 }
 
