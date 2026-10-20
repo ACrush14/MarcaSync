@@ -1,0 +1,87 @@
+/**
+ * Testes de src/lib/whatsapp.ts: a validação do número digitado no formulário e a
+ * montagem do link wa.me que o /admin usa para falar com o cliente.
+ *
+ * Como ler o arquivo:
+ * `describe` agrupa os testes de uma função, `it("frase", ...)` é um teste e a frase
+ * aparece no terminal quando ele falha. `it.each([...])` roda o mesmo teste para cada
+ * linha da tabela, trocando só os valores. `toBe` compara valores simples (`true`,
+ * `false`, `null`, texto).
+ */
+import { describe, expect, it } from "vitest";
+import { linkParaCliente, whatsappValido } from "./whatsapp";
+
+describe("whatsappValido", () => {
+  // DDD (2 dígitos) + número (8 ou 9 dígitos), sem o 55 do país.
+  it.each([
+    ["8591234-5678", "sem parênteses, com hífen"],
+    ["(85) 91234-5678", "celular com máscara (11 dígitos)"],
+    ["85912345678", "celular só com dígitos (11 dígitos)"],
+    ["(85) 3123-4567", "fixo com máscara (10 dígitos)"],
+    ["8531234567", "fixo só com dígitos (10 dígitos)"],
+  ])("aceita %s (%s)", (entrada) => {
+    expect(whatsappValido(entrada)).toBe(true);
+  });
+
+  it.each([
+    ["5585912345678", "celular com o 55 do país (13 dígitos)"],
+    ["+55 (85) 91234-5678", "celular com +55 e máscara"],
+    ["558531234567", "fixo com o 55 do país (12 dígitos)"],
+  ])("aceita %s (%s)", (entrada) => {
+    expect(whatsappValido(entrada)).toBe(true);
+  });
+
+  it.each([
+    ["", "vazio"],
+    ["   ", "só espaços"],
+    ["abc", "só letras"],
+    ["12345", "curto demais (5 dígitos)"],
+    ["859123456", "9 dígitos, falta um"],
+    ["859123456789", "12 dígitos que não começam com 55"],
+    ["55859123456789", "14 dígitos, sobra um"],
+  ])("recusa %s (%s)", (entrada) => {
+    expect(whatsappValido(entrada)).toBe(false);
+  });
+
+  // Comportamento atual: letras no meio do número são ignoradas antes de contar.
+  it("ignora caracteres que não são dígitos antes de contar", () => {
+    expect(whatsappValido("zap: 85 91234 5678!")).toBe(true);
+  });
+});
+
+describe("linkParaCliente", () => {
+  const texto = "Olá, tudo bem?";
+  const textoNaUrl = encodeURIComponent(texto);
+
+  it("acrescenta o 55 quando o número tem só DDD + número (11 dígitos)", () => {
+    expect(linkParaCliente("(85) 91234-5678", texto)).toBe(
+      `https://wa.me/5585912345678?text=${textoNaUrl}`
+    );
+  });
+
+  it("acrescenta o 55 também no fixo (10 dígitos)", () => {
+    expect(linkParaCliente("(85) 3123-4567", texto)).toBe(
+      `https://wa.me/558531234567?text=${textoNaUrl}`
+    );
+  });
+
+  it("não duplica o 55 quando ele já vem na frente", () => {
+    expect(linkParaCliente("+55 85 91234-5678", texto)).toBe(
+      `https://wa.me/5585912345678?text=${textoNaUrl}`
+    );
+  });
+
+  // Nunca um link quebrado: sem número válido, devolve null.
+  it.each([["", "vazio"], ["12345", "curto demais"], ["55859123456789", "longo demais"]])(
+    "devolve null para %s (%s)",
+    (entrada) => {
+      expect(linkParaCliente(entrada, texto)).toBe(null);
+    }
+  );
+
+  it("codifica o texto para caber na URL", () => {
+    expect(linkParaCliente("85912345678", "a b&c")).toBe(
+      "https://wa.me/5585912345678?text=a%20b%26c"
+    );
+  });
+});
