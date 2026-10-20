@@ -10,7 +10,7 @@
  * simples (`true`, `false`, `null`).
  */
 import { describe, expect, it } from "vitest";
-import { listarClasses, mesmaArea } from "./classes";
+import { agruparPorArea, listarClasses, mesmaArea } from "./classes";
 
 describe("listarClasses", () => {
   it("quebra o texto nas vírgulas e tira o espaço", () => {
@@ -60,5 +60,49 @@ describe("mesmaArea", () => {
 
   it("não confunde a classe 3 com a classe 30", () => {
     expect(mesmaArea("30", "3", "alta")).toBe(false);
+  });
+});
+
+describe("agruparPorArea", () => {
+  // Uma marca de teste: só o nome e o campo que a função lê. O `?` deixa o campo opcional.
+  type Marca = { nome: string; mesmaArea?: boolean | null };
+  const a: Marca = { nome: "A", mesmaArea: true };
+  const b: Marca = { nome: "B", mesmaArea: false };
+  const c: Marca = { nome: "C", mesmaArea: null };
+  const d: Marca = { nome: "D" }; // sem o campo (por exemplo, marca montada fora da colidência)
+  const e: Marca = { nome: "E", mesmaArea: true };
+
+  it("separa em mesma área, outras áreas e sem classe", () => {
+    const g = agruparPorArea([a, b, c, d, e]);
+    expect(g.mesmaArea.map((m) => m.nome)).toEqual(["A", "E"]);
+    expect(g.outrasAreas.map((m) => m.nome)).toEqual(["B"]);
+    expect(g.semClasse.map((m) => m.nome)).toEqual(["C", "D"]);
+  });
+
+  // false ("é de outro ramo") não pode se misturar com null ("não sei").
+  it("não confunde false com null", () => {
+    const g = agruparPorArea([b, c]);
+    expect(g.outrasAreas).toEqual([b]);
+    expect(g.semClasse).toEqual([c]);
+  });
+
+  it("mantém a ordem original dentro de cada grupo", () => {
+    const g = agruparPorArea([e, b, a]);
+    expect(g.mesmaArea.map((m) => m.nome)).toEqual(["E", "A"]);
+  });
+
+  it("é separável quando há pelo menos uma resposta sim ou não", () => {
+    expect(agruparPorArea([a, c]).separavel).toBe(true);
+    expect(agruparPorArea([b]).separavel).toBe(true);
+  });
+
+  // Descrição vaga (confiança baixa): tudo vem null, e não há o que separar.
+  it("não é separável quando tudo é 'não sei'", () => {
+    expect(agruparPorArea([c, d]).separavel).toBe(false);
+  });
+
+  it("aceita lista vazia", () => {
+    const g = agruparPorArea([]);
+    expect(g).toEqual({ mesmaArea: [], outrasAreas: [], semClasse: [], separavel: false });
   });
 });
