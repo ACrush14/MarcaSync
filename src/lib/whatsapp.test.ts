@@ -9,7 +9,9 @@
  * `false`, `null`, texto).
  */
 import { describe, expect, it } from "vitest";
-import { linkParaCliente, whatsappValido } from "./whatsapp";
+import type { ColidenciaMatch, ColidenciaResultado } from "./colidencia";
+import { calcularRisco } from "./risco-area";
+import { linkParaCliente, mensagemWhatsapp, whatsappValido } from "./whatsapp";
 
 describe("whatsappValido", () => {
   // DDD (2 dígitos) + número (8 ou 9 dígitos), sem o 55 do país.
@@ -83,5 +85,52 @@ describe("linkParaCliente", () => {
     expect(linkParaCliente("85912345678", "a b&c")).toBe(
       "https://wa.me/5585912345678?text=a%20b%26c"
     );
+  });
+});
+
+describe("mensagemWhatsapp: a linha de risco", () => {
+  const marca = (nome: string, pct: number, mesmaArea: boolean | null): ColidenciaMatch => ({
+    nome,
+    classe: null,
+    pct,
+    fa: "",
+    fb: "",
+    fonte: "real",
+    mesmaArea,
+  });
+
+  // Monta uma colidência mínima a partir da lista de marcas parecidas.
+  const colidencia = (matches: ColidenciaMatch[]): ColidenciaResultado => ({
+    fonte: "real",
+    termo: "Nubank",
+    matches,
+    top: matches[0] ?? null,
+    ncl: { code: "42", label: "Tecnologia", confidence: "alta" },
+    risco: calcularRisco(matches),
+  });
+
+  const mensagem = (c: ColidenciaResultado) =>
+    mensagemWhatsapp({
+      nomeCliente: "Ana",
+      marca: "Nubank",
+      colidencia: c,
+      processoId: null,
+    });
+
+  it("fala do risco no ramo quando há marca parecida no mesmo ramo", () => {
+    const m = mensagem(colidencia([marca("NU BANCO", 73, true), marca("Nubank", 100, false)]));
+    expect(m).toContain("Risco de colisão no meu ramo (NCL 42): 73%");
+    expect(m).toContain("mais próxima: NU BANCO");
+  });
+
+  it("avisa que só há marcas parecidas em outros ramos", () => {
+    const m = mensagem(colidencia([marca("Nubank", 100, false)]));
+    expect(m).toContain("Nenhuma marca parecida no meu ramo (NCL 42)");
+    expect(m).toContain("até 100%");
+  });
+
+  it("sem separação por ramo, mantém a linha de risco de antes", () => {
+    const m = mensagem(colidencia([marca("CASADO", 56, null)]));
+    expect(m).toContain("Risco de colisão: 56% (base do INPI)");
   });
 });

@@ -5,6 +5,7 @@ import { inferNCL } from "./ncl";
 import { buscarMarcasLocais, infoBaseLocal } from "./marcas-locais";
 import type { InferenciaNCL } from "./types";
 import { mesmaArea } from "./classes";
+import { calcularRisco, type RiscoPorArea } from "./risco-area";
 
 /**
  * Junta a busca de anterioridade real (base real do INPI) com a
@@ -50,6 +51,8 @@ export interface ColidenciaResultado {
   matches: ColidenciaMatch[];
   top: ColidenciaMatch | null;
   ncl: InferenciaNCL;
+  /** Risco olhando o ramo (classe) das marcas: ver src/lib/risco-area.ts. */
+  risco: RiscoPorArea<ColidenciaMatch>;
   /** Presente quando a cópia local dos dados abertos do INPI participou da análise. */
   baseLocal?: { atualizadaEm: string | null; usadaSozinha: boolean };
   /** Só presente quando fonte === "demo" — explica por que caiu pro fallback. */
@@ -114,6 +117,7 @@ export async function calcularColidencia(
       matches,
       top: matches[0] ?? null,
       ncl,
+      risco: calcularRisco(matches),
       ...(baseLocal && local.status === "fulfilled"
         ? {
             baseLocal: {
@@ -145,6 +149,7 @@ export async function calcularColidencia(
     matches,
     top: matches[0] ?? null,
     ncl,
+    risco: calcularRisco(matches),
     avisoFonteReal: `A busca real no INPI não respondeu agora (${
       err instanceof Error ? err.message : "erro desconhecido"
     }). O resultado abaixo é uma demonstração com dados de exemplo — não reflete risco real. Tente de novo em instantes.`,
