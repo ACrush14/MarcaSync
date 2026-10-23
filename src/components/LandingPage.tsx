@@ -535,7 +535,8 @@ export default function LandingPage() {
               <p className="lp-kicker">Preços</p>
               <h2 id="t-precos">Preço fechado, sem letra miúda</h2>
               <p className="lp-section-lede">
-                Dois valores, os dois visíveis aqui e na tela da consulta.
+                Dois valores, os dois visíveis aqui e na tela da consulta. A taxa oficial do INPI
+                (GRU) é cobrada à parte, e o valor exato aparece antes de você confirmar.
               </p>
             </div>
 

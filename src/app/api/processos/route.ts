@@ -8,11 +8,12 @@ export const dynamic = "force-dynamic";
  * GET /api/processos
  *
  * Lista todos os processos (o "caderno de anotações"), mais recentes
- * primeiro, com cliente e pagamentos — o que alimenta a página /admin.
+ * primeiro, com cliente, pagamentos e os dados do pedido de registro (CPF/CNPJ e endereço,
+ * por isso esta rota é protegida por senha em src/proxy.ts) — o que alimenta a página /admin.
  */
 export async function GET() {
   const processos = await prisma.processo.findMany({
-    include: { cliente: true, pagamentos: true },
+    include: { cliente: true, pagamentos: true, pedidoRegistro: true },
     orderBy: { createdAt: "desc" },
   });
   return NextResponse.json({ processos });

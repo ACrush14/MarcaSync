@@ -74,12 +74,13 @@ describe("linkParaCliente", () => {
   });
 
   // Nunca um link quebrado: sem número válido, devolve null.
-  it.each([["", "vazio"], ["12345", "curto demais"], ["55859123456789", "longo demais"]])(
-    "devolve null para %s (%s)",
-    (entrada) => {
-      expect(linkParaCliente(entrada, texto)).toBe(null);
-    }
-  );
+  it.each([
+    ["", "vazio"],
+    ["12345", "curto demais"],
+    ["55859123456789", "longo demais"],
+  ])("devolve null para %s (%s)", (entrada) => {
+    expect(linkParaCliente(entrada, texto)).toBe(null);
+  });
 
   it("codifica o texto para caber na URL", () => {
     expect(linkParaCliente("85912345678", "a b&c")).toBe(
@@ -132,5 +133,13 @@ describe("mensagemWhatsapp: a linha de risco", () => {
   it("sem separação por ramo, mantém a linha de risco de antes", () => {
     const m = mensagem(colidencia([marca("CASADO", 56, null)]));
     expect(m).toContain("Risco de colisão: 56% (base do INPI)");
+  });
+
+  it("avisa que o cliente já preencheu os dados do pedido", () => {
+    const base = { nomeCliente: "Ana", marca: "Nubank", colidencia: null, processoId: null };
+    expect(mensagemWhatsapp({ ...base, pedidoEnviado: true })).toContain(
+      "Já preenchi os dados do pedido de registro no site."
+    );
+    expect(mensagemWhatsapp(base)).not.toContain("Já preenchi");
   });
 });

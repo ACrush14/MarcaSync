@@ -58,8 +58,9 @@ model Processo {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  pagamentos Pagamento[]
-  alertas    Alerta[]
+  pagamentos     Pagamento[]
+  alertas        Alerta[]
+  pedidoRegistro PedidoRegistro?
 }
 
 /// Uma cobrança (setup ou mensalidade de monitoramento) — confirmada à mão
@@ -162,9 +163,51 @@ model SituacaoProcesso {
 ///de 15 minutos após o IP ser barrado.
 
 model TentativaAdmin {
-  id String @id @default(cuid())
-  ip String
+  id        String   @id @default(cuid())
+  ip        String
   createdAt DateTime @default(now())
 
   @@index([ip, createdAt])
+}
+
+/// Dados que o cliente informa, depois de ver o resultado e o plano, para o pedido de
+/// registro ser protocolado no e-Marcas (Manual de Marcas do INPI, itens 3.1 e 3.5.2).
+/// Um por processo. NÃO guarda login nem senha do e-INPI ou do gov.br: quem entra no
+/// sistema do INPI para emitir a GRU e protocolar é o procurador, com o login dele.
+/// Os valores em centavos são calculados no servidor, nunca aceitos do navegador.
+model PedidoRegistro {
+  id         String   @id @default(cuid())
+  processoId String   @unique
+  processo   Processo @relation(fields: [processoId], references: [id])
+
+  // Requerente
+  tipoRequerente         String // "pf" | "pj"
+  regime                 String // pessoa_natural | mei | microempresa | empresa_pequeno_porte | sem_fins_lucrativos | outra_empresa
+  participaEmpresaDoRamo Boolean @default(false) // só pessoa natural: se tem sociedade em empresa do ramo
+  nome                   String // nome completo ou razão social, sem abreviações
+  documento              String // CPF ou CNPJ, só dígitos
+  email                  String
+  cep                    String
+  logradouro             String
+  numero                 String
+  complemento            String?
+  bairro                 String
+  cidade                 String
+  uf                     String
+
+  // Marca e pedido
+  apresentacao       String // nominativa | figurativa | mista
+  elementoNominativo String? // o texto da marca (nominativa e mista)
+  classeNice         String // uma classe por pedido (o e-Marcas não tem multiclasse)
+  especificacao      String // produtos ou serviços que a marca vai assinalar
+  atividade          String // declaração de atividade (art. 128 da Lei 9.279/96)
+
+  // Valores calculados no servidor
+  servicoCentavos Int
+  gruCentavos     Int
+  gruComDesconto  Boolean
+
+  aceitoEm  DateTime @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

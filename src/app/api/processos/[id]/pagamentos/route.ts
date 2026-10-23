@@ -5,14 +5,14 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 interface CriarPagamentoBody {
-  tipo?: "setup" | "monitoramento";
+  tipo?: "setup" | "gru" | "monitoramento";
   valorCentavos?: number;
 }
 
 /**
  * POST /api/processos/:id/pagamentos
  *
- * Registra uma cobrança pendente (setup ou monitoramento) pro processo.
+ * Registra uma cobrança pendente (setup, gru ou monitoramento) pro processo.
  * Não cobra nada de verdade — hoje o pagamento em si é feito por PIX fora
  * do sistema; isto só cria o registro "aguardando confirmação".
  */
@@ -20,9 +20,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const { id } = await params;
   const body = (await request.json()) as CriarPagamentoBody;
 
-  if (body.tipo !== "setup" && body.tipo !== "monitoramento") {
+  if (body.tipo !== "setup" && body.tipo !== "gru" && body.tipo !== "monitoramento") {
     return NextResponse.json(
-      { error: 'tipo deve ser "setup" ou "monitoramento".' },
+      { error: 'tipo deve ser "setup", "gru" ou "monitoramento".' },
       { status: 400 }
     );
   }

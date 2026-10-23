@@ -6,16 +6,19 @@ import ConsultaStep from "./ConsultaStep";
 import LoadingStep from "./LoadingStep";
 import ResultadoStep from "./ResultadoStep";
 import PlanoStep from "./PlanoStep";
+import PedidoStep, { type ResumoPedido } from "./PedidoStep";
 import ContatoStep from "./ContatoStep";
 import type { ColidenciaResultado } from "@/lib/colidencia";
-import { MONITORAMENTO_CENTAVOS, SETUP_CENTAVOS } from "@/lib/planos";
 import { linkWhatsapp } from "@/lib/whatsapp";
 import { pctDoRisco } from "@/lib/risco-area";
 import TrackView from "./TrackView";
 
-type Phase = "consulta" | "carregando" | "resultado" | "plano" | "contato";
+type Phase = "consulta" | "carregando" | "resultado" | "plano" | "pedido" | "contato";
 
-const PHASE_POR_PASSO: Phase[] = ["consulta", "resultado", "plano", "contato"];
+const PHASE_POR_PASSO: Phase[] = ["consulta", "resultado", "plano", "pedido", "contato"];
+
+const PASSO_PEDIDO = 3;
+const PASSO_CONTATO = 4;
 
 export default function MarcaSyncApp() {
   const [current, setCurrent] = useState(0);
@@ -42,10 +45,9 @@ export default function MarcaSyncApp() {
   // animação acabar pra só então começar a buscar.
   const colidenciaPromiseRef = useRef<Promise<ColidenciaResultado> | null>(null);
 
-  // Cobranças já criadas pra este processo: o cliente pode voltar ao Plano
-  // pelo Stepper e confirmar de novo — sem isso duplicaria o registro.
-  const setupCriadoRef = useRef(false);
-  const monitoramentoCriadoRef = useRef(false);
+  // Resumo de valores devolvido pelo servidor depois que o cliente envia os dados do pedido
+  // (as cobranças pendentes são criadas lá, com o preço calculado no servidor).
+  const [resumoPedido, setResumoPedido] = useState<ResumoPedido | null>(null);
 
   function navigate(i: number) {
     if (i > unlocked) return;
@@ -129,17 +131,36 @@ export default function MarcaSyncApp() {
     }
   }
 
+  /** Cliente decidiu seguir com o registro: abre o formulário de dados do pedido. */
+  function handleVerPedido() {
+    setUnlocked((u) => Math.max(u, PASSO_PEDIDO));
+    setCurrent(PASSO_PEDIDO);
+    setPhase("pedido");
+  }
+
   /**
-   * Cliente decidiu falar comigo (botão "WhatsApp" do Resultado ou do
-   * Plano). O <a href="wa.me/…"> dos botões abre a conversa por conta
-   * própria — aqui só avançamos o wizard e anotamos no caderno. `comPlano`
-   * é verdadeiro quando ele passou pelo Plano: aí viram cobranças pendentes
-   * (que eu confirmo à mão no /admin depois do PIX).
+   * O servidor gravou o pedido e criou as cobranças pendentes (serviço, taxa do INPI e,
+   * se for o caso, monitoramento). Aqui só guardamos o resumo e avançamos para a conversa.
    */
-  async function handleContato(comPlano: boolean) {
-    setPlanoEscolhido(comPlano);
-    setUnlocked((u) => Math.max(u, 3));
-    setCurrent(3);
+  function handlePedidoEnviado(resumo: ResumoPedido) {
+    setResumoPedido(resumo);
+    setPlanoEscolhido(true);
+    setErroSalvar(null);
+    setUnlocked((u) => Math.max(u, PASSO_CONTATO));
+    setCurrent(PASSO_CONTATO);
+    setPhase("contato");
+  }
+
+  /**
+   * Cliente decidiu falar comigo antes de preencher os dados (botão "WhatsApp" do Resultado
+   * ou do Plano). O <a href="wa.me/…"> dos botões abre a conversa por conta própria — aqui só
+   * avançamos o wizard e anotamos no caderno. Não cria cobrança: elas nascem quando o
+   * cliente envia o formulário do pedido.
+   */
+  async function handleContato() {
+    setPlanoEscolhido(false);
+    setUnlocked((u) => Math.max(u, PASSO_CONTATO));
+    setCurrent(PASSO_CONTATO);
     setPhase("contato");
 
     if (!processoId) return;
@@ -147,27 +168,8 @@ export default function MarcaSyncApp() {
       await fetch(`/api/processos/${processoId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(
-          comPlano ? { status: "contato", monitoramento } : { status: "contato" }
-        ),
+        body: JSON.stringify({ status: "contato" }),
       });
-
-      if (comPlano) {
-        const criar = (tipo: "setup" | "monitoramento", valorCentavos: number) =>
-          fetch(`/api/processos/${processoId}/pagamentos`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ tipo, valorCentavos }),
-          });
-        if (!setupCriadoRef.current) {
-          setupCriadoRef.current = true;
-          await criar("setup", SETUP_CENTAVOS);
-        }
-        if (monitoramento && !monitoramentoCriadoRef.current) {
-          monitoramentoCriadoRef.current = true;
-          await criar("monitoramento", MONITORAMENTO_CENTAVOS);
-        }
-      }
       setErroSalvar(null);
     } catch {
       setErroSalvar("Falha ao registrar o contato no banco.");
@@ -176,8 +178,7 @@ export default function MarcaSyncApp() {
 
   function novaConsulta() {
     colidenciaPromiseRef.current = null;
-    setupCriadoRef.current = false;
-    monitoramentoCriadoRef.current = false;
+    setResumoPedido(null);
     setColidencia(null);
     setPlanoEscolhido(false);
     setProcessoId(null);
@@ -199,6 +200,7 @@ export default function MarcaSyncApp() {
     colidencia,
     processoId,
     plano: { monitoramento },
+    pedidoEnviado: resumoPedido !== null,
   });
 
   return (
@@ -257,16 +259,31 @@ export default function MarcaSyncApp() {
             }}
             onVerPlano={handleVerPlano}
             whatsappHref={hrefResultado}
-            onContato={() => handleContato(false)}
+            onContato={handleContato}
           />
         )}
         {phase === "plano" && (
           <PlanoStep
             monitoramento={monitoramento}
             onToggleMonitoramento={() => setMonitoramento((m) => !m)}
-            onConfirmar={() => handleContato(true)}
+            onConfirmar={handleVerPedido}
+            onFalarPrimeiro={handleContato}
             processoId={processoId}
             whatsappHref={hrefPlano}
+          />
+        )}
+        {phase === "pedido" && (
+          <PedidoStep
+            processoId={processoId}
+            marca={marca}
+            classeSugerida={colidencia?.ncl.code ?? ""}
+            descricao={descricao}
+            monitoramento={monitoramento}
+            onVoltar={() => {
+              setCurrent(2);
+              setPhase("plano");
+            }}
+            onEnviado={handlePedidoEnviado}
           />
         )}
         {phase === "contato" && (
@@ -275,6 +292,7 @@ export default function MarcaSyncApp() {
             whatsappCliente={whatsapp}
             marca={marca}
             whatsappHref={planoEscolhido ? hrefPlano : hrefResultado}
+            resumo={resumoPedido}
             onNovaConsulta={novaConsulta}
           />
         )}

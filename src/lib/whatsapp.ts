@@ -27,6 +27,8 @@ export interface DadosContato {
   processoId: string | null;
   /** Só presente depois que o cliente passou pelo passo "Plano". */
   plano?: { monitoramento: boolean } | null;
+  /** O cliente já preencheu o formulário de dados do pedido de registro. */
+  pedidoEnviado?: boolean;
 }
 
 function linhaRisco(c: ColidenciaResultado | null): string | null {
@@ -53,6 +55,7 @@ export function mensagemWhatsapp(d: DadosContato): string {
           d.plano.monitoramento ? ` + monitoramento ${fmtReais(MONITORAMENTO_CENTAVOS)}/mês` : ""
         }.`
       : null,
+    d.pedidoEnviado ? "Já preenchi os dados do pedido de registro no site." : null,
     "Quero conversar sobre o registro.",
     // referência curta pra achar o pedido no /admin
     d.processoId ? `Ref.: ${d.processoId.slice(-6)}` : null,
