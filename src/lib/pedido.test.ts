@@ -4,7 +4,15 @@
  * não pertencem a ninguém conhecido.
  */
 import { describe, expect, it } from "vitest";
-import { GRU_PEDIDO_CENTAVOS, GRU_PEDIDO_LIVRE_CENTAVOS, calcularGru } from "./gru";
+import {
+  GRU_PEDIDO_CENTAVOS,
+  GRU_PEDIDO_LIVRE_CENTAVOS,
+  NATUREZA_INPI,
+  REGIMES,
+  REGIMES_PJ,
+  ROTULO_REGIME,
+  calcularGru,
+} from "./gru";
 import { analisarEspecificacao } from "./catalogo";
 import {
   cnpjValido,
@@ -29,13 +37,18 @@ describe("calcularGru", () => {
     });
   });
 
-  it.each(["mei", "microempresa", "empresa_pequeno_porte", "sem_fins_lucrativos"] as const)(
-    "%s tem desconto, mesmo marcando participação",
-    (regime) => {
-      expect(calcularGru(regime, true).comDesconto).toBe(true);
-      expect(calcularGru(regime, false).centavos).toBe(44_000);
-    }
-  );
+  it.each([
+    "mei",
+    "microempresa",
+    "empresa_pequeno_porte",
+    "empresa_simples_inovacao",
+    "ict",
+    "sem_fins_lucrativos",
+    "orgao_publico",
+  ] as const)("%s tem desconto, mesmo marcando participação", (regime) => {
+    expect(calcularGru(regime, true).comDesconto).toBe(true);
+    expect(calcularGru(regime, false).centavos).toBe(44_000);
+  });
 
   it("especificação livre (GRU 394) custa mais, com e sem desconto", () => {
     expect(calcularGru("pessoa_natural", false, true)).toEqual({
@@ -49,6 +62,22 @@ describe("calcularGru", () => {
     expect(calcularGru("mei", false, true).centavos).toBeGreaterThan(
       calcularGru("mei", false, false).centavos
     );
+  });
+
+  it("cooperativa não tem desconto na leitura atual do manual", () => {
+    expect(calcularGru("cooperativa", false)).toEqual({
+      centavos: GRU_PEDIDO_CENTAVOS,
+      comDesconto: false,
+    });
+  });
+
+  it("toda natureza do formulário tem o rótulo do e-INPI e só pessoa_natural é pessoa física", () => {
+    for (const r of REGIMES) {
+      expect(NATUREZA_INPI[r].length).toBeGreaterThan(3);
+      expect(ROTULO_REGIME[r].length).toBeGreaterThan(3);
+    }
+    expect(REGIMES_PJ).not.toContain("pessoa_natural");
+    expect(REGIMES_PJ.length).toBe(REGIMES.length - 1);
   });
 
   it("outra empresa nunca tem desconto", () => {

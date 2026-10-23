@@ -28,7 +28,11 @@ export const REGIMES = [
   "mei",
   "microempresa",
   "empresa_pequeno_porte",
+  "empresa_simples_inovacao",
+  "ict",
   "sem_fins_lucrativos",
+  "orgao_publico",
+  "cooperativa",
   "outra_empresa",
 ] as const;
 
@@ -39,18 +43,43 @@ export const ROTULO_REGIME: Record<Regime, string> = {
   mei: "MEI (microempreendedor individual)",
   microempresa: "Microempresa (ME)",
   empresa_pequeno_porte: "Empresa de pequeno porte (EPP)",
-  sem_fins_lucrativos: "Entidade sem fins lucrativos",
-  outra_empresa: "Outra empresa (sem desconto)",
+  empresa_simples_inovacao: "Empresa simples de inovação",
+  ict: "Instituição científica, tecnológica e de inovação (ICT)",
+  sem_fins_lucrativos: "Associação ou sociedade sem fins lucrativos",
+  orgao_publico: "Órgão público",
+  cooperativa: "Cooperativa",
+  outra_empresa: "Outra pessoa jurídica (sem desconto)",
+};
+
+/**
+ * Como a opção se chama no campo "Natureza Jurídica" do cadastro de cliente do e-INPI
+ * (https://meu.inpi.gov.br/pag/cliente/form, lista lida em 23/10/2026). É esse campo que faz
+ * o INPI aplicar o desconto sozinho na emissão da GRU, por isso o cadastro do cliente precisa
+ * escolher exatamente esta opção.
+ */
+export const NATUREZA_INPI: Record<Regime, string> = {
+  pessoa_natural: "Pessoa Física",
+  mei: "Microempreendedor Individual - MEI",
+  microempresa: "Microempresa assim definida em lei",
+  empresa_pequeno_porte: "Empresa de Pequeno Porte assim definidas em lei",
+  empresa_simples_inovacao: "Empresa Simples de Inovação",
+  ict: "Instituições Científicas, Tecnológicas e de Inovação - ICT",
+  sem_fins_lucrativos:
+    "Associação com intuito não econômico (ou Sociedade com intuito não econômico)",
+  orgao_publico: "Órgão Público",
+  cooperativa: "Cooperativa assim definida em lei",
+  outra_empresa: "Pessoa Jurídica",
 };
 
 /** Regimes de pessoa jurídica (têm CNPJ). Pessoa física é só `pessoa_natural`. */
-export const REGIMES_PJ: Regime[] = [
-  "mei",
-  "microempresa",
-  "empresa_pequeno_porte",
-  "sem_fins_lucrativos",
-  "outra_empresa",
-];
+export const REGIMES_PJ: Regime[] = REGIMES.filter((r) => r !== "pessoa_natural");
+
+/**
+ * Regimes que não têm desconto de 50%. A lista de quem tem desconto (Manual de Marcas,
+ * item 1.7) não cita cooperativas nem pessoas jurídicas em geral; para cooperativa vale
+ * confirmar na tela de emissão da GRU.
+ */
+const SEM_DESCONTO: Regime[] = ["outra_empresa", "cooperativa"];
 
 export interface ResultadoGru {
   centavos: number;
@@ -62,7 +91,8 @@ export interface ResultadoGru {
  *
  * Como ler a regra: pessoa natural só tem desconto se NÃO tiver participação em empresa
  * do ramo (`participaEmpresaDoRamo` falso). Os regimes de empresa com desconto (MEI, ME,
- * EPP e sem fins lucrativos) o têm sempre; "outra empresa" nunca. O desconto é arredondado
+ * EPP, empresa simples de inovação, ICT, sem fins lucrativos e órgão público) o têm sempre;
+ * "outra empresa" e cooperativa nunca. O desconto é arredondado
  * para baixo em centavos inteiros, para nunca cobrar a mais por arredondamento. Com
  * `especificacaoLivre` verdadeiro (algum item fora da lista do INPI) vale o serviço 394, bem mais caro.
  */
@@ -73,7 +103,7 @@ export function calcularGru(
 ): ResultadoGru {
   const cheio = especificacaoLivre ? GRU_PEDIDO_LIVRE_CENTAVOS : GRU_PEDIDO_CENTAVOS;
   const comDesconto =
-    regime === "pessoa_natural" ? !participaEmpresaDoRamo : regime !== "outra_empresa";
+    regime === "pessoa_natural" ? !participaEmpresaDoRamo : !SEM_DESCONTO.includes(regime);
   const centavos = comDesconto ? Math.floor((cheio * (100 - GRU_DESCONTO_PCT)) / 100) : cheio;
   return { centavos, comDesconto };
 }
