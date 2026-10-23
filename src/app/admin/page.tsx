@@ -3,6 +3,7 @@
 import { Fragment, useEffect, useState } from "react";
 import Link from "next/link";
 import { linkParaCliente } from "@/lib/whatsapp";
+import { camposEmarcas, checarProntidao } from "@/lib/prontidao";
 
 interface Pagamento {
   id: string;
@@ -124,29 +125,28 @@ function fmtReais(centavos: number): string {
  */
 function PedidoDetalhe({
   pedido: d,
+  pagamentos,
   marca,
   rotulo,
 }: {
   pedido: PedidoRegistro;
+  pagamentos: Pagamento[];
   marca: string;
   rotulo: string;
 }) {
+  const prontidao = checarProntidao(d, pagamentos, marca);
   const linhas: Array<[string, string]> = [
+    ...camposEmarcas(d).map(([nome, valor]): [string, string] => [
+      nome,
+      nome === "CPF/CNPJ"
+        ? fmtDocumento(d.documento)
+        : (valor ?? "— (não se aplica a este pedido)"),
+    ]),
+    ["Complemento", d.complemento ?? "—"],
     [
-      "Titular",
-      `${d.nome} (${d.tipoRequerente === "pj" ? "pessoa jurídica" : "pessoa física"}, ${d.regime.replace(/_/g, " ")})`,
+      "Porte do titular",
+      `${d.tipoRequerente === "pj" ? "pessoa jurídica" : "pessoa física"}, ${d.regime.replace(/_/g, " ")}`,
     ],
-    ["CPF/CNPJ", fmtDocumento(d.documento)],
-    ["E-mail", d.email],
-    [
-      "Endereço",
-      `${d.logradouro}, ${d.numero}${d.complemento ? ` — ${d.complemento}` : ""}, ${d.bairro}, ${d.cidade}/${d.uf}, CEP ${d.cep}`,
-    ],
-    ["Apresentação", d.apresentacao],
-    ["Elemento nominativo", d.elementoNominativo ?? "— (marca figurativa)"],
-    ["Classe de Nice", d.classeNice],
-    ["Especificação", d.especificacao],
-    ["Declaração de atividade", d.atividade],
     [
       "GRU a emitir",
       `serviço 389 (especificação pré-aprovada) ou 394 (livre), ${fmtReais(d.gruCentavos)}${d.gruComDesconto ? " (com 50% de desconto)" : ""}; confirme o valor na tela de emissão`,
@@ -174,6 +174,24 @@ function PedidoDetalhe({
           </Fragment>
         ))}
       </dl>
+      <p style={{ fontSize: 13, fontWeight: 600, margin: "12px 0 4px" }}>
+        {prontidao.pronto ? "Pronto para protocolar" : "Antes de protocolar"}
+      </p>
+      <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12.5 }}>
+        {prontidao.itens.map((i) => (
+          <li key={i.id} style={{ marginBottom: 3 }}>
+            <strong>
+              {i.estado === "ok" ? "✓" : i.estado === "atencao" ? "Conferir:" : "Falta:"} {i.titulo}
+            </strong>
+            {i.estado !== "ok" && (
+              <span style={{ color: "var(--ink-dim)" }}>
+                {" "}
+                ({i.quem === "cliente" ? "cliente" : "você"}) {i.detalhe}
+              </span>
+            )}
+          </li>
+        ))}
+      </ul>
     </details>
   );
 }
@@ -605,6 +623,7 @@ export default function AdminPage() {
                         <td colSpan={7}>
                           <PedidoDetalhe
                             pedido={p.pedidoRegistro}
+                            pagamentos={p.pagamentos}
                             marca={p.marca}
                             rotulo={`Dados do pedido de ${p.marca}`}
                           />
