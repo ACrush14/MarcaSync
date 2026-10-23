@@ -1,3 +1,4 @@
+import { checarProntidao } from "@/lib/prontidao";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 
@@ -8,14 +9,42 @@ export const dynamic = "force-dynamic";
  * GET /api/processos
  *
  * Lista todos os processos (o "caderno de anotações"), mais recentes
- * primeiro, com cliente e pagamentos — o que alimenta a página /admin.
+ * primeiro, com cliente, pagamentos e os dados do pedido de registro (CPF/CNPJ e endereço,
+ * por isso esta rota é protegida por senha em src/proxy.ts) — o que alimenta a página /admin.
  */
 export async function GET() {
   const processos = await prisma.processo.findMany({
-    include: { cliente: true, pagamentos: true },
+    include: {
+      cliente: true,
+      pagamentos: true,
+      pedidoRegistro: true,
+      // Só os números da imagem: os bytes saem pela rota /imagem, nunca nesta lista.
+      imagemMarca: {
+        select: {
+          largura: true,
+          altura: true,
+          ampliada: true,
+          larguraOriginal: true,
+          alturaOriginal: true,
+        },
+      },
+    },
     orderBy: { createdAt: "desc" },
   });
-  return NextResponse.json({ processos });
+  // A checklist "pronto para protocolar" é calculada aqui, no servidor, porque usa o catálogo
+  // de termos do INPI (grande demais para mandar ao navegador).
+  return NextResponse.json({
+    processos: processos.map((p) => ({
+      ...p,
+      prontidao: p.pedidoRegistro
+        ? checarProntidao(p.pedidoRegistro, p.pagamentos, {
+            marca: p.marca,
+            riscoPct: p.riscoPct,
+            imagem: p.imagemMarca,
+          })
+        : null,
+    })),
+  });
 }
 
 interface CriarProcessoBody {

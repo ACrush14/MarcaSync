@@ -1,5 +1,7 @@
 "use client";
 
+import AvisoAnterioridadeBox from "./AvisoAnterioridadeBox";
+import type { AvisoAnterioridade } from "@/lib/anterioridade";
 import { useState } from "react";
 import { riskTier } from "@/lib/fonetica";
 import { agruparPorArea } from "@/lib/classes";
@@ -66,6 +68,8 @@ function TabelaMarcas({ lista, fonte }: { lista: ColidenciaMatch[]; fonte: Fonte
 
 interface ResultadoStepProps {
   descricao: string;
+  /** Aviso de marca anterior parecida no ramo (nivel "nenhum" não mostra nada). */
+  aviso: AvisoAnterioridade;
   colidencia: ColidenciaResultado;
   onColidenciaAtualizada: (c: ColidenciaResultado) => void;
   onRefazer: () => void;
@@ -78,6 +82,7 @@ interface ResultadoStepProps {
 
 export default function ResultadoStep({
   descricao,
+  aviso,
   colidencia,
   onColidenciaAtualizada,
   onRefazer,
@@ -270,8 +275,7 @@ export default function ResultadoStep({
           {grupos.outrasAreas.length > 0 && (
             <section className="wave-section" aria-labelledby="grupo-outros-ramos">
               <h3 id="grupo-outros-ramos">
-                Em outros ramos{" "}
-                <span className="pill accent">{grupos.outrasAreas.length}</span>
+                Em outros ramos <span className="pill accent">{grupos.outrasAreas.length}</span>
               </h3>
               <p className="sub">
                 Têm nome parecido, mas registradas em outra classe. Costumam pesar menos, mas vale
@@ -284,8 +288,7 @@ export default function ResultadoStep({
           {grupos.semClasse.length > 0 && (
             <section className="wave-section" aria-labelledby="grupo-sem-classe">
               <h3 id="grupo-sem-classe">
-                Classe não informada{" "}
-                <span className="pill accent">{grupos.semClasse.length}</span>
+                Classe não informada <span className="pill accent">{grupos.semClasse.length}</span>
               </h3>
               <p className="sub">
                 A base do INPI não traz a classe destas marcas, então não dá para dizer se são do
@@ -321,6 +324,8 @@ export default function ResultadoStep({
           <p style={{ fontSize: 12, color: "var(--risk)", marginTop: 8 }}>{erroBusca}</p>
         )}
       </div>
+
+      <AvisoAnterioridadeBox aviso={aviso} />
 
       <div className="cta-row">
         <button className="btn ghost" onClick={onRefazer}>

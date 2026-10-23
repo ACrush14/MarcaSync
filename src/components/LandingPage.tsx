@@ -203,7 +203,7 @@ const FAQ = [
   },
   {
     p: "Preciso enviar o logotipo?",
-    r: "Só se sua marca tiver logotipo (marca mista: nome + imagem). Se for apenas o nome (marca nominativa), não precisa. Quando precisar, é só arrastar o PNG, de até 1000×1000 px, no passo do plano.",
+    r: "Só se sua marca tiver logotipo (marca mista: nome + imagem). Se for apenas o nome (marca nominativa), não precisa. Quando precisar, você envia o PNG ou JPG no formulário do pedido e eu converto para o formato que o INPI exige.",
   },
   {
     p: "Como funciona o pagamento?",
@@ -438,11 +438,11 @@ export default function LandingPage() {
                 </span>
                 <h3>Logotipo, se tiver</h3>
                 <p>
-                  Marca com imagem? Arraste o PNG (até 1000×1000 px) no passo do plano. Só nome? Nem
-                  precisa.
+                  Marca com imagem? Envie o PNG ou JPG no formulário do pedido e eu converto para o
+                  formato do INPI. Só nome? Nem precisa.
                 </p>
                 <div className="lp-visual lp-visual-drop" aria-hidden="true">
-                  Arraste o PNG aqui
+                  Envie o PNG ou JPG
                 </div>
               </article>
 
@@ -535,7 +535,8 @@ export default function LandingPage() {
               <p className="lp-kicker">Preços</p>
               <h2 id="t-precos">Preço fechado, sem letra miúda</h2>
               <p className="lp-section-lede">
-                Dois valores, os dois visíveis aqui e na tela da consulta.
+                Dois valores, os dois visíveis aqui e na tela da consulta. A taxa oficial do INPI
+                (GRU) é cobrada à parte, e o valor exato aparece antes de você confirmar.
               </p>
             </div>
 

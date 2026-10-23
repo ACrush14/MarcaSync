@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import Link from "next/link";
 import { linkParaCliente } from "@/lib/whatsapp";
+import { camposEmarcas } from "@/lib/campos-emarcas";
+import type { Prontidao } from "@/lib/prontidao";
 
 interface Pagamento {
   id: string;
@@ -11,6 +13,36 @@ interface Pagamento {
   status: string;
   confirmadoEm: string | null;
   confirmadoVia: string | null;
+}
+
+interface PedidoRegistro {
+  tipoRequerente: string;
+  regime: string;
+  participaEmpresaDoRamo: boolean;
+  nome: string;
+  documento: string;
+  email: string;
+  cep: string;
+  logradouro: string;
+  numero: string;
+  complemento: string | null;
+  bairro: string;
+  cidade: string;
+  uf: string;
+  apresentacao: string;
+  elementoNominativo: string | null;
+  classeNice: string;
+  especificacao: string;
+  especificacaoItens: string[];
+  especificacaoLivre: boolean;
+  palavraEstrangeira: boolean;
+  traducao: string | null;
+  cienteAnterioridade: boolean;
+  atividade: string;
+  servicoCentavos: number;
+  gruCentavos: number;
+  gruComDesconto: boolean;
+  aceitoEm: string;
 }
 
 interface Processo {
@@ -26,6 +58,9 @@ interface Processo {
   createdAt: string;
   cliente: { nome: string; whatsapp: string };
   pagamentos: Pagamento[];
+  pedidoRegistro: PedidoRegistro | null;
+  imagemMarca: { largura: number; altura: number; ampliada: boolean } | null;
+  prontidao: Prontidao | null;
 }
 
 interface Alerta {
@@ -72,14 +107,128 @@ function mensagemAlerta(a: Alerta): string {
   );
 }
 
+const ROTULO_PAGAMENTO: Record<string, string> = {
+  setup: "Setup",
+  gru: "Taxa do INPI (GRU)",
+  monitoramento: "Monitoramento",
+};
+
+/** CPF (11 dígitos) ou CNPJ (14) com máscara, só para ler na tela. */
+function fmtDocumento(d: string): string {
+  if (d.length === 11) return d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+  if (d.length === 14) {
+    return d.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
+  }
+  return d;
+}
+
 function fmtReais(centavos: number): string {
   return (centavos / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
+/**
+ * Os dados do pedido de registro, na ordem em que o e-Marcas os pede (Manual de Marcas do
+ * INPI, itens 3.1 e 3.5.2), para você conferir e copiar na hora de emitir a GRU e protocolar.
+ * Só aparece aqui, na área com senha: CPF/CNPJ e endereço não saem desta tela.
+ */
+function PedidoDetalhe({
+  pedido: d,
+  processoId,
+  prontidao,
+  temImagem,
+  marca,
+  rotulo,
+}: {
+  pedido: PedidoRegistro;
+  processoId: string;
+  prontidao: Prontidao | null;
+  temImagem: boolean;
+  marca: string;
+  rotulo: string;
+}) {
+  const linhas: Array<[string, string]> = [
+    ...camposEmarcas(d).map(([nome, valor]): [string, string] => [
+      nome,
+      nome === "CPF/CNPJ"
+        ? fmtDocumento(d.documento)
+        : (valor ?? "— (não se aplica a este pedido)"),
+    ]),
+    ["Itens da especificação", d.especificacaoItens.join(" | ")],
+    ["Complemento", d.complemento ?? "—"],
+    [
+      "Porte do titular",
+      `${d.tipoRequerente === "pj" ? "pessoa jurídica" : "pessoa física"}, ${d.regime.replace(/_/g, " ")}`,
+    ],
+    [
+      "GRU a emitir",
+      `serviço ${d.especificacaoLivre ? "394 (especificação livre)" : "389 (especificação pré-aprovada)"}, ${fmtReais(d.gruCentavos)}${d.gruComDesconto ? " (com 50% de desconto)" : ""}; confirme o valor na tela de emissão`,
+    ],
+    ["Serviço MarcaSync", fmtReais(d.servicoCentavos)],
+    ["Aceites dados em", new Date(d.aceitoEm).toLocaleString("pt-BR")],
+  ];
+  return (
+    <details style={{ margin: "4px 0 8px" }}>
+      <summary style={{ cursor: "pointer", fontSize: 13, fontWeight: 600 }}>{rotulo}</summary>
+      <dl
+        style={{
+          display: "grid",
+          gridTemplateColumns: "190px 1fr",
+          gap: "4px 12px",
+          fontSize: 12.5,
+          marginTop: 8,
+        }}
+        aria-label={`Dados do pedido da marca ${marca}`}
+      >
+        {linhas.map(([nome, valor]) => (
+          <Fragment key={nome}>
+            <dt style={{ color: "var(--ink-dim)" }}>{nome}</dt>
+            <dd style={{ margin: 0 }}>{valor}</dd>
+          </Fragment>
+        ))}
+      </dl>
+      {temImagem && (
+        <p style={{ fontSize: 12.5, margin: "10px 0 0" }}>
+          Imagem da marca:{" "}
+          <a href={`/api/processos/${processoId}/imagem`} target="_blank" rel="noreferrer">
+            JPG pronto para o e-Marcas
+          </a>
+          {" · "}
+          <a
+            href={`/api/processos/${processoId}/imagem?tipo=original`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            arquivo original
+          </a>
+        </p>
+      )}
+      <p style={{ fontSize: 13, fontWeight: 600, margin: "12px 0 4px" }}>
+        {prontidao?.pronto ? "Pronto para protocolar" : "Antes de protocolar"}
+      </p>
+      <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12.5 }}>
+        {(prontidao?.itens ?? []).map((i) => (
+          <li key={i.id} style={{ marginBottom: 3 }}>
+            <strong>
+              {i.estado === "ok" ? "✓" : i.estado === "atencao" ? "Conferir:" : "Falta:"} {i.titulo}
+            </strong>
+            {i.estado !== "ok" && (
+              <span style={{ color: "var(--ink-dim)" }}>
+                {" "}
+                ({i.quem === "cliente" ? "cliente" : "você"}) {i.detalhe}
+              </span>
+            )}
+          </li>
+        ))}
+      </ul>
+    </details>
+  );
 }
 
 const STATUS_LABEL: Record<string, string> = {
   consulta: "Em consulta",
   resultado: "Resultado visto",
   plano: "Vendo plano",
+  pedido: "Dados do pedido enviados",
   contato: "Pediu contato",
   protocolado: "Protocolado",
 };
@@ -382,116 +531,136 @@ export default function AdminPage() {
               </thead>
               <tbody>
                 {processos.map((p) => (
-                  <tr key={p.id}>
-                    <td>
-                      {p.cliente.nome}
-                      <br />
-                      <span style={{ fontSize: 11.5, color: "var(--ink-faint)" }}>
-                        {p.cliente.whatsapp}
-                      </span>
-                    </td>
-                    <td>
-                      {p.marca}
-                      {p.protocolo && (
-                        <>
-                          <br />
-                          <span
-                            className="mono"
-                            style={{ fontSize: 11.5, color: "var(--ink-faint)" }}
-                          >
-                            protocolo {p.protocolo}
-                          </span>
-                        </>
-                      )}
-                    </td>
-                    <td>
-                      {p.logoUrl ? (
-                        <a href={p.logoUrl} target="_blank" rel="noreferrer">
-                          {/* eslint-disable-next-line @next/next/no-img-element -- URL externa (Blob), next/image não se aplica */}
-                          <img
-                            src={p.logoUrl}
-                            alt={`Logotipo de ${p.marca}`}
-                            style={{
-                              width: 40,
-                              height: 40,
-                              objectFit: "contain",
-                              borderRadius: 6,
-                              border: "1px solid var(--border)",
-                              background: "var(--surface)",
-                            }}
-                          />
-                        </a>
-                      ) : (
-                        <span style={{ fontSize: 12, color: "var(--ink-faint)" }}>—</span>
-                      )}
-                    </td>
-                    <td>
-                      <span className="pill accent">{STATUS_LABEL[p.status] ?? p.status}</span>
-                    </td>
-                    <td>
-                      <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                        <label className="sr-only" htmlFor={`num-${p.id}`}>
-                          Número do processo no INPI — {p.marca}
-                        </label>
-                        <input
-                          id={`num-${p.id}`}
-                          inputMode="numeric"
-                          autoComplete="off"
-                          placeholder="9 dígitos"
-                          value={numeros[p.id] ?? p.numeroProcesso ?? ""}
-                          onChange={(e) => setNumeros((n) => ({ ...n, [p.id]: e.target.value }))}
-                          style={{ width: 120, minHeight: 40 }}
-                        />
-                        {p.id in numeros && numeros[p.id] !== (p.numeroProcesso ?? "") && (
-                          <button
-                            className="btn ghost"
-                            style={{ minHeight: 40, padding: "10px 14px", fontSize: 13 }}
-                            disabled={salvandoNumero === p.id}
-                            onClick={() => salvarNumero(p.id)}
-                          >
-                            {salvandoNumero === p.id ? "Salvando…" : "Salvar"}
-                          </button>
-                        )}
-                      </div>
-                      {p.monitoramento ? (
-                        <span className="pill safe" style={{ marginTop: 4 }}>
-                          monitorando
+                  <Fragment key={p.id}>
+                    <tr>
+                      <td>
+                        {p.cliente.nome}
+                        <br />
+                        <span style={{ fontSize: 11.5, color: "var(--ink-faint)" }}>
+                          {p.cliente.whatsapp}
                         </span>
-                      ) : null}
-                    </td>
-                    <td className="tab-nums">{p.riscoPct != null ? `${p.riscoPct}%` : "—"}</td>
-                    <td>
-                      {p.pagamentos.length === 0 && (
-                        <span style={{ fontSize: 12, color: "var(--ink-faint)" }}>—</span>
-                      )}
-                      {p.pagamentos.map((pg) => (
-                        <div
-                          key={pg.id}
-                          style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}
-                        >
-                          <span style={{ fontSize: 12.5 }}>
-                            {pg.tipo === "setup" ? "Setup" : "Monitoramento"} —{" "}
-                            {fmtReais(pg.valorCentavos)}
-                          </span>
-                          {pg.status === "confirmado" ? (
-                            <span className="pill safe">confirmado</span>
-                          ) : (
+                      </td>
+                      <td>
+                        {p.marca}
+                        {p.protocolo && (
+                          <>
+                            <br />
+                            <span
+                              className="mono"
+                              style={{ fontSize: 11.5, color: "var(--ink-faint)" }}
+                            >
+                              protocolo {p.protocolo}
+                            </span>
+                          </>
+                        )}
+                      </td>
+                      <td>
+                        {p.logoUrl ? (
+                          <a href={p.logoUrl} target="_blank" rel="noreferrer">
+                            {/* eslint-disable-next-line @next/next/no-img-element -- URL externa (Blob), next/image não se aplica */}
+                            <img
+                              src={p.logoUrl}
+                              alt={`Logotipo de ${p.marca}`}
+                              style={{
+                                width: 40,
+                                height: 40,
+                                objectFit: "contain",
+                                borderRadius: 6,
+                                border: "1px solid var(--border)",
+                                background: "var(--surface)",
+                              }}
+                            />
+                          </a>
+                        ) : (
+                          <span style={{ fontSize: 12, color: "var(--ink-faint)" }}>—</span>
+                        )}
+                      </td>
+                      <td>
+                        <span className="pill accent">{STATUS_LABEL[p.status] ?? p.status}</span>
+                      </td>
+                      <td>
+                        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                          <label className="sr-only" htmlFor={`num-${p.id}`}>
+                            Número do processo no INPI — {p.marca}
+                          </label>
+                          <input
+                            id={`num-${p.id}`}
+                            inputMode="numeric"
+                            autoComplete="off"
+                            placeholder="9 dígitos"
+                            value={numeros[p.id] ?? p.numeroProcesso ?? ""}
+                            onChange={(e) => setNumeros((n) => ({ ...n, [p.id]: e.target.value }))}
+                            style={{ width: 120, minHeight: 40 }}
+                          />
+                          {p.id in numeros && numeros[p.id] !== (p.numeroProcesso ?? "") && (
                             <button
                               className="btn ghost"
-                              // 44px de altura visual — abaixo disso é
-                              // difícil de acertar no toque do celular,
-                              // e essa é a ação que você mais vai usar lá.
-                              style={{ padding: "10px 14px", fontSize: 13, minHeight: 40 }}
-                              disabled={confirmando === pg.id}
-                              onClick={() => confirmarPagamento(pg.id)}
+                              style={{ minHeight: 40, padding: "10px 14px", fontSize: 13 }}
+                              disabled={salvandoNumero === p.id}
+                              onClick={() => salvarNumero(p.id)}
                             >
-                              {confirmando === pg.id ? "Confirmando…" : "Marcar como pago"}
+                              {salvandoNumero === p.id ? "Salvando…" : "Salvar"}
                             </button>
                           )}
                         </div>
-                      ))}
-                    </td>
-                  </tr>
+                        {p.monitoramento ? (
+                          <span className="pill safe" style={{ marginTop: 4 }}>
+                            monitorando
+                          </span>
+                        ) : null}
+                      </td>
+                      <td className="tab-nums">{p.riscoPct != null ? `${p.riscoPct}%` : "—"}</td>
+                      <td>
+                        {p.pagamentos.length === 0 && (
+                          <span style={{ fontSize: 12, color: "var(--ink-faint)" }}>—</span>
+                        )}
+                        {p.pagamentos.map((pg) => (
+                          <div
+                            key={pg.id}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 8,
+                              marginBottom: 4,
+                            }}
+                          >
+                            <span style={{ fontSize: 12.5 }}>
+                              {ROTULO_PAGAMENTO[pg.tipo] ?? pg.tipo} — {fmtReais(pg.valorCentavos)}
+                            </span>
+                            {pg.status === "confirmado" ? (
+                              <span className="pill safe">confirmado</span>
+                            ) : (
+                              <button
+                                className="btn ghost"
+                                // 44px de altura visual — abaixo disso é
+                                // difícil de acertar no toque do celular,
+                                // e essa é a ação que você mais vai usar lá.
+                                style={{ padding: "10px 14px", fontSize: 13, minHeight: 40 }}
+                                disabled={confirmando === pg.id}
+                                onClick={() => confirmarPagamento(pg.id)}
+                              >
+                                {confirmando === pg.id ? "Confirmando…" : "Marcar como pago"}
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </td>
+                    </tr>
+                    {p.pedidoRegistro && (
+                      <tr>
+                        <td colSpan={7}>
+                          <PedidoDetalhe
+                            pedido={p.pedidoRegistro}
+                            processoId={p.id}
+                            prontidao={p.prontidao}
+                            temImagem={p.imagemMarca !== null}
+                            marca={p.marca}
+                            rotulo={`Dados do pedido de ${p.marca}`}
+                          />
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
                 ))}
               </tbody>
             </table>

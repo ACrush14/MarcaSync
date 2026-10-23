@@ -1,14 +1,15 @@
 "use client";
 
-import LogoUpload from "./LogoUpload";
 import TrackView from "./TrackView";
 import { track } from "@/lib/track";
 
 interface PlanoStepProps {
   monitoramento: boolean;
   onToggleMonitoramento: () => void;
+  /** Cliente quer registrar: abre o formulário com os dados do pedido. */
   onConfirmar: () => void;
-  processoId: string | null;
+  /** Cliente prefere conversar antes de preencher os dados. */
+  onFalarPrimeiro: () => void;
   /** Link wa.me já com o plano escolhido; null se o número não estiver configurado. */
   whatsappHref: string | null;
 }
@@ -17,7 +18,7 @@ export default function PlanoStep({
   monitoramento,
   onToggleMonitoramento,
   onConfirmar,
-  processoId,
+  onFalarPrimeiro,
   whatsappHref,
 }: PlanoStepProps) {
   return (
@@ -26,9 +27,11 @@ export default function PlanoStep({
       <div className="panel-head">
         <h2>Plano de registro</h2>
         <p className="help">
-          Sem &quot;fale com um consultor&quot; — o valor abaixo é o valor final, sem orçamento por
-          telefone. Setup cobre a análise já feita, a petição e o protocolo. O monitoramento é
-          opcional e recorrente — desligue para conduzir o acompanhamento manualmente.
+          Sem &quot;fale com um consultor&quot; — o valor do serviço abaixo é fechado, sem orçamento
+          por telefone. Setup cobre a análise já feita, a petição e o protocolo. A taxa oficial do
+          INPI (GRU) é cobrada à parte, e o valor exato aparece antes de você confirmar. O
+          monitoramento é opcional e recorrente — desligue para conduzir o acompanhamento
+          manualmente.
         </p>
       </div>
 
@@ -41,7 +44,7 @@ export default function PlanoStep({
           <ul>
             <li>Busca de anterioridade fonética</li>
             <li>Inferência e conferência da classe NCL</li>
-            <li>Geração da petição e da guia (GRU)</li>
+            <li>Petição, guia (GRU) e procuração prontas</li>
             <li>Protocolo do pedido no INPI</li>
           </ul>
         </div>
@@ -72,13 +75,22 @@ export default function PlanoStep({
         </div>
       </div>
 
-      <LogoUpload processoId={processoId} />
-
       <div className="summary-strip">
         <div className="total">
-          <div className="lbl">Total hoje</div>
+          <div className="lbl">Serviço hoje</div>
           <div className="amt tab-nums">
             R$ 499,00
+            <span
+              style={{
+                fontSize: 12.5,
+                color: "var(--ink-dim)",
+                fontFamily: "var(--font-body)",
+                fontWeight: 500,
+              }}
+            >
+              {" "}
+              + taxa do INPI (GRU)
+            </span>
             {monitoramento && (
               <span
                 style={{
@@ -94,28 +106,30 @@ export default function PlanoStep({
             )}
           </div>
         </div>
+        <button className="btn" onClick={onConfirmar}>
+          Quero registrar — informar os dados →
+        </button>
+      </div>
+      <p className="sim-note">
+        Preço do serviço fechado desde a Consulta. A taxa do INPI (GRU) é oficial, vai direto para o
+        INPI e é mostrada antes de você confirmar — sem surpresa depois.{" "}
         {whatsappHref ? (
           <a
-            className="btn"
             href={whatsappHref}
             target="_blank"
             rel="noopener noreferrer"
             onClick={() => {
               track("whatsapp_clicado", { onde: "plano" });
-              onConfirmar();
+              onFalarPrimeiro();
             }}
           >
-            Quero seguir — falar no WhatsApp →
+            Prefere conversar antes? Fale comigo no WhatsApp.
           </a>
         ) : (
-          <button className="btn" onClick={onConfirmar}>
-            Quero seguir — me chamem →
+          <button type="button" className="btn ghost" onClick={onFalarPrimeiro}>
+            Prefere conversar antes? Me chamem.
           </button>
         )}
-      </div>
-      <p className="sim-note">
-        Preço fechado desde a Consulta — sem taxa extra depois, sem &quot;isso não estava
-        incluso&quot;.
       </p>
     </>
   );

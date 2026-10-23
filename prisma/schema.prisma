@@ -58,8 +58,10 @@ model Processo {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  pagamentos Pagamento[]
-  alertas    Alerta[]
+  pagamentos     Pagamento[]
+  alertas        Alerta[]
+  pedidoRegistro PedidoRegistro?
+  imagemMarca    ImagemMarca?
 }
 
 /// Uma cobrança (setup ou mensalidade de monitoramento) — confirmada à mão
@@ -162,9 +164,76 @@ model SituacaoProcesso {
 ///de 15 minutos após o IP ser barrado.
 
 model TentativaAdmin {
-  id String @id @default(cuid())
-  ip String
+  id        String   @id @default(cuid())
+  ip        String
   createdAt DateTime @default(now())
 
   @@index([ip, createdAt])
+}
+
+/// Dados que o cliente informa, depois de ver o resultado e o plano, para o pedido de
+/// registro ser protocolado no e-Marcas (Manual de Marcas do INPI, itens 3.1 e 3.5.2).
+/// Um por processo. NÃO guarda login nem senha do e-INPI ou do gov.br: quem entra no
+/// sistema do INPI para emitir a GRU e protocolar é o procurador, com o login dele.
+/// Os valores em centavos são calculados no servidor, nunca aceitos do navegador.
+model PedidoRegistro {
+  id         String   @id @default(cuid())
+  processoId String   @unique
+  processo   Processo @relation(fields: [processoId], references: [id])
+
+  // Requerente
+  tipoRequerente         String // "pf" | "pj"
+  regime                 String // pessoa_natural | mei | microempresa | empresa_pequeno_porte | sem_fins_lucrativos | outra_empresa
+  participaEmpresaDoRamo Boolean @default(false) // só pessoa natural: se tem sociedade em empresa do ramo
+  nome                   String // nome completo ou razão social, sem abreviações
+  documento              String // CPF ou CNPJ, só dígitos
+  email                  String
+  cep                    String
+  logradouro             String
+  numero                 String
+  complemento            String?
+  bairro                 String
+  cidade                 String
+  uf                     String
+
+  // Marca e pedido
+  apresentacao        String // nominativa | figurativa | mista
+  elementoNominativo  String? // o texto da marca (nominativa e mista)
+  classeNice          String // uma classe por pedido (o e-Marcas não tem multiclasse)
+  especificacao       String // produtos ou serviços que a marca vai assinalar
+  atividade           String // declaração de atividade (art. 128 da Lei 9.279/96)
+  especificacaoItens  String[] // um item por posição (os da lista do INPI e os digitados)
+  especificacaoLivre  Boolean  @default(false) // true se algum item não está na lista pré-aprovada (GRU 394)
+  palavraEstrangeira  Boolean  @default(false) // o nome tem palavra em outro idioma
+  traducao            String? // tradução da palavra estrangeira, exigida pelo e-Marcas
+  cienteAnterioridade Boolean  @default(false) // o cliente viu o aviso de marca anterior parecida no ramo
+
+  // Valores calculados no servidor
+  servicoCentavos Int
+  gruCentavos     Int
+  gruComDesconto  Boolean
+
+  aceitoEm  DateTime @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// A imagem da marca (figurativa ou mista), guardada no banco para o protocolo no e-Marcas.
+/// `jpg` já está no formato que o INPI pede; `original` é o arquivo como o cliente enviou.
+model ImagemMarca {
+  id         String   @id @default(cuid())
+  processoId String   @unique
+  processo   Processo @relation(fields: [processoId], references: [id])
+
+  jpg             Bytes // JPG, RGB, 300 dpi, lado menor de pelo menos 945 px, até 2 MB
+  original        Bytes
+  mimeOriginal    String
+  larguraOriginal Int
+  alturaOriginal  Int
+  largura         Int
+  altura          Int
+  ampliada        Boolean @default(false) // true se o original era menor que 945 px e foi ampliado
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
