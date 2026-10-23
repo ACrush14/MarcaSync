@@ -61,6 +61,7 @@ model Processo {
   pagamentos     Pagamento[]
   alertas        Alerta[]
   pedidoRegistro PedidoRegistro?
+  imagemMarca    ImagemMarca?
 }
 
 /// Uma cobrança (setup ou mensalidade de monitoramento) — confirmada à mão
@@ -196,11 +197,16 @@ model PedidoRegistro {
   uf                     String
 
   // Marca e pedido
-  apresentacao       String // nominativa | figurativa | mista
-  elementoNominativo String? // o texto da marca (nominativa e mista)
-  classeNice         String // uma classe por pedido (o e-Marcas não tem multiclasse)
-  especificacao      String // produtos ou serviços que a marca vai assinalar
-  atividade          String // declaração de atividade (art. 128 da Lei 9.279/96)
+  apresentacao        String // nominativa | figurativa | mista
+  elementoNominativo  String? // o texto da marca (nominativa e mista)
+  classeNice          String // uma classe por pedido (o e-Marcas não tem multiclasse)
+  especificacao       String // produtos ou serviços que a marca vai assinalar
+  atividade           String // declaração de atividade (art. 128 da Lei 9.279/96)
+  especificacaoItens  String[] // um item por posição (os da lista do INPI e os digitados)
+  especificacaoLivre  Boolean  @default(false) // true se algum item não está na lista pré-aprovada (GRU 394)
+  palavraEstrangeira  Boolean  @default(false) // o nome tem palavra em outro idioma
+  traducao            String? // tradução da palavra estrangeira, exigida pelo e-Marcas
+  cienteAnterioridade Boolean  @default(false) // o cliente viu o aviso de marca anterior parecida no ramo
 
   // Valores calculados no servidor
   servicoCentavos Int
@@ -208,6 +214,26 @@ model PedidoRegistro {
   gruComDesconto  Boolean
 
   aceitoEm  DateTime @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// A imagem da marca (figurativa ou mista), guardada no banco para o protocolo no e-Marcas.
+/// `jpg` já está no formato que o INPI pede; `original` é o arquivo como o cliente enviou.
+model ImagemMarca {
+  id         String   @id @default(cuid())
+  processoId String   @unique
+  processo   Processo @relation(fields: [processoId], references: [id])
+
+  jpg             Bytes // JPG, RGB, 300 dpi, lado menor de pelo menos 945 px, até 2 MB
+  original        Bytes
+  mimeOriginal    String
+  larguraOriginal Int
+  alturaOriginal  Int
+  largura         Int
+  altura          Int
+  ampliada        Boolean @default(false) // true se o original era menor que 945 px e foi ampliado
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }

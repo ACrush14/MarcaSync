@@ -2,7 +2,12 @@
 
 import { useState } from "react";
 import TrackView from "./TrackView";
+import AvisoAnterioridadeBox from "./AvisoAnterioridadeBox";
+import EspecificacaoPicker from "./EspecificacaoPicker";
+import ImagemMarcaUpload from "./ImagemMarcaUpload";
 import { track } from "@/lib/track";
+import type { AvisoAnterioridade } from "@/lib/anterioridade";
+import { detectarPalavraEstrangeira } from "@/lib/idioma";
 import { CLASS_LABELS } from "@/lib/ncl";
 import { REGIMES, REGIMES_PJ, ROTULO_REGIME, calcularGru, type Regime } from "@/lib/gru";
 import { MONITORAMENTO_CENTAVOS, SETUP_CENTAVOS, fmtReais } from "@/lib/planos";
@@ -21,6 +26,7 @@ export interface ResumoPedido {
   servicoCentavos: number;
   gruCentavos: number;
   gruComDesconto: boolean;
+  especificacaoLivre: boolean;
   totalCentavos: number;
   monitoramento: boolean;
   monitoramentoCentavos: number;
@@ -30,7 +36,8 @@ interface PedidoStepProps {
   processoId: string | null;
   marca: string;
   classeSugerida: string;
-  descricao: string;
+  /** O aviso de marca anterior parecida (nivel "nenhum" quando não há). */
+  aviso: AvisoAnterioridade;
   monitoramento: boolean;
   onVoltar: () => void;
   onEnviado: (resumo: ResumoPedido) => void;
@@ -105,7 +112,7 @@ export default function PedidoStep({
   processoId,
   marca,
   classeSugerida,
-  descricao,
+  aviso,
   monitoramento,
   onVoltar,
   onEnviado,
@@ -127,19 +134,28 @@ export default function PedidoStep({
     apresentacao: "nominativa" as Apresentacao,
     elementoNominativo: marca,
     classeNice: /^\d{1,2}$/.test(classeSugerida) ? String(Number(classeSugerida)) : "",
-    especificacao: descricao,
+    especificacaoItens: [] as string[],
+    palavraEstrangeira: null as boolean | null,
+    traducao: "",
     atividade: "",
     declaracaoAtividade: false,
     declaracaoVeracidade: false,
     aceiteProcuracao: false,
     aceiteLgpd: false,
+    cienteAnterioridade: false,
   });
   const [erros, setErros] = useState<Record<string, string>>({});
   const [enviando, setEnviando] = useState(false);
   const [erroGeral, setErroGeral] = useState<string | null>(null);
+  // Algum item da especificação está fora da lista do INPI (a taxa passa a ser a da GRU 394)?
+  const [especificacaoLivre, setEspecificacaoLivre] = useState(false);
+  const [imagemGuardada, setImagemGuardada] = useState(false);
 
   const pj = f.tipoRequerente === "pj";
-  const gru = calcularGru(f.regime, f.participaEmpresaDoRamo);
+  const gru = calcularGru(f.regime, f.participaEmpresaDoRamo, especificacaoLivre);
+  const precisaImagem = f.apresentacao !== "nominativa";
+  const avisoAtivo = aviso.nivel !== "nenhum";
+  const suspeitaIdioma = detectarPalavraEstrangeira(f.elementoNominativo);
   const total = SETUP_CENTAVOS + gru.centavos;
 
   function set<K extends keyof typeof f>(campo: K, valor: (typeof f)[K]) {
@@ -166,9 +182,14 @@ export default function PedidoStep({
     setErroGeral(null);
     const entrada: PedidoEntrada = { ...f, monitoramento };
     const local = validarPedido(entrada);
-    if (!local.ok) {
-      setErros(local.erros);
-      const primeiro = Object.keys(local.erros)[0];
+    const faltas: Record<string, string> = local.ok ? {} : { ...local.erros };
+    if (precisaImagem && !imagemGuardada) faltas.imagem = "Envie a imagem da marca.";
+    if (avisoAtivo && !f.cienteAnterioridade) {
+      faltas.cienteAnterioridade = "Confirme que leu o aviso de marca anterior.";
+    }
+    if (Object.keys(faltas).length > 0) {
+      setErros(faltas);
+      const primeiro = Object.keys(faltas)[0];
       document.getElementById(`campo-${primeiro}`)?.focus();
       return;
     }
@@ -217,6 +238,8 @@ export default function PedidoStep({
           pede a sua senha do gov.br ou do INPI.
         </p>
       </div>
+
+      <AvisoAnterioridadeBox aviso={aviso} />
 
       <fieldset className="field" style={{ border: 0, padding: 0, margin: "0 0 8px" }}>
         <legend style={{ fontWeight: 600, marginBottom: 8 }}>
@@ -396,11 +419,12 @@ export default function PedidoStep({
               ))}
             </select>
           </Campo>
-          {f.apresentacao !== "nominativa" && (
-            <p className="help" style={{ marginBottom: 12 }}>
-              Marca com símbolo precisa de imagem: JPG, no mínimo 945 x 945 px, 300 dpi, até 2 MB,
-              sem ™ ou ®. Eu te peço o arquivo na nossa conversa e ajusto o formato.
-            </p>
+          {precisaImagem && (
+            <ImagemMarcaUpload
+              processoId={processoId}
+              onGuardada={setImagemGuardada}
+              erro={erros.imagem}
+            />
           )}
           {f.apresentacao !== "figurativa" && (
             <Campo
@@ -416,6 +440,70 @@ export default function PedidoStep({
               />
             </Campo>
           )}
+          {f.apresentacao !== "figurativa" && (
+            <fieldset className="field" style={{ border: 0, padding: 0 }}>
+              <legend style={{ fontWeight: 600, marginBottom: 6 }}>
+                O nome tem palavra em outro idioma?
+              </legend>
+              <p style={{ fontSize: 12, color: "var(--ink-dim)", margin: "0 0 6px" }}>
+                O INPI pede a tradução de qualquer palavra estrangeira. Palavra inventada, que não
+                existe em nenhum idioma, não precisa.
+              </p>
+              {suspeitaIdioma.suspeita && f.palavraEstrangeira === null && (
+                <p role="note" style={{ fontSize: 13, margin: "0 0 6px" }}>
+                  <b>
+                    {suspeitaIdioma.palavras.map((p) => `"${p}"`).join(", ")}{" "}
+                    {suspeitaIdioma.palavras.length > 1 ? "podem ser" : "pode ser"} de outro idioma.
+                  </b>{" "}
+                  Veja se é.
+                </p>
+              )}
+              <div style={{ display: "flex", gap: 16 }}>
+                <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  <input
+                    id="campo-palavraEstrangeira"
+                    type="radio"
+                    name="palavraEstrangeira"
+                    checked={f.palavraEstrangeira === true}
+                    onChange={() => set("palavraEstrangeira", true)}
+                  />
+                  Sim
+                </label>
+                <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  <input
+                    type="radio"
+                    name="palavraEstrangeira"
+                    checked={f.palavraEstrangeira === false}
+                    onChange={() => {
+                      set("palavraEstrangeira", false);
+                      set("traducao", "");
+                    }}
+                  />
+                  Não
+                </label>
+              </div>
+              {erros.palavraEstrangeira && (
+                <p role="alert" style={{ fontSize: 13, color: "var(--risk)", marginTop: 6 }}>
+                  {erros.palavraEstrangeira}
+                </p>
+              )}
+              {f.palavraEstrangeira === true && (
+                <Campo
+                  id="traducao"
+                  erro={erros.traducao}
+                  rotulo="Tradução para o português"
+                  ajuda={'Ex.: "Sweet Shop" = "Loja de doces".'}
+                >
+                  <input
+                    {...attrs("traducao")}
+                    type="text"
+                    value={f.traducao}
+                    onChange={(e) => set("traducao", e.target.value)}
+                  />
+                </Campo>
+              )}
+            </fieldset>
+          )}
           <Campo
             id="classeNice"
             rotulo="Classe de Nice"
@@ -424,7 +512,12 @@ export default function PedidoStep({
             <select
               {...attrs("classeNice")}
               value={f.classeNice}
-              onChange={(e) => set("classeNice", e.target.value)}
+              onChange={(e) => {
+                set("classeNice", e.target.value);
+                // A lista é por classe: ao trocar, a especificação recomeça.
+                set("especificacaoItens", []);
+                setEspecificacaoLivre(false);
+              }}
             >
               <option value="">Escolha</option>
               {CLASSES.map((c) => (
@@ -435,18 +528,13 @@ export default function PedidoStep({
               ))}
             </select>
           </Campo>
-          <Campo
-            id="especificacao"
-            rotulo="Produtos ou serviços que a marca vai assinalar"
-            ajuda="Todos precisam caber na classe escolhida. Eu confiro com a lista oficial do INPI."
-          >
-            <textarea
-              {...attrs("especificacao")}
-              rows={4}
-              value={f.especificacao}
-              onChange={(e) => set("especificacao", e.target.value)}
-            />
-          </Campo>
+          <EspecificacaoPicker
+            classe={f.classeNice}
+            itens={f.especificacaoItens}
+            onChange={(itens) => set("especificacaoItens", itens)}
+            onAnalise={setEspecificacaoLivre}
+            erro={erros.especificacao}
+          />
           <Campo
             id="atividade"
             rotulo="Qual atividade você exerce hoje"
@@ -475,7 +563,8 @@ export default function PedidoStep({
             </tr>
             <tr>
               <td>
-                Taxa do INPI (GRU), 1 classe
+                Taxa do INPI (GRU {especificacaoLivre ? "394, texto livre" : "389, lista do INPI"}
+                ), 1 classe
                 {gru.comDesconto ? " — com 50% de desconto" : ""}
               </td>
               <td className="tab-nums" style={{ textAlign: "right" }}>
@@ -504,6 +593,32 @@ export default function PedidoStep({
           aviso antes de qualquer pagamento.
         </p>
       </div>
+
+      {avisoAtivo && (
+        <div className="field" style={{ marginBottom: 10 }}>
+          <label style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+            <input
+              {...attrs("cienteAnterioridade")}
+              type="checkbox"
+              checked={f.cienteAnterioridade}
+              onChange={(e) => set("cienteAnterioridade", e.target.checked)}
+            />
+            <span style={{ fontSize: 13.5 }}>
+              Li o aviso acima: sei que há uma marca parecida no meu ramo e que o INPI pode
+              indeferir o pedido, e a taxa em regra não é devolvida.
+            </span>
+          </label>
+          {erros.cienteAnterioridade && (
+            <p
+              id="erro-cienteAnterioridade"
+              role="alert"
+              style={{ fontSize: 13, color: "var(--risk)", marginTop: 4 }}
+            >
+              {erros.cienteAnterioridade}
+            </p>
+          )}
+        </div>
+      )}
 
       <div className="field">
         {(

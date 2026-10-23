@@ -39,6 +39,7 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith("/api/rpi") ||
     pathname.startsWith("/rpi-teste") ||
     (pathname === "/api/processos" && request.method === "GET") ||
+    (/^\/api\/processos\/[^/]+\/imagem$/.test(pathname) && request.method === "GET") ||
     (/^\/api\/pagamentos\/[^/]+\/confirmar$/.test(pathname) && request.method === "POST");
 
   if (!protegido) return NextResponse.next();
@@ -81,6 +82,7 @@ export const config = {
     "/admin/:path*",
     "/api/admin/:path*",
     "/api/processos",
+    "/api/processos/:id/imagem",
     "/api/pagamentos/:path*",
     "/api/rpi/:path*",
     "/rpi-teste",

@@ -4,8 +4,18 @@
  * não pertencem a ninguém conhecido.
  */
 import { describe, expect, it } from "vitest";
-import { GRU_PEDIDO_CENTAVOS, calcularGru } from "./gru";
-import { cnpjValido, cpfValido, emailValido, validarPedido, type PedidoEntrada } from "./pedido";
+import { GRU_PEDIDO_CENTAVOS, GRU_PEDIDO_LIVRE_CENTAVOS, calcularGru } from "./gru";
+import { analisarEspecificacao } from "./catalogo";
+import {
+  cnpjValido,
+  cpfValido,
+  emailValido,
+  validarPedido as validar,
+  type PedidoEntrada,
+} from "./pedido";
+
+// Nos testes usamos o catálogo real, como o servidor faz.
+const validarPedido = (e: PedidoEntrada) => validar(e, analisarEspecificacao);
 
 describe("calcularGru", () => {
   it("pessoa física sem empresa do ramo tem 50% de desconto", () => {
@@ -26,6 +36,20 @@ describe("calcularGru", () => {
       expect(calcularGru(regime, false).centavos).toBe(44_000);
     }
   );
+
+  it("especificação livre (GRU 394) custa mais, com e sem desconto", () => {
+    expect(calcularGru("pessoa_natural", false, true)).toEqual({
+      centavos: GRU_PEDIDO_LIVRE_CENTAVOS / 2,
+      comDesconto: true,
+    });
+    expect(calcularGru("outra_empresa", false, true)).toEqual({
+      centavos: GRU_PEDIDO_LIVRE_CENTAVOS,
+      comDesconto: false,
+    });
+    expect(calcularGru("mei", false, true).centavos).toBeGreaterThan(
+      calcularGru("mei", false, false).centavos
+    );
+  });
 
   it("outra empresa nunca tem desconto", () => {
     expect(calcularGru("outra_empresa", false)).toEqual({
@@ -88,7 +112,8 @@ describe("validarPedido", () => {
     apresentacao: "nominativa",
     elementoNominativo: "Kaza Doce",
     classeNice: "30",
-    especificacao: "Bolos, doces e confeitaria sob encomenda",
+    especificacaoItens: ["Bolos", "Pão de queijo"],
+    palavraEstrangeira: false,
     atividade: "Confeitaria artesanal exercida de forma lícita e efetiva",
     declaracaoAtividade: true,
     declaracaoVeracidade: true,
@@ -174,6 +199,59 @@ describe("validarPedido", () => {
     if (!r.ok) {
       expect(Object.keys(r.erros).sort()).toEqual(["cep", "email", "uf"]);
     }
+  });
+
+  it("itens da lista pré-aprovada não marcam especificação livre", () => {
+    const r = validarPedido(base);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.dados.especificacaoLivre).toBe(false);
+      expect(r.dados.especificacao).toBe("Bolos; Pão de queijo");
+    }
+  });
+
+  it("item fora da lista marca especificação livre e fica depois dos da lista", () => {
+    const r = validarPedido({
+      ...base,
+      especificacaoItens: ["bolo vegano sem glúten sob medida", "bolos"],
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.dados.especificacaoLivre).toBe(true);
+      expect(r.dados.especificacaoItens).toEqual(["Bolos", "bolo vegano sem glúten sob medida"]);
+    }
+  });
+
+  it("exige de 1 a 50 itens, cada um com 3 a 300 caracteres", () => {
+    for (const itens of [[], ["ab"], ["x".repeat(301)], Array(51).fill("Bolos"), "Bolos"]) {
+      const r = validarPedido({ ...base, especificacaoItens: itens });
+      expect(r.ok).toBe(false);
+      if (!r.ok) expect(r.erros.especificacao).toBeDefined();
+    }
+  });
+
+  it("palavra estrangeira: o cliente precisa responder, e a tradução é obrigatória se sim", () => {
+    const semResposta = validarPedido({ ...base, palavraEstrangeira: undefined });
+    expect(semResposta.ok).toBe(false);
+    if (!semResposta.ok) expect(semResposta.erros.palavraEstrangeira).toBeDefined();
+
+    const semTraducao = validarPedido({ ...base, palavraEstrangeira: true, traducao: " " });
+    expect(semTraducao.ok).toBe(false);
+    if (!semTraducao.ok) expect(semTraducao.erros.traducao).toBeDefined();
+
+    const ok = validarPedido({ ...base, palavraEstrangeira: true, traducao: "Casa doce" });
+    expect(ok.ok).toBe(true);
+    if (ok.ok) expect(ok.dados.traducao).toBe("Casa doce");
+  });
+
+  it("marca figurativa não pergunta palavra estrangeira", () => {
+    const r = validarPedido({
+      ...base,
+      apresentacao: "figurativa",
+      palavraEstrangeira: undefined,
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.dados.palavraEstrangeira).toBe(false);
   });
 
   it("não aceita campo que não é texto", () => {

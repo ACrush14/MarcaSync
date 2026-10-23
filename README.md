@@ -84,27 +84,23 @@ cada push na `main` (integração Git conectada quando o projeto foi criado via
 
 **Variáveis de ambiente já configuradas no Vercel** (Production + Preview):
 `DATABASE_URL`, `DATABASE_URL_UNPOOLED` e as demais do Neon (injetadas sozinhas pela
-integração de Storage), `BLOB_READ_WRITE_TOKEN` (injetada sozinha ao criar o Blob
-store — ver "Upload de logotipo" abaixo), mais `ADMIN_PASSWORD` (adicionada
+integração de Storage), mais `ADMIN_PASSWORD` (adicionada
 manualmente via `vercel env add`) `NEXT_PUBLIC_WHATSAPP_NUMBER` (ver "Contato pelo
 WhatsApp" — trocar exige novo deploy) e `CRON_SECRET` (monitoramento da RPI).
 
-## Upload de logotipo (`src/lib` + Vercel Blob)
+## Imagem da marca (`src/lib/imagem-marca.ts`)
 
-Logotipo da marca (PNG, até 1000×1000px) — só pra marca mista, opcional. Guardado no
-**Vercel Blob** (`marcasync-logos`, acesso público — a URL é aleatória e não listável,
-não precisa de token pra ler), criado via `vercel blob create-store <nome> --access
-public --yes`, que já injeta `BLOB_READ_WRITE_TOKEN` no projeto sozinho.
+Marca figurativa ou mista precisa de imagem no e-Marcas: JPG, RGB, 300 dpi, no mínimo
+945 x 945 px, até 2 MB (Manual de Marcas do INPI, item 3.5.2). O cliente envia PNG ou JPG
+(até 5 MB) no formulário do pedido; o servidor converte e guarda **no banco** (tabela
+`ImagemMarca`): o JPG pronto e o arquivo original.
 
-- `src/components/LogoUpload.tsx` — drag-and-drop, valida tipo e dimensão no navegador
-  antes de enviar (só UX — não impede alguém de mandar outra coisa direto pra API).
-- `src/app/api/processos/[id]/logo/route.ts` — a validação que conta de verdade: lê os
-  8 bytes de assinatura do PNG e a largura/altura direto do chunk `IHDR` (bytes 16–23),
-  sem depender de nenhuma lib de imagem nem confiar no `Content-Type` que o cliente
-  mandou. Testado rejeitando um arquivo `.txt` disfarçado de PNG e um PNG 1001×1001 de
-  verdade antes de considerar pronto.
-- Local: rode `vercel env pull .env.local` (ou copie `BLOB_READ_WRITE_TOKEN` de
-  `vercel env ls`) pra testar upload rodando `npm run dev`.
+- `src/components/ImagemMarcaUpload.tsx` — escolhe o arquivo, mostra a prévia e o que ficou
+  guardado. A checagem do navegador é só UX.
+- `src/app/api/processos/[id]/imagem/route.ts` — `POST` recebe e converte (com `sharp`:
+  fundo transparente vira branco, sRGB, 300 dpi, amplia se menor que 945 px e avisa);
+  `GET` devolve o JPG (ou `?tipo=original`) e é protegido por senha em `src/proxy.ts`.
+- O pedido de marca figurativa ou mista só é aceito se a imagem já estiver guardada.
 
 **Antes de considerar isso pronto pra clientes reais**:
 - Trocar `ADMIN_PASSWORD` por algo mais forte que `2001` — 4 dígitos só era aceitável

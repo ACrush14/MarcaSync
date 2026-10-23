@@ -11,7 +11,17 @@ import ContatoStep from "./ContatoStep";
 import type { ColidenciaResultado } from "@/lib/colidencia";
 import { linkWhatsapp } from "@/lib/whatsapp";
 import { pctDoRisco } from "@/lib/risco-area";
+import { avaliarAnterioridade, type AvisoAnterioridade } from "@/lib/anterioridade";
 import TrackView from "./TrackView";
+
+/** Sem busca feita não há o que avisar. */
+const SEM_AVISO: AvisoAnterioridade = {
+  nivel: "nenhum",
+  anterior: null,
+  titulo: "",
+  texto: "",
+  alternativas: [],
+};
 
 type Phase = "consulta" | "carregando" | "resultado" | "plano" | "pedido" | "contato";
 
@@ -48,6 +58,8 @@ export default function MarcaSyncApp() {
   // Resumo de valores devolvido pelo servidor depois que o cliente envia os dados do pedido
   // (as cobranças pendentes são criadas lá, com o preço calculado no servidor).
   const [resumoPedido, setResumoPedido] = useState<ResumoPedido | null>(null);
+
+  const aviso = colidencia ? avaliarAnterioridade(colidencia.risco) : SEM_AVISO;
 
   function navigate(i: number) {
     if (i > unlocked) return;
@@ -251,6 +263,7 @@ export default function MarcaSyncApp() {
         {phase === "resultado" && colidencia && (
           <ResultadoStep
             descricao={descricao}
+            aviso={aviso}
             colidencia={colidencia}
             onColidenciaAtualizada={setColidencia}
             onRefazer={() => {
@@ -268,7 +281,6 @@ export default function MarcaSyncApp() {
             onToggleMonitoramento={() => setMonitoramento((m) => !m)}
             onConfirmar={handleVerPedido}
             onFalarPrimeiro={handleContato}
-            processoId={processoId}
             whatsappHref={hrefPlano}
           />
         )}
@@ -277,7 +289,7 @@ export default function MarcaSyncApp() {
             processoId={processoId}
             marca={marca}
             classeSugerida={colidencia?.ncl.code ?? ""}
-            descricao={descricao}
+            aviso={aviso}
             monitoramento={monitoramento}
             onVoltar={() => {
               setCurrent(2);

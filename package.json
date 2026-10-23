@@ -16,12 +16,12 @@
     "@neondatabase/serverless": "^1.1.0",
     "@prisma/adapter-neon": "^7.10.1",
     "@prisma/client": "^7.10.1",
-    "@vercel/blob": "^2.8.0",
     "fast-xml-parser": "5.11.0",
     "fflate": "0.8.3",
     "next": "16.4.2",
     "react": "19.2.8",
     "react-dom": "19.2.8",
+    "sharp": "^0.35.5",
     "ws": "^8.21.3"
   },
   "devDependencies": {

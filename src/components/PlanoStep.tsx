@@ -1,6 +1,5 @@
 "use client";
 
-import LogoUpload from "./LogoUpload";
 import TrackView from "./TrackView";
 import { track } from "@/lib/track";
 
@@ -11,7 +10,6 @@ interface PlanoStepProps {
   onConfirmar: () => void;
   /** Cliente prefere conversar antes de preencher os dados. */
   onFalarPrimeiro: () => void;
-  processoId: string | null;
   /** Link wa.me já com o plano escolhido; null se o número não estiver configurado. */
   whatsappHref: string | null;
 }
@@ -21,7 +19,6 @@ export default function PlanoStep({
   onToggleMonitoramento,
   onConfirmar,
   onFalarPrimeiro,
-  processoId,
   whatsappHref,
 }: PlanoStepProps) {
   return (
@@ -77,8 +74,6 @@ export default function PlanoStep({
           </div>
         </div>
       </div>
-
-      <LogoUpload processoId={processoId} />
 
       <div className="summary-strip">
         <div className="total">

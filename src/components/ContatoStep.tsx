@@ -142,7 +142,7 @@ export default function ContatoStep({
               <b>Combinamos o pagamento</b> por PIX — eu confirmo à mão, assim que você avisar.
             </li>
             <li>
-              <b>Reúno o que falta</b> (dados do titular, logotipo se tiver) e protocolo o pedido no
+              <b>Confiro a checklist do pedido</b> (dados, imagem e especificação) e protocolo no
               INPI.
             </li>
             <li>

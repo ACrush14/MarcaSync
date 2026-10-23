@@ -99,12 +99,17 @@ export interface PedidoEntrada {
   apresentacao?: unknown;
   elementoNominativo?: unknown;
   classeNice?: unknown;
-  especificacao?: unknown;
+  /** Lista de textos: os itens da especificação, um por posição. */
+  especificacaoItens?: unknown;
+  palavraEstrangeira?: unknown;
+  traducao?: unknown;
   atividade?: unknown;
   declaracaoAtividade?: unknown;
   declaracaoVeracidade?: unknown;
   aceiteProcuracao?: unknown;
   aceiteLgpd?: unknown;
+  /** O cliente viu o aviso de marca anterior parecida (a rota decide se era obrigatório). */
+  cienteAnterioridade?: unknown;
   monitoramento?: unknown;
 }
 
@@ -125,8 +130,15 @@ export interface PedidoValidado {
   apresentacao: Apresentacao;
   elementoNominativo: string | null;
   classeNice: string;
+  /** Os itens unidos por "; ", para mostrar e copiar. */
   especificacao: string;
+  especificacaoItens: string[];
+  /** true se algum item não está na lista pré-aprovada (vale a GRU 394). */
+  especificacaoLivre: boolean;
+  palavraEstrangeira: boolean;
+  traducao: string | null;
   atividade: string;
+  cienteAnterioridade: boolean;
   monitoramento: boolean;
 }
 
@@ -142,10 +154,17 @@ function texto(v: unknown): string {
  * campo a mensagem diz o que corrigir, no tom do formulário.
  *
  * Como ler: `erros` é um objeto `{ campo: mensagem }`; se estiver vazio, tudo passou.
+ * `analisar` (opcional) é a conferência com a lista pré-aprovada do INPI; só o servidor a passa.
  * Os três aceites (veracidade, procuração e LGPD) e a declaração de atividade são
  * obrigatórios: sem eles o pedido não pode seguir (art. 128 da Lei 9.279/96 e LGPD).
  */
-export function validarPedido(entrada: PedidoEntrada): ResultadoValidacao {
+/** Separa os itens da especificação em "da lista do INPI" e "livres" (ver src/lib/catalogo.ts). */
+export type Analisador = (
+  classe: string,
+  itens: string[]
+) => { preAprovados: string[]; livres: string[]; todosPreAprovados: boolean };
+
+export function validarPedido(entrada: PedidoEntrada, analisar?: Analisador): ResultadoValidacao {
   const erros: Record<string, string> = {};
 
   const tipoRequerente =
@@ -207,9 +226,44 @@ export function validarPedido(entrada: PedidoEntrada): ResultadoValidacao {
   const classeNum = /^\d{1,2}$/.test(classeBruta) ? Number(classeBruta) : NaN;
   if (!(classeNum >= 1 && classeNum <= 45)) erros.classeNice = "Escolha uma classe de 1 a 45.";
 
-  const especificacao = texto(entrada.especificacao);
-  if (especificacao.length < 10 || especificacao.length > 2000) {
-    erros.especificacao = "Descreva os produtos ou serviços (de 10 a 2000 caracteres).";
+  // Especificação: uma lista de itens. Os que estão na lista pré-aprovada da classe usam a
+  // GRU 389; qualquer item digitado fora da lista vira texto livre (GRU 394, mais cara).
+  const itensBrutos = Array.isArray(entrada.especificacaoItens)
+    ? entrada.especificacaoItens.filter((i): i is string => typeof i === "string")
+    : [];
+  let especificacaoItens: string[] = [];
+  let especificacaoLivre = false;
+  if (itensBrutos.length === 0 || itensBrutos.length > 50) {
+    erros.especificacao = "Escolha de 1 a 50 produtos ou serviços.";
+  } else if (itensBrutos.some((i) => texto(i).length < 3 || texto(i).length > 300)) {
+    erros.especificacao = "Cada item deve ter de 3 a 300 caracteres.";
+  } else if (!erros.classeNice) {
+    // Sem analisador (navegador) só limpamos os itens; o servidor passa o catálogo e decide.
+    const analise = analisar?.(String(classeNum), itensBrutos.map(texto));
+    especificacaoItens = analise
+      ? [...analise.preAprovados, ...analise.livres]
+      : itensBrutos.map(texto).filter((i, n, todos) => todos.indexOf(i) === n);
+    especificacaoLivre = analise ? !analise.todosPreAprovados : false;
+  }
+  const especificacao = especificacaoItens.join("; ");
+  if (especificacao.length > 2000)
+    erros.especificacao = "Especificação longa demais (até 2000 caracteres).";
+
+  // Palavra estrangeira: o cliente responde sempre; se disser que sim, a tradução é obrigatória.
+  let palavraEstrangeira = false;
+  let traducao: string | null = null;
+  if (typeof entrada.palavraEstrangeira !== "boolean") {
+    if (apresentacao !== "figurativa") {
+      erros.palavraEstrangeira = "Diga se o nome tem palavra em outro idioma.";
+    }
+  } else if (apresentacao !== "figurativa") {
+    palavraEstrangeira = entrada.palavraEstrangeira;
+    if (palavraEstrangeira) {
+      traducao = texto(entrada.traducao) || null;
+      if (!traducao || traducao.length < 2 || traducao.length > 200) {
+        erros.traducao = "Informe a tradução da palavra (até 200 caracteres).";
+      }
+    }
   }
 
   const atividade = texto(entrada.atividade);
@@ -249,7 +303,12 @@ export function validarPedido(entrada: PedidoEntrada): ResultadoValidacao {
       elementoNominativo,
       classeNice: String(classeNum),
       especificacao,
+      especificacaoItens,
+      especificacaoLivre,
+      palavraEstrangeira,
+      traducao,
       atividade,
+      cienteAnterioridade: entrada.cienteAnterioridade === true,
       monitoramento: entrada.monitoramento === true,
     },
   };

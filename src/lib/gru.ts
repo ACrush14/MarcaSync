@@ -15,6 +15,12 @@
  * este cálculo não cobre: nesses casos o valor é combinado à mão.)
  */
 export const GRU_PEDIDO_CENTAVOS = 88_000;
+/**
+ * Serviço 394 (especificação de livre preenchimento): a mesma tabela mostra "420,00 / 1.720,00",
+ * lido do mesmo jeito (valor anterior / valor vigente). Vale quando algum item da especificação
+ * NÃO está na lista pré-aprovada do INPI. Também não confirmado na tela de emissão da GRU.
+ */
+export const GRU_PEDIDO_LIVRE_CENTAVOS = 172_000;
 export const GRU_DESCONTO_PCT = 50;
 
 export const REGIMES = [
@@ -57,13 +63,17 @@ export interface ResultadoGru {
  * Como ler a regra: pessoa natural só tem desconto se NÃO tiver participação em empresa
  * do ramo (`participaEmpresaDoRamo` falso). Os regimes de empresa com desconto (MEI, ME,
  * EPP e sem fins lucrativos) o têm sempre; "outra empresa" nunca. O desconto é arredondado
- * para baixo em centavos inteiros, para nunca cobrar a mais por arredondamento.
+ * para baixo em centavos inteiros, para nunca cobrar a mais por arredondamento. Com
+ * `especificacaoLivre` verdadeiro (algum item fora da lista do INPI) vale o serviço 394, bem mais caro.
  */
-export function calcularGru(regime: Regime, participaEmpresaDoRamo: boolean): ResultadoGru {
+export function calcularGru(
+  regime: Regime,
+  participaEmpresaDoRamo: boolean,
+  especificacaoLivre = false
+): ResultadoGru {
+  const cheio = especificacaoLivre ? GRU_PEDIDO_LIVRE_CENTAVOS : GRU_PEDIDO_CENTAVOS;
   const comDesconto =
     regime === "pessoa_natural" ? !participaEmpresaDoRamo : regime !== "outra_empresa";
-  const centavos = comDesconto
-    ? Math.floor((GRU_PEDIDO_CENTAVOS * (100 - GRU_DESCONTO_PCT)) / 100)
-    : GRU_PEDIDO_CENTAVOS;
+  const centavos = comDesconto ? Math.floor((cheio * (100 - GRU_DESCONTO_PCT)) / 100) : cheio;
   return { centavos, comDesconto };
 }

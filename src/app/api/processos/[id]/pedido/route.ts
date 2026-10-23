@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
+import { analisarEspecificacao } from "@/lib/catalogo";
 import { calcularGru } from "@/lib/gru";
 import { validarPedido, type PedidoEntrada } from "@/lib/pedido";
 import { MONITORAMENTO_CENTAVOS, SETUP_CENTAVOS } from "@/lib/planos";
@@ -38,7 +39,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "Corpo inválido: envie um JSON." }, { status: 400 });
   }
 
-  const validacao = validarPedido(corpo ?? {});
+  const validacao = validarPedido(corpo ?? {}, analisarEspecificacao);
   if (!validacao.ok) {
     return NextResponse.json(
       { error: "Confira os campos.", erros: validacao.erros },
@@ -65,7 +66,32 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     );
   }
 
-  const gru = calcularGru(d.regime, d.participaEmpresaDoRamo);
+  // Havia marca parecida e viva no ramo (risco alto na busca): o cliente precisa ter visto o aviso.
+  if ((processo.riscoPct ?? 0) >= 60 && !d.cienteAnterioridade) {
+    return NextResponse.json(
+      {
+        error: "Confira os campos.",
+        erros: { cienteAnterioridade: "Confirme que leu o aviso de marca anterior." },
+      },
+      { status: 400 }
+    );
+  }
+
+  // Marca figurativa ou mista precisa da imagem já enviada (ela fica guardada no banco).
+  if (d.apresentacao !== "nominativa") {
+    const imagem = await prisma.imagemMarca.findUnique({
+      where: { processoId: id },
+      select: { id: true },
+    });
+    if (!imagem) {
+      return NextResponse.json(
+        { error: "Confira os campos.", erros: { imagem: "Envie a imagem da marca." } },
+        { status: 400 }
+      );
+    }
+  }
+
+  const gru = calcularGru(d.regime, d.participaEmpresaDoRamo, d.especificacaoLivre);
   const dadosPedido = {
     tipoRequerente: d.tipoRequerente,
     regime: d.regime,
@@ -84,6 +110,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     elementoNominativo: d.elementoNominativo,
     classeNice: d.classeNice,
     especificacao: d.especificacao,
+    especificacaoItens: d.especificacaoItens,
+    especificacaoLivre: d.especificacaoLivre,
+    palavraEstrangeira: d.palavraEstrangeira,
+    traducao: d.traducao,
+    cienteAnterioridade: d.cienteAnterioridade,
     atividade: d.atividade,
     servicoCentavos: SETUP_CENTAVOS,
     gruCentavos: gru.centavos,
@@ -155,6 +186,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         servicoCentavos: SETUP_CENTAVOS,
         gruCentavos: gru.centavos,
         gruComDesconto: gru.comDesconto,
+        especificacaoLivre: d.especificacaoLivre,
         totalCentavos: SETUP_CENTAVOS + gru.centavos,
         monitoramento: d.monitoramento,
         monitoramentoCentavos: d.monitoramento ? MONITORAMENTO_CENTAVOS : 0,

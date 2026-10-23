@@ -3,7 +3,8 @@
 import { Fragment, useEffect, useState } from "react";
 import Link from "next/link";
 import { linkParaCliente } from "@/lib/whatsapp";
-import { camposEmarcas, checarProntidao } from "@/lib/prontidao";
+import { camposEmarcas } from "@/lib/campos-emarcas";
+import type { Prontidao } from "@/lib/prontidao";
 
 interface Pagamento {
   id: string;
@@ -32,6 +33,11 @@ interface PedidoRegistro {
   elementoNominativo: string | null;
   classeNice: string;
   especificacao: string;
+  especificacaoItens: string[];
+  especificacaoLivre: boolean;
+  palavraEstrangeira: boolean;
+  traducao: string | null;
+  cienteAnterioridade: boolean;
   atividade: string;
   servicoCentavos: number;
   gruCentavos: number;
@@ -53,6 +59,8 @@ interface Processo {
   cliente: { nome: string; whatsapp: string };
   pagamentos: Pagamento[];
   pedidoRegistro: PedidoRegistro | null;
+  imagemMarca: { largura: number; altura: number; ampliada: boolean } | null;
+  prontidao: Prontidao | null;
 }
 
 interface Alerta {
@@ -125,16 +133,19 @@ function fmtReais(centavos: number): string {
  */
 function PedidoDetalhe({
   pedido: d,
-  pagamentos,
+  processoId,
+  prontidao,
+  temImagem,
   marca,
   rotulo,
 }: {
   pedido: PedidoRegistro;
-  pagamentos: Pagamento[];
+  processoId: string;
+  prontidao: Prontidao | null;
+  temImagem: boolean;
   marca: string;
   rotulo: string;
 }) {
-  const prontidao = checarProntidao(d, pagamentos, marca);
   const linhas: Array<[string, string]> = [
     ...camposEmarcas(d).map(([nome, valor]): [string, string] => [
       nome,
@@ -142,6 +153,7 @@ function PedidoDetalhe({
         ? fmtDocumento(d.documento)
         : (valor ?? "— (não se aplica a este pedido)"),
     ]),
+    ["Itens da especificação", d.especificacaoItens.join(" | ")],
     ["Complemento", d.complemento ?? "—"],
     [
       "Porte do titular",
@@ -149,7 +161,7 @@ function PedidoDetalhe({
     ],
     [
       "GRU a emitir",
-      `serviço 389 (especificação pré-aprovada) ou 394 (livre), ${fmtReais(d.gruCentavos)}${d.gruComDesconto ? " (com 50% de desconto)" : ""}; confirme o valor na tela de emissão`,
+      `serviço ${d.especificacaoLivre ? "394 (especificação livre)" : "389 (especificação pré-aprovada)"}, ${fmtReais(d.gruCentavos)}${d.gruComDesconto ? " (com 50% de desconto)" : ""}; confirme o valor na tela de emissão`,
     ],
     ["Serviço MarcaSync", fmtReais(d.servicoCentavos)],
     ["Aceites dados em", new Date(d.aceitoEm).toLocaleString("pt-BR")],
@@ -174,11 +186,27 @@ function PedidoDetalhe({
           </Fragment>
         ))}
       </dl>
+      {temImagem && (
+        <p style={{ fontSize: 12.5, margin: "10px 0 0" }}>
+          Imagem da marca:{" "}
+          <a href={`/api/processos/${processoId}/imagem`} target="_blank" rel="noreferrer">
+            JPG pronto para o e-Marcas
+          </a>
+          {" · "}
+          <a
+            href={`/api/processos/${processoId}/imagem?tipo=original`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            arquivo original
+          </a>
+        </p>
+      )}
       <p style={{ fontSize: 13, fontWeight: 600, margin: "12px 0 4px" }}>
-        {prontidao.pronto ? "Pronto para protocolar" : "Antes de protocolar"}
+        {prontidao?.pronto ? "Pronto para protocolar" : "Antes de protocolar"}
       </p>
       <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12.5 }}>
-        {prontidao.itens.map((i) => (
+        {(prontidao?.itens ?? []).map((i) => (
           <li key={i.id} style={{ marginBottom: 3 }}>
             <strong>
               {i.estado === "ok" ? "✓" : i.estado === "atencao" ? "Conferir:" : "Falta:"} {i.titulo}
@@ -623,7 +651,9 @@ export default function AdminPage() {
                         <td colSpan={7}>
                           <PedidoDetalhe
                             pedido={p.pedidoRegistro}
-                            pagamentos={p.pagamentos}
+                            processoId={p.id}
+                            prontidao={p.prontidao}
+                            temImagem={p.imagemMarca !== null}
                             marca={p.marca}
                             rotulo={`Dados do pedido de ${p.marca}`}
                           />

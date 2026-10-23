@@ -1,3 +1,4 @@
+import { checarProntidao } from "@/lib/prontidao";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 
@@ -13,10 +14,37 @@ export const dynamic = "force-dynamic";
  */
 export async function GET() {
   const processos = await prisma.processo.findMany({
-    include: { cliente: true, pagamentos: true, pedidoRegistro: true },
+    include: {
+      cliente: true,
+      pagamentos: true,
+      pedidoRegistro: true,
+      // Só os números da imagem: os bytes saem pela rota /imagem, nunca nesta lista.
+      imagemMarca: {
+        select: {
+          largura: true,
+          altura: true,
+          ampliada: true,
+          larguraOriginal: true,
+          alturaOriginal: true,
+        },
+      },
+    },
     orderBy: { createdAt: "desc" },
   });
-  return NextResponse.json({ processos });
+  // A checklist "pronto para protocolar" é calculada aqui, no servidor, porque usa o catálogo
+  // de termos do INPI (grande demais para mandar ao navegador).
+  return NextResponse.json({
+    processos: processos.map((p) => ({
+      ...p,
+      prontidao: p.pedidoRegistro
+        ? checarProntidao(p.pedidoRegistro, p.pagamentos, {
+            marca: p.marca,
+            riscoPct: p.riscoPct,
+            imagem: p.imagemMarca,
+          })
+        : null,
+    })),
+  });
 }
 
 interface CriarProcessoBody {

@@ -1,5 +1,10 @@
+import { analisarEspecificacao } from "./catalogo";
 import { calcularGru, type Regime } from "./gru";
-import { cnpjValido, cpfValido, ROTULO_APRESENTACAO, type Apresentacao } from "./pedido";
+import { detectarPalavraEstrangeira } from "./idioma";
+import { camposEmarcas, type PedidoSalvo } from "./campos-emarcas";
+import { cnpjValido, cpfValido } from "./pedido";
+
+export type { PedidoSalvo };
 
 /**
  * "Pronto para protocolar?": confere se os dados guardados bastam para preencher o e-Marcas
@@ -9,29 +14,14 @@ import { cnpjValido, cpfValido, ROTULO_APRESENTACAO, type Apresentacao } from ".
  * Tudo aqui é função pura: não fala com o banco nem com o INPI, só lê o que já foi salvo.
  */
 
-/** Os dados do pedido como ficam no banco (só o que a checagem usa). */
-export interface PedidoSalvo {
-  tipoRequerente: string;
-  regime: string;
-  participaEmpresaDoRamo: boolean;
-  nome: string;
-  documento: string;
-  email: string;
-  cep: string;
-  logradouro: string;
-  numero: string;
-  complemento: string | null;
-  bairro: string;
-  cidade: string;
-  uf: string;
-  apresentacao: string;
-  elementoNominativo: string | null;
-  classeNice: string;
-  especificacao: string;
-  atividade: string;
-  gruCentavos: number;
-  gruComDesconto: boolean;
-  aceitoEm: string | Date | null;
+/** O que a checagem precisa saber além do pedido. */
+export interface ContextoProntidao {
+  /** O nome que foi pesquisado na busca de anterioridade. */
+  marca: string;
+  /** Risco (0 a 100) da marca mais parecida do ramo, guardado na busca. */
+  riscoPct: number | null;
+  /** A imagem guardada no banco, se houver. */
+  imagem: { ampliada: boolean; largura: number; altura: number } | null;
 }
 
 export interface PagamentoSalvo {
@@ -61,31 +51,6 @@ function semAcento(s: string): string {
 }
 
 /**
- * Os campos na ordem em que o e-Marcas os pede. Serve para a tela do admin e para provar,
- * em teste, que nenhum campo obrigatório ficou vazio. `null` no valor significa "não se
- * aplica a este pedido" (por exemplo, nome da marca numa marca figurativa).
- */
-export function camposEmarcas(d: PedidoSalvo): Array<[string, string | null]> {
-  return [
-    ["Titular (nome ou razão social)", d.nome],
-    ["CPF/CNPJ", d.documento],
-    ["E-mail", d.email],
-    ["CEP", d.cep],
-    ["Logradouro", d.logradouro],
-    ["Número", d.numero],
-    ["Bairro", d.bairro],
-    ["Cidade", d.cidade],
-    ["UF", d.uf],
-    ["Apresentação", ROTULO_APRESENTACAO[d.apresentacao as Apresentacao] ?? d.apresentacao],
-    ["Natureza", "Produto ou serviço"],
-    ["Elemento nominativo", d.apresentacao === "figurativa" ? null : d.elementoNominativo],
-    ["Classe de Nice", d.classeNice],
-    ["Especificação", d.especificacao],
-    ["Declaração de atividade", d.atividade],
-  ];
-}
-
-/**
  * Monta a checklist. Como ler: cada item é uma pergunta do tipo "isso está resolvido?".
  * `ok` = sim; `pendente` = não, e trava o protocolo; `atencao` = o sistema não consegue
  * saber, então alguém precisa olhar. `pronto` só é verdadeiro se tudo estiver `ok`.
@@ -97,8 +62,9 @@ export function camposEmarcas(d: PedidoSalvo): Array<[string, string | null]> {
 export function checarProntidao(
   d: PedidoSalvo,
   pagamentos: PagamentoSalvo[],
-  marcaDoProcesso: string
+  contexto: ContextoProntidao
 ): Prontidao {
+  const marcaDoProcesso = contexto.marca;
   const itens: ItemProntidao[] = [];
   const add = (i: ItemProntidao) => itens.push(i);
 
@@ -142,53 +108,116 @@ export function checarProntidao(
     });
   }
 
-  // 3) Valor da GRU bate com a regra de desconto
-  const esperado = calcularGru(d.regime as Regime, d.participaEmpresaDoRamo);
+  // 3) Marca parecida e viva no ramo: a tendência é o INPI indeferir
+  if ((contexto.riscoPct ?? 0) >= 60) {
+    add({
+      id: "anterioridade",
+      titulo: "Marca anterior parecida no ramo",
+      estado: "atencao",
+      quem: "voce",
+      detalhe: `A busca achou marca parecida no ramo (risco ${contexto.riscoPct}%). ${
+        d.cienteAnterioridade
+          ? "O cliente viu o aviso."
+          : "O cliente NÃO registrou ter visto o aviso."
+      } Antes de emitir a GRU, confirme a situação da marca anterior e se há caminho (outro nome, precedência do art. 129 § 1º, caducidade): a taxa em regra não é devolvida.`,
+    });
+  }
+
+  // 4) Especificação: itens da lista pré-aprovada (GRU 389) ou texto livre (GRU 394)
+  const analise = analisarEspecificacao(d.classeNice, d.especificacaoItens);
+  add({
+    id: "especificacao",
+    titulo: analise.todosPreAprovados
+      ? "Especificação 100% na lista pré-aprovada (GRU 389)"
+      : "Especificação com itens fora da lista (GRU 394)",
+    estado: analise.todosPreAprovados ? "ok" : "atencao",
+    quem: analise.todosPreAprovados ? "ninguem" : "voce",
+    detalhe: analise.todosPreAprovados
+      ? "Todos os itens constam da lista oficial da classe. Na tela do e-Marcas, selecione os mesmos itens."
+      : `Fora da lista: ${analise.livres.join("; ")}. Com itens livres o pedido vai pelo serviço 394 (mais caro). Se o cliente trocar por termos da lista, volta ao 389. A especificação não muda depois do protocolo.`,
+  });
+
+  // 5) Valor da GRU bate com a regra de desconto e com o tipo de especificação
+  const esperado = calcularGru(
+    d.regime as Regime,
+    d.participaEmpresaDoRamo,
+    !analise.todosPreAprovados
+  );
   const gruBate = esperado.centavos === d.gruCentavos && esperado.comDesconto === d.gruComDesconto;
   add({
     id: "gru-valor",
-    titulo: "Valor da GRU conforme o desconto",
+    titulo: "Valor da GRU conforme o desconto e o tipo de especificação",
     estado: gruBate ? "ok" : "pendente",
     quem: gruBate ? "ninguem" : "voce",
     detalhe: gruBate
-      ? "O valor guardado segue a regra de desconto do porte informado."
-      : "O valor guardado não bate com a regra atual. Recalcule antes de emitir a GRU: o desconto errado vira exigência.",
+      ? "O valor guardado segue a regra de desconto do porte e o serviço (389 ou 394)."
+      : "O valor guardado não bate com a regra atual. Recalcule antes de emitir a GRU: valor errado vira exigência.",
   });
 
-  // 4) Especificação: só o 389 exige item pré-aprovado, e o sistema não tem essa lista ainda
-  add({
-    id: "especificacao",
-    titulo: "Especificação dentro da lista do INPI",
-    estado: "atencao",
-    quem: "voce",
-    detalhe:
-      "Confira se os itens estão na lista pré-aprovada da classe (GRU 389). Se não estiverem, use a GRU 394, que aceita texto livre. A especificação não muda depois do protocolo.",
-  });
-
-  // 5) Palavra estrangeira exige tradução; o site não sabe detectar
+  // 6) Palavra estrangeira: o cliente respondeu; a heurística confere
   if (d.apresentacao !== "figurativa") {
-    add({
-      id: "traducao",
-      titulo: "Tradução de palavra estrangeira",
-      estado: "atencao",
-      quem: "voce",
-      detalhe: "Se o nome tiver palavra em outro idioma, o e-Marcas pede a tradução.",
-    });
+    const suspeita = detectarPalavraEstrangeira(d.elementoNominativo ?? "");
+    if (d.palavraEstrangeira) {
+      const tem = !!d.traducao && d.traducao.trim() !== "";
+      add({
+        id: "traducao",
+        titulo: "Tradução de palavra estrangeira",
+        estado: tem ? "ok" : "pendente",
+        quem: tem ? "ninguem" : "cliente",
+        detalhe: tem
+          ? `Tradução informada: ${d.traducao}.`
+          : "O cliente disse que há palavra estrangeira, mas não informou a tradução.",
+      });
+    } else if (suspeita.suspeita) {
+      add({
+        id: "traducao",
+        titulo: "Tradução de palavra estrangeira",
+        estado: "atencao",
+        quem: "voce",
+        detalhe: `O cliente disse que não há palavra estrangeira, mas "${suspeita.palavras.join('", "')}" parece ser de outro idioma. Confirme com ele; se for, o e-Marcas exige a tradução.`,
+      });
+    } else {
+      add({
+        id: "traducao",
+        titulo: "Tradução de palavra estrangeira",
+        estado: "ok",
+        quem: "ninguem",
+        detalhe: "Sem palavra estrangeira declarada nem suspeita.",
+      });
+    }
   }
 
-  // 6) Imagem: só para marca figurativa ou mista, e o site ainda não recebe o arquivo
+  // 7) Imagem: só para marca figurativa ou mista; fica guardada no banco já em JPG do INPI
   if (d.apresentacao !== "nominativa") {
-    add({
-      id: "imagem",
-      titulo: "Imagem da marca em JPG",
-      estado: "pendente",
-      quem: "cliente",
-      detalhe:
-        "Peça o logo e converta para JPG, no mínimo 945 x 945 px, 300 dpi, RGB, até 2 MB, com uma única imagem do sinal. Colorida equivale a reivindicar as cores.",
-    });
+    if (!contexto.imagem) {
+      add({
+        id: "imagem",
+        titulo: "Imagem da marca em JPG",
+        estado: "pendente",
+        quem: "cliente",
+        detalhe:
+          "O cliente ainda não enviou a imagem. Ela precisa ser JPG, RGB, 300 dpi, no mínimo 945 x 945 px, até 2 MB, com uma única imagem do sinal. Colorida equivale a reivindicar as cores.",
+      });
+    } else if (contexto.imagem.ampliada) {
+      add({
+        id: "imagem",
+        titulo: "Imagem da marca em JPG",
+        estado: "atencao",
+        quem: "voce",
+        detalhe: `Guardada em ${contexto.imagem.largura} x ${contexto.imagem.altura} px, mas o original era menor e foi ampliado. Veja se está nítida; se não, peça uma imagem maior.`,
+      });
+    } else {
+      add({
+        id: "imagem",
+        titulo: "Imagem da marca em JPG",
+        estado: "ok",
+        quem: "ninguem",
+        detalhe: `Guardada em ${contexto.imagem.largura} x ${contexto.imagem.altura} px, no formato do INPI.`,
+      });
+    }
   }
 
-  // 7) Aceites
+  // 8) Aceites
   add({
     id: "aceites",
     titulo: "Declarações e consentimento",
@@ -199,7 +228,7 @@ export function checarProntidao(
       : "Não há registro dos aceites.",
   });
 
-  // 8) Cliente pagou o combinado (serviço e GRU), confirmado à mão
+  // 9) Cliente pagou o combinado (serviço e GRU), confirmado à mão
   for (const [tipo, titulo] of [
     ["setup", "Serviço MarcaSync pago"],
     ["gru", "Valor da GRU pago pelo cliente"],
@@ -219,7 +248,7 @@ export function checarProntidao(
     });
   }
 
-  // 9) Etapas que só uma pessoa logada pode fazer
+  // 10) Etapas que só uma pessoa logada pode fazer
   add({
     id: "procuracao",
     titulo: "Procuração assinada",
