@@ -56,7 +56,7 @@ export default function ContatoStep({
           {resumo
             ? pago
               ? `O pagamento da marca "${marca}" foi confirmado. Agora seguimos com o registro e te avisamos a cada passo.`
-              : `Os dados da marca "${marca}" ficaram guardados. Pague os dois Pix abaixo e eu sigo com o registro: o pagamento é conferido sozinho e nada é protocolado antes dele.`
+              : `Os dados da marca "${marca}" ficaram guardados. O pagamento fica logo abaixo e eu sigo com o registro assim que ele for confirmado. Nada é protocolado antes disso.`
             : `Sua consulta da marca "${marca}" foi registrada. Agora é comigo: falo com você pelo WhatsApp para revisar o resultado, combinar o pagamento e seguir com o registro.`}
         </p>
       </div>
@@ -131,8 +131,8 @@ export default function ContatoStep({
         {resumo ? (
           <ol>
             <li>
-              <b>Você paga os dois Pix</b> desta tela. A confirmação é automática e a taxa do INPI
-              só é paga depois que o seu pagamento entra.
+              <b>Você faz o pagamento</b> desta tela. A taxa do INPI só é paga depois que o seu
+              pagamento é confirmado.
             </li>
             <li>
               <b>Você cria o seu cadastro no e-INPI</b> (opção &quot;Cliente&quot;, com os mesmos

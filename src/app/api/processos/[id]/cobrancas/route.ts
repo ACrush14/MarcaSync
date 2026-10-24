@@ -18,8 +18,13 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   const existe = await prisma.processo.findUnique({ where: { id }, select: { id: true } });
   if (!existe) return NextResponse.json({ error: "Processo não encontrado." }, { status: 404 });
 
-  await sincronizarCobrancas(id);
-  await garantirCobrancasPix(id);
+  // Sem a chave do AbacatePay (ainda não configurada neste ambiente) não há Pix a mostrar: a tela
+  // volta ao fluxo de combinar o pagamento pelo WhatsApp.
+  const pixAtivo = Boolean(process.env.ABACATEPAY_API_KEY);
+  if (pixAtivo) {
+    await sincronizarCobrancas(id);
+    await garantirCobrancasPix(id);
+  }
 
   const pagamentos = await prisma.pagamento.findMany({
     where: { processoId: id, tipo: { in: ["setup", "gru"] } },
@@ -27,6 +32,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   });
 
   return NextResponse.json({
+    pixAtivo,
     cobrancas: pagamentos.map((p) => ({
       tipo: p.tipo,
       valorCentavos: p.valorCentavos,
