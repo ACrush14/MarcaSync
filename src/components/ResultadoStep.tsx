@@ -76,8 +76,6 @@ interface ResultadoStepProps {
   onVerPlano: () => void;
   /** Link wa.me pro WhatsApp do MarcaSync; null se o número não estiver configurado. */
   whatsappHref: string | null;
-  /** Chamado quando o cliente decide falar comigo (o <a> abre o WhatsApp sozinho). */
-  onContato: () => void;
 }
 
 export default function ResultadoStep({
@@ -88,7 +86,6 @@ export default function ResultadoStep({
   onRefazer,
   onVerPlano,
   whatsappHref,
-  onContato,
 }: ResultadoStepProps) {
   const { matches, ncl, fonte, avisoFonteReal, termo, baseLocal, risco } = colidencia;
   const grupos = agruparPorArea(matches);
@@ -350,18 +347,11 @@ export default function ResultadoStep({
             href={whatsappHref}
             target="_blank"
             rel="noopener noreferrer"
-            onClick={() => {
-              track("whatsapp_clicado", { onde: "resultado" });
-              onContato();
-            }}
+            onClick={() => track("whatsapp_clicado", { onde: "resultado" })}
           >
             Falar comigo no WhatsApp →
           </a>
-        ) : (
-          <button className="btn secondary" onClick={onContato}>
-            Quero que me chamem →
-          </button>
-        )}
+        ) : null}
       </div>
     </>
   );

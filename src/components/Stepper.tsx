@@ -7,7 +7,6 @@ export interface StepDef {
 }
 
 export const STEPS: StepDef[] = [
-  { id: "consulta", t: "Consulta", s: "Nome e descrição" },
   { id: "resultado", t: "Resultado", s: "Colidência e classe" },
   { id: "plano", t: "Plano", s: "Setup e monitoramento" },
   { id: "pedido", t: "Pedido", s: "Dados do titular" },

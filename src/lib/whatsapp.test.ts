@@ -142,4 +142,11 @@ describe("mensagemWhatsapp: a linha de risco", () => {
     );
     expect(mensagemWhatsapp(base)).not.toContain("Já preenchi");
   });
+
+  it("sem nome (quem ainda não se identificou) abre só com a saudação", () => {
+    const base = { nomeCliente: "", marca: "Nubank", colidencia: null, processoId: null };
+    const m = mensagemWhatsapp(base);
+    expect(m.startsWith('Olá! Acabei de consultar a marca "Nubank"')).toBe(true);
+    expect(m).not.toContain("Aqui é");
+  });
 });

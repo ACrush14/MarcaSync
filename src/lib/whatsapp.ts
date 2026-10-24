@@ -52,7 +52,7 @@ function linhaRisco(c: ColidenciaResultado | null): string | null {
 
 export function mensagemWhatsapp(d: DadosContato): string {
   const linhas = [
-    `Olá! Aqui é ${d.nomeCliente}. Acabei de consultar a marca "${d.marca}" no MarcaSync.`,
+    `${d.nomeCliente.trim() ? `Olá! Aqui é ${d.nomeCliente.trim()}.` : "Olá!"} Acabei de consultar a marca "${d.marca}" no MarcaSync.`,
     linhaRisco(d.colidencia),
     d.colidencia ? `Classe sugerida: NCL ${d.colidencia.ncl.code}.` : null,
     d.plano

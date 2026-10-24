@@ -1,10 +1,18 @@
 "use client";
 
+import { useRef, useState } from "react";
 import GarantiaDevolucao from "./GarantiaDevolucao";
 import TrackView from "./TrackView";
 import { track } from "@/lib/track";
+import { whatsappValido } from "@/lib/whatsapp";
 
 interface PlanoStepProps {
+  nomeCliente: string;
+  whatsapp: string;
+  onNomeChange: (v: string) => void;
+  onWhatsappChange: (v: string) => void;
+  /** Gravando o processo no banco: segura os botões. */
+  salvando: boolean;
   monitoramento: boolean;
   onToggleMonitoramento: () => void;
   /** Cliente quer registrar: abre o formulário com os dados do pedido. */
@@ -16,12 +24,37 @@ interface PlanoStepProps {
 }
 
 export default function PlanoStep({
+  nomeCliente,
+  whatsapp,
+  onNomeChange,
+  onWhatsappChange,
+  salvando,
   monitoramento,
   onToggleMonitoramento,
   onConfirmar,
   onFalarPrimeiro,
   whatsappHref,
 }: PlanoStepProps) {
+  const [erroContato, setErroContato] = useState<string | null>(null);
+  const nomeRef = useRef<HTMLInputElement>(null);
+  const whatsappRef = useRef<HTMLInputElement>(null);
+
+  /** Antes de abrir o pedido (ou a conversa) precisamos saber quem é e como falar com a pessoa. */
+  function contatoOk(): boolean {
+    if (!nomeCliente.trim()) {
+      setErroContato("Diga o seu nome para continuar.");
+      nomeRef.current?.focus();
+      return false;
+    }
+    if (!whatsappValido(whatsapp)) {
+      setErroContato("Informe o WhatsApp com DDD, por exemplo (85) 91234-5678.");
+      whatsappRef.current?.focus();
+      return false;
+    }
+    setErroContato(null);
+    return true;
+  }
+
   return (
     <>
       <TrackView nome="plano_visto" />
@@ -78,6 +111,57 @@ export default function PlanoStep({
 
       <GarantiaDevolucao margem="0 0 16px" />
 
+      <div className="helpbox" style={{ margin: "0 0 16px" }}>
+        <h3>Para onde mandamos o andamento?</h3>
+        <p style={{ fontSize: 13, color: "var(--ink-dim)", marginBottom: 10 }}>
+          Só usamos para falar sobre o seu pedido: o Pix, o protocolo e os prazos.
+        </p>
+        <div className="grid-2">
+          <div className="field" style={{ marginBottom: 0 }}>
+            <label htmlFor="in-nome">Seu nome</label>
+            <input
+              ref={nomeRef}
+              type="text"
+              id="in-nome"
+              autoComplete="name"
+              value={nomeCliente}
+              onChange={(e) => {
+                onNomeChange(e.target.value);
+                setErroContato(null);
+              }}
+              placeholder="Ex.: Ana Ramos"
+              aria-describedby={erroContato ? "erro-contato" : undefined}
+            />
+          </div>
+          <div className="field" style={{ marginBottom: 0 }}>
+            <label htmlFor="in-whatsapp">Seu WhatsApp</label>
+            <input
+              ref={whatsappRef}
+              type="tel"
+              inputMode="tel"
+              id="in-whatsapp"
+              autoComplete="tel"
+              value={whatsapp}
+              onChange={(e) => {
+                onWhatsappChange(e.target.value);
+                setErroContato(null);
+              }}
+              placeholder="Ex.: (85) 91234-5678"
+              aria-describedby={erroContato ? "erro-contato" : undefined}
+            />
+          </div>
+        </div>
+        {erroContato && (
+          <p
+            id="erro-contato"
+            role="alert"
+            style={{ fontSize: 13, color: "var(--risk)", marginTop: 8 }}
+          >
+            {erroContato}
+          </p>
+        )}
+      </div>
+
       <div className="summary-strip">
         <div className="total">
           <div className="lbl">Serviço hoje</div>
@@ -109,19 +193,29 @@ export default function PlanoStep({
             )}
           </div>
         </div>
-        <button className="btn" onClick={onConfirmar}>
-          Quero registrar — informar os dados →
+        <button
+          className="btn"
+          disabled={salvando}
+          onClick={() => {
+            if (contatoOk()) onConfirmar();
+          }}
+        >
+          {salvando ? "Salvando…" : "Quero registrar — informar os dados →"}
         </button>
       </div>
       <p className="sim-note">
-        Preço do serviço fechado desde a Consulta. A taxa do INPI (GRU) é oficial, vai direto para o
+        Preço do serviço fechado, sem orçamento. A taxa do INPI (GRU) é oficial, vai direto para o
         INPI e é mostrada antes de você confirmar — sem surpresa depois.{" "}
         {whatsappHref ? (
           <a
             href={whatsappHref}
             target="_blank"
             rel="noopener noreferrer"
-            onClick={() => {
+            onClick={(e) => {
+              if (!contatoOk()) {
+                e.preventDefault();
+                return;
+              }
               track("whatsapp_clicado", { onde: "plano" });
               onFalarPrimeiro();
             }}
@@ -129,7 +223,14 @@ export default function PlanoStep({
             Prefere conversar antes? Fale comigo no WhatsApp.
           </a>
         ) : (
-          <button type="button" className="btn ghost" onClick={onFalarPrimeiro}>
+          <button
+            type="button"
+            className="btn ghost"
+            disabled={salvando}
+            onClick={() => {
+              if (contatoOk()) onFalarPrimeiro();
+            }}
+          >
             Prefere conversar antes? Me chamem.
           </button>
         )}
