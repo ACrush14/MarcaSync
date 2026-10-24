@@ -1,6 +1,7 @@
 import { checarProntidao } from "@/lib/prontidao";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { barrarSeExceder } from "@/lib/limite-publico";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -49,6 +50,16 @@ export async function GET() {
   });
 }
 
+/** Tamanhos máximos dos textos que o visitante manda (bem acima do uso normal). */
+const LIMITES = {
+  nome: 120,
+  marca: 120,
+  descricao: 2000,
+  whatsapp: 30,
+  email: 200,
+  rotuloClasse: 80,
+} as const;
+
 interface CriarProcessoBody {
   nomeCliente?: string;
   whatsapp?: string;
@@ -69,18 +80,41 @@ interface CriarProcessoBody {
  * ponto em que o wizard passa a persistir alguma coisa de verdade.
  */
 export async function POST(request: Request) {
-  const body = (await request.json()) as CriarProcessoBody;
+  const barrado = barrarSeExceder(request, "criarProcesso");
+  if (barrado) return barrado;
 
-  const nomeCliente = body.nomeCliente?.trim();
-  const whatsapp = body.whatsapp?.trim();
-  const marca = body.marca?.trim();
-  const descricao = body.descricao?.trim() ?? "";
+  let body: CriarProcessoBody;
+  try {
+    body = (await request.json()) as CriarProcessoBody;
+  } catch {
+    return NextResponse.json({ error: "Corpo inválido: envie um JSON." }, { status: 400 });
+  }
+  if (!body || typeof body !== "object") {
+    return NextResponse.json({ error: "Corpo inválido: envie um JSON." }, { status: 400 });
+  }
+
+  const texto = (v: unknown) => (typeof v === "string" ? v.trim() : undefined);
+  const nomeCliente = texto(body.nomeCliente);
+  const whatsapp = texto(body.whatsapp);
+  const marca = texto(body.marca);
+  const descricao = texto(body.descricao) ?? "";
+  const email = texto(body.email) || null;
 
   if (!nomeCliente || !whatsapp || !marca) {
     return NextResponse.json(
       { error: "nomeCliente, whatsapp e marca são obrigatórios." },
       { status: 400 }
     );
+  }
+
+  if (
+    nomeCliente.length > LIMITES.nome ||
+    marca.length > LIMITES.marca ||
+    descricao.length > LIMITES.descricao ||
+    whatsapp.length > LIMITES.whatsapp ||
+    (email?.length ?? 0) > LIMITES.email
+  ) {
+    return NextResponse.json({ error: "Algum campo passou do tamanho permitido." }, { status: 400 });
   }
 
   const digitos = whatsapp.replace(/\D/g, "");
@@ -91,10 +125,12 @@ export async function POST(request: Request) {
     );
   }
 
+  // Quem já é cliente (mesmo WhatsApp) mantém o nome e o e-mail que tinha: a rota é pública e
+  // qualquer pessoa pode digitar o número de outra, então não deixamos trocar os dados dela.
   const cliente = await prisma.cliente.upsert({
     where: { whatsapp },
-    update: { nome: nomeCliente, email: body.email?.trim() || undefined },
-    create: { nome: nomeCliente, whatsapp, email: body.email?.trim() || null },
+    update: {},
+    create: { nome: nomeCliente, whatsapp, email },
   });
 
   const processo = await prisma.processo.create({
@@ -102,14 +138,18 @@ export async function POST(request: Request) {
       clienteId: cliente.id,
       marca,
       descricao,
-      nclCode: body.nclCode ?? null,
-      nclLabel: body.nclLabel ?? null,
-      riscoPct: typeof body.riscoPct === "number" ? Math.round(body.riscoPct) : null,
-      riscoFonte: body.riscoFonte ?? null,
+      nclCode: typeof body.nclCode === "string" && /^\d{1,2}$/.test(body.nclCode) ? body.nclCode : null,
+      nclLabel: texto(body.nclLabel)?.slice(0, LIMITES.rotuloClasse) ?? null,
+      riscoPct:
+        typeof body.riscoPct === "number" && Number.isFinite(body.riscoPct)
+          ? Math.min(100, Math.max(0, Math.round(body.riscoPct)))
+          : null,
+      riscoFonte: body.riscoFonte === "real" || body.riscoFonte === "demo" ? body.riscoFonte : null,
       status: "resultado",
     },
-    include: { cliente: true },
+    select: { id: true, status: true },
   });
 
+  // Só o id volta: quem cria o processo não precisa (nem deve) receber os dados do cliente.
   return NextResponse.json({ processo }, { status: 201 });
 }

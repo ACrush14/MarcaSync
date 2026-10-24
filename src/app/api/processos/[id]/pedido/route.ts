@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { analisarEspecificacao } from "@/lib/catalogo";
 import { garantirCobrancasPix } from "@/lib/cobranca";
 import { calcularGru } from "@/lib/gru";
+import { barrarSeExceder } from "@/lib/limite-publico";
 import { validarPedido, type PedidoEntrada } from "@/lib/pedido";
 import { MONITORAMENTO_CENTAVOS, SETUP_CENTAVOS } from "@/lib/planos";
 
@@ -28,6 +29,9 @@ const MAX_CORPO_BYTES = 16 * 1024;
  * Os dados pessoais (CPF/CNPJ, endereço) NÃO voltam na resposta; só o resumo de valores.
  */
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const barrado = barrarSeExceder(request, "enviarPedido");
+  if (barrado) return barrado;
+
   const { id } = await params;
 
   if (Number(request.headers.get("content-length") ?? 0) > MAX_CORPO_BYTES) {
@@ -139,7 +143,20 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     }),
   ];
 
-  if (!existe("setup")) {
+  // O preço do serviço e do monitoramento é sempre o do servidor. Se já houver uma cobrança
+  // pendente com outro valor (dado antigo ou adulterado), ela é corrigida e o Pix refeito.
+  const refazPix = { provedorId: null, brCode: null, expiraEm: null };
+  const setupPendente = pendente("setup");
+  if (setupPendente) {
+    if (setupPendente.valorCentavos !== SETUP_CENTAVOS) {
+      operacoes.push(
+        prisma.pagamento.update({
+          where: { id: setupPendente.id },
+          data: { valorCentavos: SETUP_CENTAVOS, ...refazPix },
+        })
+      );
+    }
+  } else if (!existe("setup")) {
     operacoes.push(
       prisma.pagamento.create({
         data: { processoId: id, tipo: "setup", valorCentavos: SETUP_CENTAVOS },
@@ -166,7 +183,16 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     );
   }
   const monitoramentoPendente = pendente("monitoramento");
-  if (d.monitoramento && !existe("monitoramento")) {
+  if (d.monitoramento && monitoramentoPendente) {
+    if (monitoramentoPendente.valorCentavos !== MONITORAMENTO_CENTAVOS) {
+      operacoes.push(
+        prisma.pagamento.update({
+          where: { id: monitoramentoPendente.id },
+          data: { valorCentavos: MONITORAMENTO_CENTAVOS, ...refazPix },
+        })
+      );
+    }
+  } else if (d.monitoramento && !existe("monitoramento")) {
     operacoes.push(
       prisma.pagamento.create({
         data: { processoId: id, tipo: "monitoramento", valorCentavos: MONITORAMENTO_CENTAVOS },

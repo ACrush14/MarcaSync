@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { rodarMonitoramento } from "@/lib/monitor-rpi";
 import { verificarSituacoes } from "@/lib/monitor-situacoes";
 import { avisarPrazos } from "@/lib/avisos";
+import { segredoConfere } from "@/lib/segredo";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,7 +22,8 @@ export async function GET(request: Request) {
   if (!segredo) {
     return NextResponse.json({ error: "CRON_SECRET não configurado." }, { status: 500 });
   }
-  if (request.headers.get("authorization") !== `Bearer ${segredo}`) {
+  const enviado = request.headers.get("authorization")?.replace(/^Bearer /, "");
+  if (!segredoConfere(enviado, segredo)) {
     return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
   }
 

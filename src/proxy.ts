@@ -6,6 +6,7 @@ import {
   ipDoPedido,
   registrarFalha,
 } from "@/lib/limite-admin";
+import { segredoConfere } from "@/lib/segredo";
 
 function pedirAutenticacao() {
   return new NextResponse("Autenticação necessária.", {
@@ -64,7 +65,7 @@ export async function proxy(request: NextRequest) {
       return pedirAutenticacao();
     }
 
-    if (senha !== senhaAdmin) {
+    if (!segredoConfere(senha, senhaAdmin)) {
       await registrarFalha(ip);
       return pedirAutenticacao();
     }

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { calcularColidencia } from "@/lib/colidencia";
+import { barrarSeExceder } from "@/lib/limite-publico";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -14,12 +15,19 @@ export const dynamic = "force-dynamic";
  * caminhos), nunca propaga o erro cru da busca real pro cliente.
  */
 export async function GET(request: Request) {
+  const barrado = barrarSeExceder(request, "buscar");
+  if (barrado) return barrado;
+
   const { searchParams } = new URL(request.url);
   const marca = searchParams.get("marca")?.trim();
   const descricao = searchParams.get("descricao")?.trim() ?? "";
 
   if (!marca) {
     return NextResponse.json({ error: "Informe ?marca=<nome da marca>." }, { status: 400 });
+  }
+
+  if (marca.length > 120 || descricao.length > 2000) {
+    return NextResponse.json({ error: "Marca ou descrição grande demais." }, { status: 400 });
   }
 
   const resultado = await calcularColidencia(marca, descricao);
