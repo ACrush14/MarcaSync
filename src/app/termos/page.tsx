@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import PaginaLegal from "@/components/PaginaLegal";
 import { EMPRESA, linhaEmpresa } from "@/lib/empresa";
+import { GARANTIA_CURTA, GARANTIA_REGRAS } from "@/lib/garantia";
 import { MONITORAMENTO_CENTAVOS, SETUP_CENTAVOS, fmtReais } from "@/lib/planos";
 
 export const metadata: Metadata = {
@@ -53,20 +54,14 @@ export default function TermosPage() {
         geradas pela plataforma AbacatePay. O pedido só segue depois que o pagamento é confirmado.
       </p>
 
-      <h2 style={H2}>4. Devolução do valor</h2>
+      <h2 style={H2}>4. Garantia de devolução</h2>
+      <p>
+        <b>{GARANTIA_CURTA}</b> Na prática:
+      </p>
       <ul>
-        <li>
-          <b>Antes de pagarmos a GRU ao INPI:</b> devolvemos tudo o que você pagou, por Pix.
-        </li>
-        <li>
-          <b>Depois de pagarmos a GRU e antes do protocolo:</b> devolvemos o valor do serviço. A
-          taxa paga ao INPI, em regra, não é devolvida por ele, e por isso não pode ser devolvida
-          por nós.
-        </li>
-        <li>
-          <b>Depois do protocolo no INPI:</b> o serviço está concluído e não há devolução, mesmo que
-          o INPI venha a indeferir o pedido.
-        </li>
+        {GARANTIA_REGRAS.map((r) => (
+          <li key={r}>{r}</li>
+        ))}
       </ul>
       <p>
         Nada neste item afasta os direitos que a lei já lhe dá, inclusive os do Código de Defesa do
