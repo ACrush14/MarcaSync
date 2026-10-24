@@ -105,6 +105,13 @@ Variáveis de ambiente: `ABACATEPAY_API_KEY` (chave `abc_dev_...` no modo de tes
 Vercel como sensível) e `ABACATEPAY_WEBHOOK_SECRET` (o mesmo valor do `webhookSecret` da URL cadastrada no painel).
 Em modo de teste, `simularPagamento` finge o pagamento sem mover dinheiro.
 
+### Catálogo de produtos no AbacatePay
+
+O pedido cobra por valor (`/transparents/create`), então não depende de produtos. O catálogo serve para links de pagamento
+e para a assinatura do monitoramento. `node --env-file=.env.local scripts/criar-produtos-abacatepay.mjs` cria os produtos
+(serviço, GRU 389 e 394 com e sem desconto, monitoramento mensal) no ambiente da chave: `abc_dev_...` cria no modo de teste.
+É preciso criar de novo em produção, com a chave de produção (permissão `PRODUCT:CREATE`).
+
 ## Protocolo, recibo, prazos e avisos
 
 Depois de pago, o pedido é protocolado por você no e-Marcas e registrado no `/admin`:
