@@ -3,6 +3,7 @@
 import { useState } from "react";
 import TrackView from "./TrackView";
 import AvisoAnterioridadeBox from "./AvisoAnterioridadeBox";
+import { DOCUMENTOS_INPI, DOCUMENTOS_MARCASYNC } from "@/lib/documentos";
 import EspecificacaoPicker from "./EspecificacaoPicker";
 import ImagemMarcaUpload from "./ImagemMarcaUpload";
 import { track } from "@/lib/track";
@@ -142,6 +143,8 @@ export default function PedidoStep({
     declaracaoVeracidade: false,
     aceiteProcuracao: false,
     aceiteLgpd: false,
+    aceiteTermos: false,
+    cienciaDocumentosInpi: false,
     cienteAnterioridade: false,
   });
   const [erros, setErros] = useState<Record<string, string>>({});
@@ -620,9 +623,35 @@ export default function PedidoStep({
         </div>
       )}
 
+      <div className="helpbox" style={{ margin: "0 0 16px" }}>
+        <h3>Leia antes de pagar</h3>
+        <p style={{ fontSize: 13, color: "var(--ink-dim)", marginBottom: 8 }}>
+          Abra os documentos abaixo (cada link abre em outra aba) e marque as confirmações no fim
+          do formulário. Sem elas não dá para seguir para o pagamento.
+        </p>
+        <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13.5 }}>
+          {[...DOCUMENTOS_MARCASYNC, ...DOCUMENTOS_INPI].map((d) => (
+            <li key={d.url} style={{ marginBottom: 4 }}>
+              <a href={d.url} target="_blank" rel="noopener noreferrer">
+                {d.rotulo}
+              </a>
+              {d.externo ? " (INPI e órgãos oficiais)" : " (MarcaSync)"}
+            </li>
+          ))}
+        </ul>
+      </div>
+
       <div className="field">
         {(
           [
+            [
+              "aceiteTermos",
+              "Li e aceito os Termos de uso e a Política de privacidade do MarcaSync, inclusive a garantia de devolução.",
+            ],
+            [
+              "cienciaDocumentosInpi",
+              "Li, ou tive acesso, ao Manual de Marcas, à Tabela de Retribuições e à lista de produtos e serviços do INPI. Sei que quem decide o registro é o INPI e que a taxa paga ao INPI, em regra, não é devolvida por ele.",
+            ],
             [
               "declaracaoAtividade",
               "Declaro, sob as penas da lei, que exerço de forma efetiva e lícita a atividade acima, compatível com os produtos ou serviços da marca.",

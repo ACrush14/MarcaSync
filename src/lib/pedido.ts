@@ -108,6 +108,10 @@ export interface PedidoEntrada {
   declaracaoVeracidade?: unknown;
   aceiteProcuracao?: unknown;
   aceiteLgpd?: unknown;
+  /** Leu e aceita os Termos de uso e a Política de privacidade do MarcaSync. */
+  aceiteTermos?: unknown;
+  /** Leu os documentos do INPI (manual, taxas, listas) e entende como o INPI decide e cobra. */
+  cienciaDocumentosInpi?: unknown;
   /** O cliente viu o aviso de marca anterior parecida (a rota decide se era obrigatório). */
   cienteAnterioridade?: unknown;
   monitoramento?: unknown;
@@ -280,6 +284,10 @@ export function validarPedido(entrada: PedidoEntrada, analisar?: Analisador): Re
     erros.aceiteProcuracao = "Precisamos da sua autorização para protocolar em seu nome.";
   if (entrada.aceiteLgpd !== true)
     erros.aceiteLgpd = "Precisamos do seu consentimento para usar os dados.";
+  if (entrada.aceiteTermos !== true)
+    erros.aceiteTermos = "Leia e aceite os Termos de uso e a Política de privacidade.";
+  if (entrada.cienciaDocumentosInpi !== true)
+    erros.cienciaDocumentosInpi = "Confirme que leu os documentos do INPI.";
 
   if (Object.keys(erros).length > 0) return { ok: false, erros };
 
