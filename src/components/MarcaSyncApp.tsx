@@ -13,6 +13,7 @@ import { linkWhatsapp } from "@/lib/whatsapp";
 import { pctDoRisco } from "@/lib/risco-area";
 import { avaliarAnterioridade, type AvisoAnterioridade } from "@/lib/anterioridade";
 import TrackView from "./TrackView";
+import RodapeLegal from "./RodapeLegal";
 
 /** Sem busca feita não há o que avisar. */
 const SEM_AVISO: AvisoAnterioridade = {
@@ -316,6 +317,7 @@ export default function MarcaSyncApp() {
         final é sempre do INPI. Medimos as etapas do site com um código anônimo no navegador, que
         não é ligado ao seu nome nem ao seu telefone.
       </p>
+      <RodapeLegal />
     </div>
   );
 }
