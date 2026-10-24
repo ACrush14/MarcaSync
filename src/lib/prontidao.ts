@@ -224,7 +224,7 @@ export function checarProntidao(
     estado: d.aceitoEm ? "ok" : "pendente",
     quem: d.aceitoEm ? "ninguem" : "cliente",
     detalhe: d.aceitoEm
-      ? "Atividade (art. 128), veracidade, procuração e LGPD aceitas no formulário."
+      ? "Termos, documentos do INPI, atividade (art. 128), veracidade, procuração e LGPD aceitos no formulário."
       : "Não há registro dos aceites.",
   });
 

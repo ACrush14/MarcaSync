@@ -148,6 +148,8 @@ describe("validarPedido", () => {
     declaracaoVeracidade: true,
     aceiteProcuracao: true,
     aceiteLgpd: true,
+    aceiteTermos: true,
+    cienciaDocumentosInpi: true,
     monitoramento: true,
   };
 
@@ -216,6 +218,8 @@ describe("validarPedido", () => {
     "declaracaoVeracidade",
     "aceiteProcuracao",
     "aceiteLgpd",
+    "aceiteTermos",
+    "cienciaDocumentosInpi",
   ] as const)("recusa sem o aceite '%s'", (campo) => {
     const r = validarPedido({ ...base, [campo]: false });
     expect(r.ok).toBe(false);
