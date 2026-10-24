@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { EMPRESA, linhaEmpresa } from "@/lib/empresa";
+import { linkContatoWhatsapp } from "@/lib/whatsapp";
 
 /**
  * Linha de rodapé com os links das páginas legais e os dados da empresa. Fica em um arquivo
@@ -15,6 +16,15 @@ export default function RodapeLegal() {
         <>
           {" "}
           · <a href={`mailto:${EMPRESA.emailContato}`}>{EMPRESA.emailContato}</a>
+        </>
+      )}
+      {linkContatoWhatsapp && (
+        <>
+          {" "}
+          ·{" "}
+          <a href={linkContatoWhatsapp} target="_blank" rel="noopener noreferrer">
+            WhatsApp
+          </a>
         </>
       )}
       <br />

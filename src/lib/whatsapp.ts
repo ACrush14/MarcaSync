@@ -20,6 +20,11 @@ const NUMERO = (process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "").replace(/\D/g, ""
 /** DDI (2) + DDD (2) + número (8–9) = 12 a 13 dígitos. */
 export const whatsappConfigurado = NUMERO.length >= 12 && NUMERO.length <= 13;
 
+/** Link simples para falar com o MarcaSync (sem mensagem pronta), para o rodapé; null se não houver número. */
+export const linkContatoWhatsapp: string | null = whatsappConfigurado
+  ? `https://wa.me/${NUMERO}`
+  : null;
+
 export interface DadosContato {
   nomeCliente: string;
   marca: string;
