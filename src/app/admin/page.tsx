@@ -256,6 +256,8 @@ export default function AdminPage() {
   const [confirmando, setConfirmando] = useState<string | null>(null);
   const [alertas, setAlertas] = useState<Alerta[]>([]);
   const [avisosSistema, setAvisosSistema] = useState<AvisoSistema[]>([]);
+  const [testandoAviso, setTestandoAviso] = useState(false);
+  const [resultadoTeste, setResultadoTeste] = useState<string | null>(null);
   const [ultimaLeitura, setUltimaLeitura] = useState<UltimaLeitura | null>(null);
   const [verificando, setVerificando] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
@@ -301,6 +303,38 @@ export default function AdminPage() {
       setErro(e instanceof Error ? e.message : "Falha ao verificar a RPI.");
     } finally {
       setVerificando(false);
+    }
+  }
+
+  /** Manda um aviso de teste para você e mostra o resultado de cada canal ligado. */
+  async function enviarAvisoTeste() {
+    setTestandoAviso(true);
+    setResultadoTeste(null);
+    try {
+      const res = await fetch("/api/admin/notificacoes/teste", { method: "POST" });
+      const corpo = await res.json();
+      if (!res.ok) throw new Error(corpo?.error ?? "Falha ao enviar o teste.");
+      const lista = (corpo.resultados ?? []) as Array<{
+        canal: string;
+        enviado: boolean;
+        erro: string | null;
+      }>;
+      setResultadoTeste(
+        lista
+          .map((r) =>
+            r.canal === "painel"
+              ? "nenhum canal de envio está ligado (o aviso ficou só no painel)"
+              : r.enviado
+                ? `${r.canal}: enviado, confira o seu aparelho`
+                : `${r.canal}: falhou (${r.erro ?? "erro"})`
+          )
+          .join(" · ") || "sem resposta"
+      );
+      await carregar();
+    } catch (e) {
+      setResultadoTeste(e instanceof Error ? e.message : "Falha ao enviar o teste.");
+    } finally {
+      setTestandoAviso(false);
     }
   }
 
@@ -758,6 +792,16 @@ Estornar mesmo assim?`)
           <summary style={{ cursor: "pointer", fontWeight: 600 }}>
             Avisos do sistema ({avisosSistema.length})
           </summary>
+          <div style={{ margin: "10px 0 0" }}>
+            <button className="btn ghost" disabled={testandoAviso} onClick={enviarAvisoTeste}>
+              {testandoAviso ? "Enviando…" : "Enviar aviso de teste"}
+            </button>
+            {resultadoTeste && (
+              <span role="status" style={{ marginLeft: 10, fontSize: 13 }}>
+                {resultadoTeste}
+              </span>
+            )}
+          </div>
           {avisosSistema.length === 0 ? (
             <p style={{ fontSize: 13, color: "var(--ink-dim)", marginTop: 8 }}>
               Nenhum aviso ainda. Eles aparecem aqui quando um pagamento é confirmado, um pedido é
