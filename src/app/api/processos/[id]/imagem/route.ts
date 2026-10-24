@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { barrarSeExceder } from "@/lib/limite-publico";
 import { MAX_ORIGINAL_BYTES, prepararImagemMarca } from "@/lib/imagem-marca";
 
 export const runtime = "nodejs";
@@ -13,6 +14,9 @@ export const dynamic = "force-dynamic";
  * troca a imagem. A validação que vale é a daqui: o navegador só ajuda o cliente.
  */
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const barrado = barrarSeExceder(request, "enviarImagem");
+  if (barrado) return barrado;
+
   const { id } = await params;
 
   if (Number(request.headers.get("content-length") ?? 0) > MAX_ORIGINAL_BYTES + 64 * 1024) {

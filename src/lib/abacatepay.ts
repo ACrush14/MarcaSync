@@ -1,4 +1,6 @@
-import { createHash, timingSafeEqual } from "node:crypto";
+import { segredoConfere } from "./segredo";
+
+export { segredoConfere };
 
 /**
  * Cliente mínimo da API v2 do AbacatePay para cobrar por Pix e estornar.
@@ -51,17 +53,6 @@ export function statusDoPagamento(status: string): StatusPagamento {
 /** Acha o id de uma cobrança Pix (pix_char_...) em qualquer texto, como o corpo de um webhook. */
 export function extrairIdCobranca(texto: string): string | null {
   return /pix_char_[A-Za-z0-9]+/.exec(texto)?.[0] ?? null;
-}
-
-/**
- * Compara o segredo recebido com o esperado sem vazar nada pelo tempo de resposta. As duas
- * pontas viram um hash do mesmo tamanho antes de comparar, para a comparação ser sempre segura.
- */
-export function segredoConfere(recebido: string | null | undefined, esperado: string): boolean {
-  if (!recebido || !esperado) return false;
-  const a = createHash("sha256").update(recebido).digest();
-  const b = createHash("sha256").update(esperado).digest();
-  return timingSafeEqual(a, b);
 }
 
 function chave(): string {
