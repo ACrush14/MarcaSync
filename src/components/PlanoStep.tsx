@@ -5,6 +5,7 @@ import GarantiaDevolucao from "./GarantiaDevolucao";
 import TrackView from "./TrackView";
 import { track } from "@/lib/track";
 import { whatsappValido } from "@/lib/whatsapp";
+import { MONITORAMENTO_CENTAVOS, SETUP_CENTAVOS, fmtReais, fmtReaisCurto } from "@/lib/planos";
 
 interface PlanoStepProps {
   nomeCliente: string;
@@ -73,7 +74,7 @@ export default function PlanoStep({
         <div className="plan-card">
           <h3>Setup — Análise e Protocolo</h3>
           <div className="price">
-            R$ 499 <small>pagamento único</small>
+            {fmtReaisCurto(SETUP_CENTAVOS)} <small>pagamento único</small>
           </div>
           <ul>
             <li>Busca de anterioridade fonética</li>
@@ -85,7 +86,7 @@ export default function PlanoStep({
         <div className="plan-card">
           <h3>Monitoramento RPI</h3>
           <div className="price">
-            R$ 29 <small>por mês</small>
+            {fmtReaisCurto(MONITORAMENTO_CENTAVOS)} <small>por mês</small>
           </div>
           <ul>
             <li>Leitura semanal da RPI, automática, do seu processo</li>
@@ -166,7 +167,7 @@ export default function PlanoStep({
         <div className="total">
           <div className="lbl">Serviço hoje</div>
           <div className="amt tab-nums">
-            R$ 499,00
+            {fmtReais(SETUP_CENTAVOS)}
             <span
               style={{
                 fontSize: 12.5,
@@ -188,7 +189,7 @@ export default function PlanoStep({
                 }}
               >
                 {" "}
-                + R$ 29/mês a partir da publicação
+                + {fmtReaisCurto(MONITORAMENTO_CENTAVOS)}/mês a partir da publicação
               </span>
             )}
           </div>

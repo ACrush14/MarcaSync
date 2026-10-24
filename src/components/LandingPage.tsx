@@ -4,6 +4,7 @@ import "./LandingPage.css";
 import TrackView from "./TrackView";
 import { linhaEmpresa } from "@/lib/empresa";
 import GarantiaDevolucao from "./GarantiaDevolucao";
+import { MONITORAMENTO_CENTAVOS, SETUP_CENTAVOS, fmtReaisCurto } from "@/lib/planos";
 
 /**
  * Landing page — a porta de entrada do produto (o assistente interativo
@@ -341,7 +342,7 @@ export default function LandingPage() {
               <div className="lp-float lp-float-b lp-tone-mint" aria-hidden="true">
                 <IconTag size={18} />
                 <div>
-                  <b>R$ 499</b>
+                  <b>{fmtReaisCurto(SETUP_CENTAVOS)}</b>
                   <span>pagamento único</span>
                 </div>
               </div>
@@ -555,7 +556,7 @@ export default function LandingPage() {
                 <p className="lp-price-tag">Para registrar</p>
                 <h3>Setup — análise e protocolo</h3>
                 <p className="lp-price">
-                  R$&nbsp;499 <small>pagamento único</small>
+                  {fmtReaisCurto(SETUP_CENTAVOS)} <small>pagamento único</small>
                 </p>
                 <ul>
                   <li>
@@ -585,7 +586,7 @@ export default function LandingPage() {
                 <p className="lp-price-tag lp-tone-lav">Opcional</p>
                 <h3>Monitoramento da RPI</h3>
                 <p className="lp-price">
-                  R$&nbsp;29 <small>por mês</small>
+                  {fmtReaisCurto(MONITORAMENTO_CENTAVOS)} <small>por mês</small>
                 </p>
                 <ul>
                   <li>
