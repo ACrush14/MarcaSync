@@ -21,8 +21,9 @@ export default function PrivacidadePage() {
       <h2 style={H2}>1. Quais dados coletamos</h2>
       <ul>
         <li>
-          <b>Na consulta:</b> seu nome, WhatsApp, o nome da marca e a descrição do que ela vai
-          identificar.
+          <b>Na consulta:</b> o nome da marca e a descrição do que ela vai identificar. Seu nome e
+          seu WhatsApp só são pedidos depois do resultado, quando você decide seguir para o
+          registro ou falar conosco.
         </li>
         <li>
           <b>No pedido de registro:</b> nome ou razão social, CPF ou CNPJ, e-mail, endereço

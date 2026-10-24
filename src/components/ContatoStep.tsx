@@ -11,7 +11,7 @@ interface ContatoStepProps {
   nomeCliente: string;
   /** Id do processo, para consultar o pagamento; null se a gravação falhou. */
   processoId: string | null;
-  /** WhatsApp que o próprio cliente informou na consulta. */
+  /** WhatsApp que o próprio cliente informou no Plano. */
   whatsappCliente: string;
   marca: string;
   /** Link wa.me pro WhatsApp do MarcaSync; null se o número não estiver configurado. */

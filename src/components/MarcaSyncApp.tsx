@@ -24,12 +24,15 @@ const SEM_AVISO: AvisoAnterioridade = {
   alternativas: [],
 };
 
+// "consulta" e "carregando" fazem parte do primeiro passo (Resultado): a pessoa chega, diz a
+// marca e o produto, e o resultado aparece ali mesmo.
 type Phase = "consulta" | "carregando" | "resultado" | "plano" | "pedido" | "contato";
 
-const PHASE_POR_PASSO: Phase[] = ["consulta", "resultado", "plano", "pedido", "contato"];
+const PHASE_POR_PASSO: Phase[] = ["resultado", "plano", "pedido", "contato"];
 
-const PASSO_PEDIDO = 3;
-const PASSO_CONTATO = 4;
+const PASSO_PLANO = 1;
+const PASSO_PEDIDO = 2;
+const PASSO_CONTATO = 3;
 
 export default function MarcaSyncApp() {
   const [current, setCurrent] = useState(0);
@@ -50,6 +53,7 @@ export default function MarcaSyncApp() {
   // mas fica marcado em erroSalvar.
   const [processoId, setProcessoId] = useState<string | null>(null);
   const [erroSalvar, setErroSalvar] = useState<string | null>(null);
+  const [salvando, setSalvando] = useState(false);
 
   // A busca (real, com fallback pra demo) começa assim que o usuário clica
   // "Analisar", em paralelo com a animação do LoadingStep — não espera a
@@ -68,16 +72,11 @@ export default function MarcaSyncApp() {
     setPhase(PHASE_POR_PASSO[i] as Phase);
   }
 
-  function handleAnalisar(dados: {
-    nomeCliente: string;
-    whatsapp: string;
-    marca: string;
-    descricao: string;
-  }) {
-    setNomeCliente(dados.nomeCliente);
-    setWhatsapp(dados.whatsapp);
+  function handleAnalisar(dados: { marca: string; descricao: string }) {
     setMarca(dados.marca);
     setDescricao(dados.descricao);
+    // Uma análise nova é um processo novo: o anterior (se houve) ficou com a marca antiga.
+    setProcessoId(null);
 
     const params = new URLSearchParams({
       marca: dados.marca,
@@ -103,49 +102,65 @@ export default function MarcaSyncApp() {
     }
 
     setColidencia(resultado);
-    setUnlocked((u) => Math.max(u, 1));
-    setCurrent(1);
+    setErroSalvar(null);
+    setCurrent(0);
     setPhase("resultado");
+  }
 
+  /**
+   * O processo só entra no caderno (banco) quando a pessoa decide seguir e deixa nome e
+   * WhatsApp: até o resultado ela não precisa se identificar. Devolve o id, ou null se a
+   * gravação falhou (aí o wizard não avança, porque o pedido precisa do processo).
+   */
+  async function garantirProcesso(status: "plano" | "contato"): Promise<string | null> {
+    if (!colidencia) return null;
+    setSalvando(true);
     try {
-      const res = await fetch("/api/processos", {
-        method: "POST",
+      let id = processoId;
+      if (!id) {
+        const res = await fetch("/api/processos", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            nomeCliente: nomeCliente.trim(),
+            whatsapp: whatsapp.trim(),
+            marca,
+            descricao,
+            nclCode: colidencia.ncl.code,
+            nclLabel: colidencia.ncl.label,
+            riscoPct: pctDoRisco(colidencia.risco),
+            riscoFonte: colidencia.fonte,
+          }),
+        });
+        const body = await res.json();
+        if (!res.ok) throw new Error(body?.error ?? "Falha ao salvar o processo.");
+        id = body.processo.id as string;
+        setProcessoId(id);
+      }
+      await fetch(`/api/processos/${id}`, {
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          nomeCliente,
-          whatsapp,
-          marca,
-          descricao,
-          nclCode: resultado.ncl.code,
-          nclLabel: resultado.ncl.label,
-          riscoPct: pctDoRisco(resultado.risco),
-          riscoFonte: resultado.fonte,
-        }),
+        body: JSON.stringify({ status }),
       });
-      const body = await res.json();
-      if (!res.ok) throw new Error(body?.error ?? "Falha ao salvar o processo.");
-      setProcessoId(body.processo.id);
       setErroSalvar(null);
+      return id;
     } catch (e) {
       setErroSalvar(e instanceof Error ? e.message : "Falha ao salvar o processo no banco.");
+      return null;
+    } finally {
+      setSalvando(false);
     }
   }
 
   function handleVerPlano() {
-    setUnlocked((u) => Math.max(u, 2));
-    setCurrent(2);
+    setUnlocked((u) => Math.max(u, PASSO_PLANO));
+    setCurrent(PASSO_PLANO);
     setPhase("plano");
-    if (processoId) {
-      fetch(`/api/processos/${processoId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "plano" }),
-      }).catch(() => setErroSalvar("Falha ao atualizar o processo no banco."));
-    }
   }
 
   /** Cliente decidiu seguir com o registro: abre o formulário de dados do pedido. */
-  function handleVerPedido() {
+  async function handleVerPedido() {
+    if (!(await garantirProcesso("plano"))) return;
     setUnlocked((u) => Math.max(u, PASSO_PEDIDO));
     setCurrent(PASSO_PEDIDO);
     setPhase("pedido");
@@ -165,28 +180,17 @@ export default function MarcaSyncApp() {
   }
 
   /**
-   * Cliente decidiu falar comigo antes de preencher os dados (botão "WhatsApp" do Resultado
-   * ou do Plano). O <a href="wa.me/…"> dos botões abre a conversa por conta própria — aqui só
-   * avançamos o wizard e anotamos no caderno. Não cria cobrança: elas nascem quando o
-   * cliente envia o formulário do pedido.
+   * Cliente decidiu falar comigo antes de preencher os dados (botão "WhatsApp" do Plano).
+   * O <a href="wa.me/…"> abre a conversa por conta própria — aqui gravamos o processo e
+   * avançamos o wizard. Não cria cobrança: elas nascem quando o cliente envia o formulário
+   * do pedido.
    */
   async function handleContato() {
     setPlanoEscolhido(false);
+    if (!(await garantirProcesso("contato"))) return;
     setUnlocked((u) => Math.max(u, PASSO_CONTATO));
     setCurrent(PASSO_CONTATO);
     setPhase("contato");
-
-    if (!processoId) return;
-    try {
-      await fetch(`/api/processos/${processoId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "contato" }),
-      });
-      setErroSalvar(null);
-    } catch {
-      setErroSalvar("Falha ao registrar o contato no banco.");
-    }
   }
 
   function novaConsulta() {
@@ -252,13 +256,7 @@ export default function MarcaSyncApp() {
         )}
 
         {phase === "consulta" && (
-          <ConsultaStep
-            nomeCliente={nomeCliente}
-            whatsapp={whatsapp}
-            marca={marca}
-            descricao={descricao}
-            onAnalisar={handleAnalisar}
-          />
+          <ConsultaStep marca={marca} descricao={descricao} onAnalisar={handleAnalisar} />
         )}
         {phase === "carregando" && <LoadingStep marca={marca} onDone={handleLoadingDone} />}
         {phase === "resultado" && colidencia && (
@@ -273,11 +271,15 @@ export default function MarcaSyncApp() {
             }}
             onVerPlano={handleVerPlano}
             whatsappHref={hrefResultado}
-            onContato={handleContato}
           />
         )}
         {phase === "plano" && (
           <PlanoStep
+            nomeCliente={nomeCliente}
+            whatsapp={whatsapp}
+            onNomeChange={setNomeCliente}
+            onWhatsappChange={setWhatsapp}
+            salvando={salvando}
             monitoramento={monitoramento}
             onToggleMonitoramento={() => setMonitoramento((m) => !m)}
             onConfirmar={handleVerPedido}
@@ -293,7 +295,7 @@ export default function MarcaSyncApp() {
             aviso={aviso}
             monitoramento={monitoramento}
             onVoltar={() => {
-              setCurrent(2);
+              setCurrent(PASSO_PLANO);
               setPhase("plano");
             }}
             onEnviado={handlePedidoEnviado}

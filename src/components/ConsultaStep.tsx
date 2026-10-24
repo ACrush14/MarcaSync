@@ -1,89 +1,31 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { track } from "@/lib/track";
-import { whatsappValido } from "@/lib/whatsapp";
 
 interface ConsultaStepProps {
-  nomeCliente: string;
-  whatsapp: string;
   marca: string;
   descricao: string;
-  onAnalisar: (dados: {
-    nomeCliente: string;
-    whatsapp: string;
-    marca: string;
-    descricao: string;
-  }) => void;
+  onAnalisar: (dados: { marca: string; descricao: string }) => void;
 }
 
-export default function ConsultaStep({
-  nomeCliente,
-  whatsapp,
-  marca,
-  descricao,
-  onAnalisar,
-}: ConsultaStepProps) {
-  const [localNome, setLocalNome] = useState(nomeCliente);
-  const [localWhatsapp, setLocalWhatsapp] = useState(whatsapp);
+export default function ConsultaStep({ marca, descricao, onAnalisar }: ConsultaStepProps) {
   const [localMarca, setLocalMarca] = useState(marca);
   const [localDescricao, setLocalDescricao] = useState(descricao);
 
-  const [erroWhatsapp, setErroWhatsapp] = useState(false);
-  const whatsappRef = useRef<HTMLInputElement>(null);
-
-  const podeAnalisar = localNome.trim() && localWhatsapp.trim() && localMarca.trim();
+  const podeAnalisar = localMarca.trim().length > 0;
 
   return (
     <>
       <div className="panel-head">
-        <h2>Nova consulta de viabilidade</h2>
+        <h2>Veja se a sua marca pode ser registrada</h2>
         <p className="help">
-          Descubra em segundos se sua marca corre risco de colidir com uma já registrada — direto na
-          base real do INPI, com preço fechado desde já. Sem esperar orçamento por telefone ou
-          WhatsApp.
+          Em segundos você descobre se ela corre risco de colidir com uma já registrada, direto na
+          base real do INPI. Não precisa de cadastro: é só dizer o nome e o que você vende.
         </p>
       </div>
       <div className="grid-2">
         <div>
-          <div className="field">
-            <label htmlFor="in-nome">Seu nome</label>
-            <input
-              type="text"
-              id="in-nome"
-              autoComplete="name"
-              value={localNome}
-              onChange={(e) => setLocalNome(e.target.value)}
-              placeholder="Ex.: Ana Ramos"
-            />
-          </div>
-          <div className="field">
-            <label htmlFor="in-whatsapp">Seu WhatsApp</label>
-            <input
-              ref={whatsappRef}
-              type="tel"
-              inputMode="tel"
-              id="in-whatsapp"
-              autoComplete="tel"
-              aria-invalid={erroWhatsapp}
-              aria-describedby={erroWhatsapp ? "erro-whatsapp" : undefined}
-              value={localWhatsapp}
-              onChange={(e) => {
-                setLocalWhatsapp(e.target.value);
-                setErroWhatsapp(false);
-              }}
-              placeholder="Ex.: (85) 91234-5678"
-            />
-            {erroWhatsapp && (
-              <p
-                id="erro-whatsapp"
-                role="alert"
-                style={{ fontSize: 13, color: "var(--risk)", marginTop: 6 }}
-              >
-                Informe o número com DDD, por exemplo (85) 91234-5678.
-              </p>
-            )}
-          </div>
           <div className="field">
             <label htmlFor="in-marca">Nome da marca pretendida</label>
             <input
@@ -108,21 +50,14 @@ export default function ConsultaStep({
             className="btn"
             disabled={!podeAnalisar}
             onClick={() => {
-              if (!whatsappValido(localWhatsapp)) {
-                setErroWhatsapp(true);
-                whatsappRef.current?.focus();
-                return;
-              }
               track("consulta_enviada");
               onAnalisar({
-                nomeCliente: localNome.trim(),
-                whatsapp: localWhatsapp.trim(),
-                marca: localMarca.trim() || "Marca sem nome",
+                marca: localMarca.trim(),
                 descricao: localDescricao.trim(),
               });
             }}
           >
-            Analisar viabilidade →
+            Ver o resultado →
           </button>
         </div>
         <div className="helpbox">
@@ -141,8 +76,8 @@ export default function ConsultaStep({
               você contrate o acompanhamento.
             </li>
             <li>
-              <b>Preço na tela, não em orçamento</b> — o valor do registro e do monitoramento
-              aparece já no próximo passo, sem precisar falar com ninguém antes.
+              <b>Preço na tela, não em orçamento</b> — depois do resultado você vê o valor do
+              registro e do monitoramento, sem precisar falar com ninguém antes.
             </li>
           </ol>
         </div>
