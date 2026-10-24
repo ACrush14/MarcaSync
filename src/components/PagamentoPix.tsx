@@ -56,6 +56,7 @@ export default function PagamentoPix({
 }) {
   const [cobrancas, setCobrancas] = useState<Cobranca[] | null>(null);
   const [tudoPago, setTudoPago] = useState(false);
+  const [pixAtivo, setPixAtivo] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [copiado, setCopiado] = useState<string | null>(null);
   const jaAvisou = useRef(false);
@@ -77,6 +78,8 @@ export default function PagamentoPix({
         if (!res.ok) throw new Error(corpo?.error ?? "Não consegui consultar o pagamento.");
         setCobrancas(corpo.cobrancas as Cobranca[]);
         setTudoPago(corpo.tudoPago === true);
+        setPixAtivo(corpo.pixAtivo !== false);
+        if (corpo.pixAtivo === false) return;
         setErro(null);
         if (corpo.tudoPago === true && !jaAvisou.current) {
           jaAvisou.current = true;
@@ -114,6 +117,19 @@ export default function PagamentoPix({
         <h3>Pagamento</h3>
         <p style={{ fontSize: 13.5, color: "var(--ink-dim)" }}>Gerando os seus Pix…</p>
         {erro && <p style={{ fontSize: 13, color: "var(--risk)", marginTop: 6 }}>{erro}</p>}
+      </div>
+    );
+  }
+
+  if (!pixAtivo) {
+    return (
+      <div className="helpbox" style={{ marginTop: 24 }} role="status">
+        <h3>Pagamento</h3>
+        <p style={{ fontSize: 14 }}>
+          O pagamento por Pix ainda não está ligado nesta versão. Eu combino o pagamento de{" "}
+          {fmtReais(cobrancas.reduce((s, c) => s + c.valorCentavos, 0))} com você pelo WhatsApp e o
+          registro segue depois da confirmação.
+        </p>
       </div>
     );
   }
