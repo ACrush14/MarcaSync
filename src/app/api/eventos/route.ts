@@ -20,6 +20,9 @@ const NOMES_VALIDOS = new Set([
   "whatsapp_clicado",
   "contato_visto",
   "consulta_enviada",
+  "pedido_visto",
+  "pedido_enviado",
+  "pagamento_confirmado",
 ]);
 
 interface EventoBody {

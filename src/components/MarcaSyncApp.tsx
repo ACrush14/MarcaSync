@@ -301,6 +301,7 @@ export default function MarcaSyncApp() {
         {phase === "contato" && (
           <ContatoStep
             nomeCliente={nomeCliente}
+            processoId={processoId}
             whatsappCliente={whatsapp}
             marca={marca}
             whatsappHref={planoEscolhido ? hrefPlano : hrefResultado}
