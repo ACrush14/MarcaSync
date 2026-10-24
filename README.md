@@ -109,7 +109,7 @@ Em modo de teste, `simularPagamento` finge o pagamento sem mover dinheiro.
 
 O pedido cobra por valor (`/transparents/create`), então não depende de produtos. O catálogo serve para links de pagamento
 e para a assinatura do monitoramento. `node --env-file=.env.local scripts/criar-produtos-abacatepay.mjs` cria os produtos
-(serviço, GRU 389 e 394 com e sem desconto, monitoramento mensal) no ambiente da chave: `abc_dev_...` cria no modo de teste.
+(4 pacotes com o serviço e a GRU 389 ou 394 embutidos, com e sem desconto; serviço e GRUs avulsos; monitoramento mensal) no ambiente da chave: `abc_dev_...` cria no modo de teste.
 É preciso criar de novo em produção, com a chave de produção (permissão `PRODUCT:CREATE`).
 
 ## Protocolo, recibo, prazos e avisos
