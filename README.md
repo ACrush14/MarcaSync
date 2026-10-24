@@ -88,6 +88,23 @@ integração de Storage), mais `ADMIN_PASSWORD` (adicionada
 manualmente via `vercel env add`) `NEXT_PUBLIC_WHATSAPP_NUMBER` (ver "Contato pelo
 WhatsApp" — trocar exige novo deploy) e `CRON_SECRET` (monitoramento da RPI).
 
+## Pagamento por Pix (AbacatePay)
+
+O cliente paga duas cobranças Pix separadas (serviço de R$ 499 e taxa do INPI/GRU), porque a API de
+reembolso do AbacatePay só estorna a cobrança inteira. O AbacatePay é a fonte da verdade: nada é marcado
+como pago sem a API confirmar.
+
+- `src/lib/abacatepay.ts` — cliente da API v2 (criar cobrança, consultar, estornar, simular no modo de teste).
+- `src/lib/cobranca.ts` — cria os Pix do pedido, confere os pagos e estorna.
+- `src/lib/estorno.ts` — regra de devolução: antes de pagar a GRU ao INPI volta tudo; depois, só o serviço; após o protocolo, nada.
+- `GET /api/processos/[id]/cobrancas` — a tela de pagamento consulta a cada 5 s (cria o Pix que faltar, sincroniza o status).
+- `POST /api/webhooks/abacatepay?webhookSecret=...` — gatilho: acha o id da cobrança no corpo e **pergunta** o status à API.
+- `POST /api/admin/pagamentos/[id]/estornar` — estorno pelo `/admin` (protegido por senha).
+
+Variáveis de ambiente: `ABACATEPAY_API_KEY` (chave `abc_dev_...` no modo de teste, outra em produção, só no
+Vercel como sensível) e `ABACATEPAY_WEBHOOK_SECRET` (o mesmo valor do `webhookSecret` da URL cadastrada no painel).
+Em modo de teste, `simularPagamento` finge o pagamento sem mover dinheiro.
+
 ## Imagem da marca (`src/lib/imagem-marca.ts`)
 
 Marca figurativa ou mista precisa de imagem no e-Marcas: JPG, RGB, 300 dpi, no mínimo

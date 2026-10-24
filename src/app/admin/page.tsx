@@ -345,6 +345,48 @@ export default function AdminPage() {
     };
   }, []);
 
+  /**
+   * Estorna um pagamento feito pelo AbacatePay. O servidor aplica a regra de devolução (antes de
+   * pagar a GRU ao INPI volta tudo; depois, só o serviço; após o protocolo, nada). Se a regra
+   * recusar, você pode forçar, e isso fica registrado nas notas do pagamento.
+   */
+  async function estornarPagamento(id: string, rotulo: string) {
+    const motivo = window.prompt(
+      `Estornar "${rotulo}". Motivo (vai para o histórico):`,
+      "pedido cancelado"
+    );
+    if (motivo === null) return;
+    setConfirmando(id);
+    try {
+      let forcar = false;
+      for (;;) {
+        const res = await fetch(`/api/admin/pagamentos/${id}/estornar`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ motivo, forcar }),
+        });
+        const corpo = await res.json().catch(() => ({}));
+        if (res.ok) break;
+        if (res.status === 409 && !forcar && String(corpo.error).startsWith("A regra")) {
+          if (
+            !window.confirm(`${corpo.error}
+
+Estornar mesmo assim?`)
+          )
+            return;
+          forcar = true;
+          continue;
+        }
+        throw new Error(corpo.error ?? "Falha ao estornar.");
+      }
+      await carregar();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : "Falha ao estornar.");
+    } finally {
+      setConfirmando(null);
+    }
+  }
+
   async function confirmarPagamento(id: string) {
     setConfirmando(id);
     try {
@@ -624,7 +666,25 @@ export default function AdminPage() {
                               {ROTULO_PAGAMENTO[pg.tipo] ?? pg.tipo} — {fmtReais(pg.valorCentavos)}
                             </span>
                             {pg.status === "confirmado" ? (
-                              <span className="pill safe">confirmado</span>
+                              <>
+                                <span className="pill safe">
+                                  confirmado{pg.confirmadoVia === "abacatepay" ? " (Pix)" : ""}
+                                </span>
+                                {pg.confirmadoVia === "abacatepay" && (
+                                  <button
+                                    className="btn ghost"
+                                    style={{ padding: "6px 12px", fontSize: 12, minHeight: 32 }}
+                                    disabled={confirmando === pg.id}
+                                    onClick={() =>
+                                      estornarPagamento(pg.id, ROTULO_PAGAMENTO[pg.tipo] ?? pg.tipo)
+                                    }
+                                  >
+                                    {confirmando === pg.id ? "Estornando…" : "Estornar"}
+                                  </button>
+                                )}
+                              </>
+                            ) : pg.status === "estornado" ? (
+                              <span className="pill warm">estornado</span>
                             ) : (
                               <button
                                 className="btn ghost"
@@ -635,7 +695,9 @@ export default function AdminPage() {
                                 disabled={confirmando === pg.id}
                                 onClick={() => confirmarPagamento(pg.id)}
                               >
-                                {confirmando === pg.id ? "Confirmando…" : "Marcar como pago"}
+                                {confirmando === pg.id
+                                  ? "Confirmando…"
+                                  : "Marcar como pago (reserva)"}
                               </button>
                             )}
                           </div>

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
 import { analisarEspecificacao } from "@/lib/catalogo";
+import { garantirCobrancasPix } from "@/lib/cobranca";
 import { calcularGru } from "@/lib/gru";
 import { validarPedido, type PedidoEntrada } from "@/lib/pedido";
 import { MONITORAMENTO_CENTAVOS, SETUP_CENTAVOS } from "@/lib/planos";
@@ -150,7 +151,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     operacoes.push(
       prisma.pagamento.update({
         where: { id: gruPendente.id },
-        data: { valorCentavos: gru.centavos },
+        // Valor mudou: o Pix antigo não vale mais, então a cobrança é refeita na próxima consulta.
+        data:
+          gruPendente.valorCentavos === gru.centavos
+            ? { valorCentavos: gru.centavos }
+            : { valorCentavos: gru.centavos, provedorId: null, brCode: null, expiraEm: null },
       })
     );
   } else if (!existe("gru")) {
@@ -173,6 +178,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   try {
     await prisma.$transaction(operacoes);
+    // Cria os Pix agora para a tela de pagamento já abrir com o QR code. Se o AbacatePay estiver
+    // fora, o pedido continua gravado e a tela tenta de novo (GET /api/processos/:id/cobrancas).
+    await garantirCobrancasPix(id);
   } catch {
     return NextResponse.json(
       { error: "Não consegui salvar o pedido. Tente de novo." },
