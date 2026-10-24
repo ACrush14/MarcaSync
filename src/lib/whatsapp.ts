@@ -75,12 +75,14 @@ export function linkWhatsapp(d: DadosContato): string | null {
 
 /**
  * O WhatsApp digitado no formulário é aceitável? Aceita DDD + número (10 ou 11
- * dígitos), com ou sem o 55 na frente, com ou sem máscara. Qualquer caractere que
+ * dígitos, no formato brasileiro), com ou sem o 55 na frente, com ou sem máscara. Qualquer caractere que
  * não seja dígito é ignorado antes de contar: "(85) 91234-5678" vale 11 dígitos.
  */
 export function whatsappValido(v: string): boolean {
   const d = v.replace(/\D/g, "");
-  return /^\d{10,11}$/.test(d) || /^55\d{10,11}$/.test(d);
+  // DDD de 11 a 99; celular tem 9 na frente (11 dígitos), fixo começa de 2 a 9 (10 dígitos).
+  // Isso barra números de outros países, como "+1 555 123 4567", que têm 11 dígitos.
+  return /^(55)?[1-9][1-9](9\d{8}|[2-9]\d{7})$/.test(d);
 }
 
 /** Link wa.me para falar com o CLIENTE (usado no /admin). Aceita número com máscara, com ou sem DDI. */

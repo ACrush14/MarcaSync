@@ -1,4 +1,5 @@
 import { REGIMES, REGIMES_PJ, type Regime } from "./gru";
+import { limparTexto } from "./texto";
 
 /**
  * Validação dos dados do formulário "pedido de registro". Tudo aqui é função pura: roda
@@ -149,9 +150,7 @@ export interface PedidoValidado {
 export type ResultadoValidacao =
   { ok: true; dados: PedidoValidado } | { ok: false; erros: Record<string, string> };
 
-function texto(v: unknown): string {
-  return typeof v === "string" ? v.trim().replace(/\s+/g, " ") : "";
-}
+const texto = limparTexto;
 
 /**
  * Confere o formulário inteiro e devolve os dados limpos ou um erro por campo. Em cada

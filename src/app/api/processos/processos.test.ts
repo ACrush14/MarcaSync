@@ -101,6 +101,22 @@ describe("POST /api/processos", () => {
     expect(db.processo.create.mock.calls[0]?.[0].data.marca).toContain("<script>");
   });
 
+  it("limpa caracteres de controle e invisíveis antes de gravar", async () => {
+    await POST(post({ ...valido, marca: "Kaza\u0000 \u200bDoce", nomeCliente: "Ana\nRamos" }));
+    const dados = db.processo.create.mock.calls[0]?.[0].data;
+    expect(dados.marca).toBe("Kaza Doce");
+    expect(db.cliente.upsert.mock.calls[0]?.[0].create.nome).toBe("Ana Ramos");
+  });
+
+  it("nome ou marca só com caracteres invisíveis é recusado", async () => {
+    expect((await POST(post({ ...valido, marca: "\u200b\u200b" }))).status).toBe(400);
+    expect((await POST(post({ ...valido, nomeCliente: "\u0000" }))).status).toBe(400);
+  });
+
+  it("recusa WhatsApp de outro país", async () => {
+    expect((await POST(post({ ...valido, whatsapp: "+1 555 123 4567" }))).status).toBe(400);
+  });
+
   it("freia a rajada: depois de 12 cadastros do mesmo IP responde 429", async () => {
     const codigos: number[] = [];
     for (let i = 0; i < 20; i++) codigos.push((await POST(post(valido, "9.9.9.9"))).status);
