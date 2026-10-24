@@ -3,6 +3,7 @@ import { notificar } from "./notificar";
 import { EMPRESA } from "./empresa";
 import { avisoPendente, dataPorExtenso, type NivelAviso } from "./prazos";
 import { fmtReais } from "./planos";
+import { precisaContatar } from "./acompanhamento";
 
 /**
  * Os avisos do ciclo do pedido: pagamento recebido, pedido protocolado e prazos. Os textos falam
@@ -150,4 +151,52 @@ export async function avisarPrazos(agora: Date = new Date()): Promise<{ avisados
     }
   }
   return { avisados };
+}
+
+/**
+ * Rotina diária: se há contatos que você marcou para hoje (ou atrasados), manda UM aviso com a
+ * lista. Não repete no mesmo dia: se já existe um aviso desta rotina nas últimas 20 horas, não
+ * manda outro.
+ */
+export async function avisarContatos(agora: Date = new Date()): Promise<{ contatos: number; avisou: boolean }> {
+  const processos = await prisma.processo.findMany({
+    where: { interesse: { not: "sem_interesse" }, proximoContatoEm: { not: null } },
+    select: {
+      marca: true,
+      interesse: true,
+      proximoContatoEm: true,
+      ultimoContatoEm: true,
+      anotacoes: true,
+      cliente: { select: { nome: true } },
+      pagamentos: { select: { tipo: true, status: true } },
+    },
+    orderBy: { proximoContatoEm: "asc" },
+  });
+  const devidos = processos.filter((p) => {
+    const jaPagou = p.pagamentos.some((g) => g.tipo === "setup" && g.status === "confirmado");
+    return precisaContatar(p, agora, jaPagou);
+  });
+  if (devidos.length === 0) return { contatos: 0, avisou: false };
+
+  const recente = await prisma.notificacao.findFirst({
+    where: {
+      destino: "operador",
+      assunto: { startsWith: "Contatos para fazer" },
+      createdAt: { gte: new Date(agora.getTime() - 20 * 3600_000) },
+    },
+    select: { id: true },
+  });
+  if (recente) return { contatos: devidos.length, avisou: false };
+
+  const linhas = devidos.slice(0, 15).map((p) => {
+    const nome = p.cliente.nome.split(" ")[0];
+    return `• ${nome}: ${p.marca} (${p.interesse === "interessado" ? "interessado" : "acompanhar"}, ${dataPorExtenso(p.proximoContatoEm as Date)})`;
+  });
+  const mais = devidos.length > 15 ? `\n… e mais ${devidos.length - 15}.` : "";
+  await notificar({
+    para: "operador",
+    assunto: `Contatos para fazer hoje: ${devidos.length}`,
+    texto: `${linhas.join("\n")}${mais}\n\nPainel: ${SITE}/admin`,
+  });
+  return { contatos: devidos.length, avisou: true };
 }

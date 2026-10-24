@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { rodarMonitoramento } from "@/lib/monitor-rpi";
 import { verificarSituacoes } from "@/lib/monitor-situacoes";
-import { avisarPrazos } from "@/lib/avisos";
+import { avisarContatos, avisarPrazos } from "@/lib/avisos";
 import { segredoConfere } from "@/lib/segredo";
 
 export const runtime = "nodejs";
@@ -30,11 +30,12 @@ export async function GET(request: Request) {
   try {
     const situacoes = await verificarSituacoes();
     const prazos = await avisarPrazos().catch(() => ({ erro: "Falha ao avisar prazos." }));
+    const contatos = await avisarContatos().catch(() => ({ erro: "Falha ao avisar contatos." }));
 
     const rpi = await rodarMonitoramento().catch((err: unknown) => ({
       erro: err instanceof Error ? err.message : "Erro ao ler a RPI.",
     }));
-    return NextResponse.json({ situacoes, prazos, rpi });
+    return NextResponse.json({ situacoes, prazos, contatos, rpi });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Erro ao verificar situações.";
     return NextResponse.json({ error: message }, { status: 500 });

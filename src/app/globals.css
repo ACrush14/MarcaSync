@@ -622,6 +622,17 @@ th {
 tr:last-child td {
   border-bottom: none;
 }
+/* Células de texto livre (nome, marca, anotações): quebram a linha em vez de alargar a tabela. */
+td.celula-texto {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  max-width: 220px;
+  vertical-align: top;
+}
+td.celula-larga {
+  max-width: 300px;
+  min-width: 260px;
+}
 .cta-row {
   display: flex;
   justify-content: flex-end;
