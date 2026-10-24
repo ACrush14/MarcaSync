@@ -7,6 +7,7 @@ import {
   statusDoPagamento,
 } from "./abacatepay";
 import { podeEstornar, planoDeEstorno } from "./estorno";
+import { avisarPagamentoConfirmado } from "./avisos";
 
 /**
  * Lado servidor da cobrança por Pix: cria as cobranças do pedido (serviço e GRU, separadas
@@ -72,10 +73,18 @@ async function sincronizarUm(pagamentoId: string, provedorId: string): Promise<v
     const c = await consultarCobranca(provedorId);
     const novo = statusDoPagamento(c.status);
     if (novo === "confirmado") {
-      await prisma.pagamento.updateMany({
+      const r = await prisma.pagamento.updateMany({
         where: { id: pagamentoId, status: "pendente" },
         data: { status: "confirmado", confirmadoEm: new Date(), confirmadoVia: "abacatepay" },
       });
+      // Só quem de fato mudou o status avisa (a tela e o webhook podem chegar juntos).
+      if (r.count === 1) {
+        const pg = await prisma.pagamento.findUnique({
+          where: { id: pagamentoId },
+          select: { processoId: true },
+        });
+        if (pg) await avisarPagamentoConfirmado(pg.processoId);
+      }
     } else if (novo === "expirado") {
       // Marca como vencida para a próxima visita gerar um QR code novo.
       await prisma.pagamento.updateMany({

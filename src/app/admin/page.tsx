@@ -5,6 +5,7 @@ import Link from "next/link";
 import { linkParaCliente } from "@/lib/whatsapp";
 import { camposEmarcas } from "@/lib/campos-emarcas";
 import type { Prontidao } from "@/lib/prontidao";
+import ProtocoloAdmin, { type PrazoAdmin } from "@/components/ProtocoloAdmin";
 
 interface Pagamento {
   id: string;
@@ -59,8 +60,22 @@ interface Processo {
   cliente: { nome: string; whatsapp: string };
   pagamentos: Pagamento[];
   pedidoRegistro: PedidoRegistro | null;
+  protocoladoEm: string | null;
+  prazos: PrazoAdmin[];
+  reciboProtocolo: { nomeArquivo: string; tamanho: number } | null;
   imagemMarca: { largura: number; altura: number; ampliada: boolean } | null;
   prontidao: Prontidao | null;
+}
+
+interface AvisoSistema {
+  id: string;
+  destino: string;
+  canal: string;
+  assunto: string;
+  texto: string;
+  enviadaEm: string | null;
+  erro: string | null;
+  createdAt: string;
 }
 
 interface Alerta {
@@ -240,6 +255,7 @@ export default function AdminPage() {
   const [erro, setErro] = useState<string | null>(null);
   const [confirmando, setConfirmando] = useState<string | null>(null);
   const [alertas, setAlertas] = useState<Alerta[]>([]);
+  const [avisosSistema, setAvisosSistema] = useState<AvisoSistema[]>([]);
   const [ultimaLeitura, setUltimaLeitura] = useState<UltimaLeitura | null>(null);
   const [verificando, setVerificando] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
@@ -248,13 +264,15 @@ export default function AdminPage() {
 
   async function carregar() {
     try {
-      const [res, resAlertas] = await Promise.all([
+      const [res, resAlertas, resAvisos] = await Promise.all([
         fetch("/api/processos"),
         fetch("/api/admin/alertas"),
+        fetch("/api/admin/notificacoes"),
       ]);
       const body = await res.json();
       if (!res.ok) throw new Error(body?.error ?? "Falha ao carregar.");
       setProcessos(body.processos);
+      if (resAvisos.ok) setAvisosSistema((await resAvisos.json()).avisos);
       if (resAlertas.ok) {
         const a = await resAlertas.json();
         setAlertas(a.alertas);
@@ -321,15 +339,18 @@ export default function AdminPage() {
     let cancelado = false;
     (async () => {
       try {
-        const [res, resAlertas] = await Promise.all([
+        const [res, resAlertas, resAvisos] = await Promise.all([
           fetch("/api/processos"),
           fetch("/api/admin/alertas"),
+          fetch("/api/admin/notificacoes"),
         ]);
         const body = await res.json();
         if (!res.ok) throw new Error(body?.error ?? "Falha ao carregar.");
         const a = resAlertas.ok ? await resAlertas.json() : null;
+        const av = resAvisos.ok ? await resAvisos.json() : null;
         if (!cancelado) {
           setProcessos(body.processos);
+          if (av) setAvisosSistema(av.avisos);
           if (a) {
             setAlertas(a.alertas);
             setUltimaLeitura(a.ultimaLeitura);
@@ -715,6 +736,14 @@ Estornar mesmo assim?`)
                             marca={p.marca}
                             rotulo={`Dados do pedido de ${p.marca}`}
                           />
+                          <ProtocoloAdmin
+                            processoId={p.id}
+                            numeroProcesso={p.numeroProcesso}
+                            protocoladoEm={p.protocoladoEm}
+                            prazos={p.prazos}
+                            recibo={p.reciboProtocolo}
+                            onMudou={carregar}
+                          />
                         </td>
                       </tr>
                     )}
@@ -724,6 +753,32 @@ Estornar mesmo assim?`)
             </table>
           </div>
         )}
+
+        <details style={{ marginTop: 28 }}>
+          <summary style={{ cursor: "pointer", fontWeight: 600 }}>
+            Avisos do sistema ({avisosSistema.length})
+          </summary>
+          {avisosSistema.length === 0 ? (
+            <p style={{ fontSize: 13, color: "var(--ink-dim)", marginTop: 8 }}>
+              Nenhum aviso ainda. Eles aparecem aqui quando um pagamento é confirmado, um pedido é
+              protocolado ou um prazo se aproxima.
+            </p>
+          ) : (
+            <ul style={{ margin: "10px 0 0", paddingLeft: 18, fontSize: 13 }}>
+              {avisosSistema.map((a) => (
+                <li key={a.id} style={{ marginBottom: 6 }}>
+                  <b>{a.assunto}</b> — para {a.destino === "cliente" ? "o cliente" : "você"} (
+                  {a.canal === "painel"
+                    ? "só no painel, nenhum canal de envio ligado"
+                    : a.erro
+                      ? `${a.canal}: falhou, ${a.erro}`
+                      : `${a.canal}: enviado`}
+                  ), {new Date(a.createdAt).toLocaleString("pt-BR")}
+                </li>
+              ))}
+            </ul>
+          )}
+        </details>
       </main>
     </div>
   );
