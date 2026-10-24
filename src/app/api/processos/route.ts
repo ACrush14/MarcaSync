@@ -2,6 +2,8 @@ import { checarProntidao } from "@/lib/prontidao";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { barrarSeExceder } from "@/lib/limite-publico";
+import { limparTexto } from "@/lib/texto";
+import { whatsappValido } from "@/lib/whatsapp";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -93,7 +95,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Corpo inválido: envie um JSON." }, { status: 400 });
   }
 
-  const texto = (v: unknown) => (typeof v === "string" ? v.trim() : undefined);
+  const texto = (v: unknown) => (typeof v === "string" ? limparTexto(v) : undefined);
   const nomeCliente = texto(body.nomeCliente);
   const whatsapp = texto(body.whatsapp);
   const marca = texto(body.marca);
@@ -117,8 +119,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Algum campo passou do tamanho permitido." }, { status: 400 });
   }
 
-  const digitos = whatsapp.replace(/\D/g, "");
-  if (!/^(55)?\d{10,11}$/.test(digitos)) {
+  if (!whatsappValido(whatsapp)) {
     return NextResponse.json(
       { error: "whatsapp inválido — informe DDD + número." },
       { status: 400 }
