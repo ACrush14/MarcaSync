@@ -5,7 +5,7 @@
  *
  * Uso:   node --env-file=.env.local scripts/criar-produtos-abacatepay.mjs
  * A chave (ABACATEPAY_API_KEY) decide o ambiente: "abc_dev_..." cria no modo de teste; a de produção
- * cria de verdade. Rodar de novo é seguro: um produto cujo externalId já existe é só avisado.
+ * cria de verdade. Rodar de novo é seguro: um produto cujo externalId já existe é só avisado (a API devolve 400 "already exists").
  * Precisa da permissão PRODUCT:CREATE na chave.
  */
 const chave = process.env.ABACATEPAY_API_KEY;
@@ -15,6 +15,35 @@ if (!chave) {
 }
 
 const PRODUTOS = [
+  // Pacotes: o serviço do MarcaSync já com a taxa do INPI embutida, para o cliente pagar uma vez só.
+  {
+    externalId: "marcasync-registro-389-desconto",
+    name: "Registro de marca completo (GRU 389), com desconto de 50% do INPI",
+    description:
+      "Serviço do MarcaSync (R$ 499) + taxa do INPI com itens da lista pré-aprovada e desconto de 50% (R$ 440), uma classe.",
+    price: 93_900,
+  },
+  {
+    externalId: "marcasync-registro-389-integral",
+    name: "Registro de marca completo (GRU 389), valor integral do INPI",
+    description:
+      "Serviço do MarcaSync (R$ 499) + taxa do INPI com itens da lista pré-aprovada, sem desconto (R$ 880), uma classe.",
+    price: 137_900,
+  },
+  {
+    externalId: "marcasync-registro-394-desconto",
+    name: "Registro de marca completo (GRU 394), com desconto de 50% do INPI",
+    description:
+      "Serviço do MarcaSync (R$ 499) + taxa do INPI com especificação livre e desconto de 50% (R$ 860), uma classe.",
+    price: 135_900,
+  },
+  {
+    externalId: "marcasync-registro-394-integral",
+    name: "Registro de marca completo (GRU 394), valor integral do INPI",
+    description:
+      "Serviço do MarcaSync (R$ 499) + taxa do INPI com especificação livre, sem desconto (R$ 1.720), uma classe.",
+    price: 221_900,
+  },
   {
     externalId: "marcasync-servico-registro",
     name: "MarcaSync - serviço de registro de marca",
@@ -71,6 +100,8 @@ for (const p of PRODUTOS) {
     console.log(
       `criado   ${p.externalId}  R$ ${(p.price / 100).toFixed(2)}${corpo.data?.devMode ? "  (teste)" : ""}`
     );
+  } else if (typeof corpo.error === "string" && corpo.error.includes("already exists")) {
+    console.log(`já existe ${p.externalId}`);
   } else {
     falhas++;
     console.log(
