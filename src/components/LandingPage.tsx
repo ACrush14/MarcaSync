@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
 import "./LandingPage.css";
 import TrackView from "./TrackView";
+import { linhaEmpresa } from "@/lib/empresa";
 
 /**
  * Landing page — a porta de entrada do produto (o assistente interativo
@@ -650,14 +651,16 @@ export default function LandingPage() {
             <a href="#precos">Preços</a>
             <a href="#duvidas">Dúvidas</a>
             <Link href="/consulta">Começar consulta</Link>
+            <Link href="/termos">Termos de uso</Link>
+            <Link href="/privacidade">Privacidade</Link>
           </nav>
           <p className="lp-footer-legal">
             O MarcaSync é um serviço independente, sem vínculo com o INPI. A busca indica risco de
             colisão a partir de dados públicos; a decisão final é sempre do INPI. Para entender
             quais telas funcionam, guardamos um código anônimo no seu navegador e registramos as
-            etapas que você percorre. Esse código não é ligado ao seu nome nem ao seu telefone. Os
-            dados que você informa na consulta são usados só para falar com você.
-            <br />© 2026 MarcaSync
+            etapas que você percorre. Esse código não é ligado ao seu nome nem ao seu telefone. Veja
+            como usamos os seus dados na <Link href="/privacidade">política de privacidade</Link>.
+            <br />© 2026 {linhaEmpresa()}
           </p>
         </div>
       </footer>

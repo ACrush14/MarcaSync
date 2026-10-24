@@ -898,3 +898,19 @@ tr:last-child td {
     text-wrap: balance;
   }
 }
+
+/* Páginas legais (termos e privacidade): o reset global tira os marcadores das listas. */
+.texto-legal p {
+  margin: 0 0 10px;
+}
+.texto-legal ul {
+  list-style: disc;
+  margin: 0 0 12px;
+  padding-left: 22px;
+}
+.texto-legal li {
+  margin-bottom: 6px;
+}
+.texto-legal a {
+  text-decoration: underline;
+}
