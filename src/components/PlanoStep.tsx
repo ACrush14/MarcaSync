@@ -1,5 +1,6 @@
 "use client";
 
+import GarantiaDevolucao from "./GarantiaDevolucao";
 import TrackView from "./TrackView";
 import { track } from "@/lib/track";
 
@@ -74,6 +75,8 @@ export default function PlanoStep({
           </div>
         </div>
       </div>
+
+      <GarantiaDevolucao margem="0 0 16px" />
 
       <div className="summary-strip">
         <div className="total">

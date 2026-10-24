@@ -3,6 +3,7 @@ import type { CSSProperties, ReactNode } from "react";
 import "./LandingPage.css";
 import TrackView from "./TrackView";
 import { linhaEmpresa } from "@/lib/empresa";
+import GarantiaDevolucao from "./GarantiaDevolucao";
 
 /**
  * Landing page — a porta de entrada do produto (o assistente interativo
@@ -208,7 +209,11 @@ const FAQ = [
   },
   {
     p: "Como funciona o pagamento?",
-    r: "Por PIX, confirmado por mim depois que você avisar no WhatsApp. O setup é um pagamento único; o monitoramento é opcional, mensal, e você desliga quando quiser.",
+    r: "Por Pix, em duas cobranças: o serviço e a taxa do INPI. A confirmação é automática, em segundos. O serviço é um pagamento único; o monitoramento é opcional, mensal, e você desliga quando quiser.",
+  },
+  {
+    p: "E se o processo não der certo?",
+    r: "Se não conseguirmos protocolar o seu pedido no INPI, o dinheiro volta por Pix: tudo, se ainda não tivermos pago a taxa ao INPI; só o valor do serviço, se a taxa já tiver sido paga (o INPI, em regra, não devolve a taxa). Depois do protocolo o serviço está concluído, mesmo que o INPI venha a indeferir o pedido, porque quem decide o registro é o INPI.",
   },
 ];
 
@@ -539,6 +544,10 @@ export default function LandingPage() {
                 Dois valores, os dois visíveis aqui e na tela da consulta. A taxa oficial do INPI
                 (GRU) é cobrada à parte, e o valor exato aparece antes de você confirmar.
               </p>
+            </div>
+
+            <div style={{ maxWidth: 640, margin: "0 auto 24px" }}>
+              <GarantiaDevolucao margem="0" />
             </div>
 
             <div className="lp-pricing">
