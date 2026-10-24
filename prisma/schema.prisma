@@ -60,10 +60,12 @@ model Processo {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  pagamentos     Pagamento[]
-  alertas        Alerta[]
-  pedidoRegistro PedidoRegistro?
-  imagemMarca    ImagemMarca?
+  pagamentos      Pagamento[]
+  alertas         Alerta[]
+  pedidoRegistro  PedidoRegistro?
+  imagemMarca     ImagemMarca?
+  prazos          Prazo[]
+  reciboProtocolo ReciboProtocolo?
 }
 
 /// Uma cobrança (setup ou mensalidade de monitoramento) — confirmada à mão
@@ -245,4 +247,53 @@ model ImagemMarca {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+/// Um prazo que corre contra o pedido (ex.: a procuração, até 60 dias do protocolo). A rotina diária
+/// avisa quando faltam 30, 7 e 2 dias e quando vence; `ultimoAvisoDias` guarda o último nível avisado
+/// para o mesmo aviso não sair duas vezes.
+model Prazo {
+  id         String   @id @default(cuid())
+  processoId String
+  processo   Processo @relation(fields: [processoId], references: [id])
+
+  tipo            String // "procuracao" | "exigencia_formal" | "manifestacao" | "outro"
+  descricao       String
+  venceEm         DateTime
+  concluidoEm     DateTime?
+  ultimoAvisoDias Int? // 30, 7, 2 ou 0 (vencido); null = nenhum aviso ainda
+
+  createdAt DateTime @default(now())
+
+  @@index([venceEm])
+}
+
+/// Cada aviso gerado pelo sistema (para você ou para o cliente), enviado ou só guardado no painel.
+model Notificacao {
+  id         String  @id @default(cuid())
+  processoId String?
+
+  destino   String // "operador" | "cliente"
+  canal     String // "email" | "telegram" | "painel"
+  assunto   String
+  texto     String
+  enviadaEm DateTime?
+  erro      String?
+
+  createdAt DateTime @default(now())
+
+  @@index([processoId])
+}
+
+/// O recibo em PDF que o e-Marcas devolve ao protocolar (traz o número do pedido e a data e hora do envio).
+model ReciboProtocolo {
+  id         String   @id @default(cuid())
+  processoId String   @unique
+  processo   Processo @relation(fields: [processoId], references: [id])
+
+  pdf         Bytes
+  nomeArquivo String
+  tamanho     Int
+
+  createdAt DateTime @default(now())
 }

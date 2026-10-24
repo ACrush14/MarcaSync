@@ -18,6 +18,8 @@ export async function GET() {
       cliente: true,
       pagamentos: true,
       pedidoRegistro: true,
+      prazos: { where: { concluidoEm: null }, orderBy: { venceEm: "asc" } },
+      reciboProtocolo: { select: { nomeArquivo: true, tamanho: true } },
       // Só os números da imagem: os bytes saem pela rota /imagem, nunca nesta lista.
       imagemMarca: {
         select: {

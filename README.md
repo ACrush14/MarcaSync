@@ -105,6 +105,27 @@ Variáveis de ambiente: `ABACATEPAY_API_KEY` (chave `abc_dev_...` no modo de tes
 Vercel como sensível) e `ABACATEPAY_WEBHOOK_SECRET` (o mesmo valor do `webhookSecret` da URL cadastrada no painel).
 Em modo de teste, `simularPagamento` finge o pagamento sem mover dinheiro.
 
+## Protocolo, recibo, prazos e avisos
+
+Depois de pago, o pedido é protocolado por você no e-Marcas e registrado no `/admin`:
+
+- **Registrar o protocolo** (`POST /api/admin/processos/[id]/protocolo`): número do pedido (9 dígitos) e data e hora do
+  envio. Só aceita se o serviço e a GRU estiverem com pagamento confirmado. Muda o status, cria o **prazo da
+  procuração (60 dias)** e avisa o cliente. A regra de devolução passa a tratar o serviço como concluído.
+- **Recibo em PDF** (`POST/GET /api/admin/processos/[id]/recibo`): guardado no banco (até 2 MB, só PDF de verdade).
+- **Prazos** (`src/lib/prazos.ts`): a rotina diária (`/api/cron/rpi`) chama `avisarPrazos` e avisa quando faltam 30, 7 e 2
+  dias e quando vence, uma vez por nível. `POST /api/admin/prazos/[id]/concluir` encerra o prazo.
+- **Avisos** (`src/lib/avisos.ts`, `notificar.ts`, `canais.ts`): pagamento recebido, pedido protocolado e prazos, para
+  você e para o cliente. Todo aviso fica registrado em `Notificacao` e aparece no `/admin`.
+
+Canais de envio (todos opcionais; sem nenhum, o aviso fica só no painel):
+
+| Variável | Para quê |
+|---|---|
+| `RESEND_API_KEY` e `EMAIL_REMETENTE` (ex.: `MarcaSync <avisos@marcasync.com.br>`) | e-mail ao cliente pela [Resend](https://resend.com), com o domínio verificado |
+| `EMAIL_OPERADOR` | e-mail avisando você (precisa das duas de cima) |
+| `TELEGRAM_BOT_TOKEN` e `TELEGRAM_CHAT_ID` | aviso instantâneo para você pelo Telegram |
+
 ## Imagem da marca (`src/lib/imagem-marca.ts`)
 
 Marca figurativa ou mista precisa de imagem no e-Marcas: JPG, RGB, 300 dpi, no mínimo
