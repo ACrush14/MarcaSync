@@ -57,6 +57,12 @@ model Processo {
   // consulta -> resultado -> plano -> protocolado
   status String @default("consulta")
 
+  // Acompanhamento do contato (só você vê, no /admin): quem tem interesse e quando falar de novo.
+  interesse        String    @default("novo") // novo | interessado | acompanhar | sem_interesse
+  proximoContatoEm DateTime? // dia combinado para falar de novo (guardado ao meio-dia UTC)
+  ultimoContatoEm  DateTime? // quando você marcou "falei com a pessoa"
+  anotacoes        String? // suas anotações sobre a conversa
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   confirmarPorProvedor: vi.fn(),
   verificarSituacoes: vi.fn(),
   avisarPrazos: vi.fn(),
+  avisarContatos: vi.fn(),
   rodarMonitoramento: vi.fn(),
   calcularColidencia: vi.fn(),
   verificarRpi: vi.fn(),
@@ -15,7 +16,10 @@ const mocks = vi.hoisted(() => ({
 }));
 vi.mock("@/lib/cobranca", () => ({ confirmarPorProvedor: mocks.confirmarPorProvedor }));
 vi.mock("@/lib/monitor-situacoes", () => ({ verificarSituacoes: mocks.verificarSituacoes }));
-vi.mock("@/lib/avisos", () => ({ avisarPrazos: mocks.avisarPrazos }));
+vi.mock("@/lib/avisos", () => ({
+  avisarPrazos: mocks.avisarPrazos,
+  avisarContatos: mocks.avisarContatos,
+}));
 vi.mock("@/lib/monitor-rpi", () => ({ rodarMonitoramento: mocks.rodarMonitoramento }));
 vi.mock("@/lib/colidencia", () => ({ calcularColidencia: mocks.calcularColidencia }));
 vi.mock("@/lib/inpi/health", () => ({
@@ -87,14 +91,16 @@ describe("cron diário", () => {
   beforeEach(() => {
     mocks.verificarSituacoes.mockResolvedValue({ ok: true });
     mocks.avisarPrazos.mockResolvedValue({ ok: true });
+    mocks.avisarContatos.mockResolvedValue({ ok: true });
     mocks.rodarMonitoramento.mockResolvedValue({ ok: true });
   });
 
-  it("com o segredo certo roda as três tarefas", async () => {
+  it("com o segredo certo roda as quatro tarefas", async () => {
     const r = await chamarCron("Bearer segredo-do-cron");
     expect(r.status).toBe(200);
     expect(mocks.verificarSituacoes).toHaveBeenCalled();
     expect(mocks.avisarPrazos).toHaveBeenCalled();
+    expect(mocks.avisarContatos).toHaveBeenCalled();
     expect(mocks.rodarMonitoramento).toHaveBeenCalled();
   });
 

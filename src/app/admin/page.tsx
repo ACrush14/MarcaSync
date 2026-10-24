@@ -6,6 +6,13 @@ import { linkParaCliente } from "@/lib/whatsapp";
 import { camposEmarcas } from "@/lib/campos-emarcas";
 import type { Prontidao } from "@/lib/prontidao";
 import ProtocoloAdmin, { type PrazoAdmin } from "@/components/ProtocoloAdmin";
+import AcompanhamentoLead from "@/components/AcompanhamentoLead";
+import {
+  ROTULO_INTERESSE,
+  contar,
+  precisaContatar,
+  type Interesse,
+} from "@/lib/acompanhamento";
 
 interface Pagamento {
   id: string;
@@ -57,6 +64,10 @@ interface Processo {
   numeroProcesso: string | null;
   logoUrl: string | null;
   createdAt: string;
+  interesse: string;
+  proximoContatoEm: string | null;
+  ultimoContatoEm: string | null;
+  anotacoes: string | null;
   cliente: { nome: string; whatsapp: string };
   pagamentos: Pagamento[];
   pedidoRegistro: PedidoRegistro | null;
@@ -250,6 +261,61 @@ const STATUS_LABEL: Record<string, string> = {
  * item de persistência/contas) — não exponha esta rota publicamente antes
  * de colocar autenticação.
  */
+function jaPagouServico(p: Processo): boolean {
+  return p.pagamentos.some((g) => g.tipo === "setup" && g.status === "confirmado");
+}
+
+function passaNoFiltro(p: Processo, filtro: "todos" | "hoje" | Interesse): boolean {
+  if (filtro === "todos") return true;
+  if (filtro === "hoje") return precisaContatar(p, new Date(), jaPagouServico(p));
+  return p.interesse === filtro;
+}
+
+/** Os números de quem está interessado e de quem precisa de contato, que também filtram a tabela. */
+function FiltroAcompanhamento({
+  processos,
+  filtro,
+  onFiltro,
+}: {
+  processos: Processo[];
+  filtro: "todos" | "hoje" | Interesse;
+  onFiltro: (f: "todos" | "hoje" | Interesse) => void;
+}) {
+  const c = contar(processos.map((p) => ({ ...p, jaPagou: jaPagouServico(p) })));
+  const opcoes: Array<{ id: "todos" | "hoje" | Interesse; texto: string; n: number }> = [
+    { id: "todos", texto: "Todos", n: c.total },
+    { id: "hoje", texto: "Falar hoje", n: c.paraContatarHoje },
+    { id: "interessado", texto: ROTULO_INTERESSE.interessado, n: c.porInteresse.interessado },
+    { id: "acompanhar", texto: ROTULO_INTERESSE.acompanhar, n: c.porInteresse.acompanhar },
+    { id: "novo", texto: ROTULO_INTERESSE.novo, n: c.porInteresse.novo },
+    { id: "sem_interesse", texto: ROTULO_INTERESSE.sem_interesse, n: c.porInteresse.sem_interesse },
+  ];
+  return (
+    <section aria-label="Acompanhamento dos contatos" style={{ marginBottom: 14 }}>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        {opcoes.map((o) => (
+          <button
+            key={o.id}
+            type="button"
+            className={filtro === o.id ? "btn" : "btn ghost"}
+            style={{ padding: "8px 14px", fontSize: 13, minHeight: 40 }}
+            aria-pressed={filtro === o.id}
+            onClick={() => onFiltro(o.id)}
+          >
+            {o.texto} ({o.n})
+          </button>
+        ))}
+      </div>
+      {c.semData > 0 && (
+        <p style={{ fontSize: 12.5, color: "var(--ink-dim)", margin: "8px 0 0" }}>
+          {c.semData} pessoa{c.semData > 1 ? "s" : ""} interessada{c.semData > 1 ? "s" : ""} ou a
+          acompanhar sem data para falar de novo: marque uma data para não esquecer.
+        </p>
+      )}
+    </section>
+  );
+}
+
 export default function AdminPage() {
   const [processos, setProcessos] = useState<Processo[] | null>(null);
   const [erro, setErro] = useState<string | null>(null);
@@ -263,6 +329,7 @@ export default function AdminPage() {
   const [aviso, setAviso] = useState<string | null>(null);
   const [numeros, setNumeros] = useState<Record<string, string>>({});
   const [salvandoNumero, setSalvandoNumero] = useState<string | null>(null);
+  const [filtro, setFiltro] = useState<"todos" | "hoje" | Interesse>("todos");
 
   async function carregar() {
     try {
@@ -609,12 +676,17 @@ Estornar mesmo assim?`)
         )}
 
         {processos && processos.length > 0 && (
+          <FiltroAcompanhamento processos={processos} filtro={filtro} onFiltro={setFiltro} />
+        )}
+
+        {processos && processos.length > 0 && (
           <div className="table-wrap">
             <table>
               <thead>
                 <tr>
                   <th>Cliente</th>
                   <th>Marca</th>
+                  <th>Acompanhamento</th>
                   <th>Logotipo</th>
                   <th>Etapa</th>
                   <th>Nº no INPI</th>
@@ -623,17 +695,17 @@ Estornar mesmo assim?`)
                 </tr>
               </thead>
               <tbody>
-                {processos.map((p) => (
+                {processos.filter((p) => passaNoFiltro(p, filtro)).map((p) => (
                   <Fragment key={p.id}>
                     <tr>
-                      <td>
+                      <td className="celula-texto">
                         {p.cliente.nome}
                         <br />
                         <span style={{ fontSize: 11.5, color: "var(--ink-faint)" }}>
                           {p.cliente.whatsapp}
                         </span>
                       </td>
-                      <td>
+                      <td className="celula-texto">
                         {p.marca}
                         {p.protocolo && (
                           <>
@@ -646,6 +718,15 @@ Estornar mesmo assim?`)
                             </span>
                           </>
                         )}
+                      </td>
+                      <td className="celula-texto celula-larga">
+                        <AcompanhamentoLead
+                          processoId={p.id}
+                          marca={p.marca}
+                          acompanhamento={p}
+                          jaPagou={jaPagouServico(p)}
+                          onSalvo={carregar}
+                        />
                       </td>
                       <td>
                         {p.logoUrl ? (
@@ -761,7 +842,7 @@ Estornar mesmo assim?`)
                     </tr>
                     {p.pedidoRegistro && (
                       <tr>
-                        <td colSpan={7}>
+                        <td colSpan={8}>
                           <PedidoDetalhe
                             pedido={p.pedidoRegistro}
                             processoId={p.id}
