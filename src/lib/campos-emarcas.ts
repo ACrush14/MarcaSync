@@ -1,3 +1,4 @@
+import { NATUREZA_INPI, type Regime } from "./gru";
 import { ROTULO_APRESENTACAO, type Apresentacao } from "./pedido";
 
 /**
@@ -43,6 +44,7 @@ export interface PedidoSalvo {
  */
 export function camposEmarcas(d: PedidoSalvo): Array<[string, string | null]> {
   return [
+    ["Natureza jurídica (e-INPI)", NATUREZA_INPI[d.regime as Regime] ?? d.regime],
     ["Titular (nome ou razão social)", d.nome],
     ["CPF/CNPJ", d.documento],
     ["E-mail", d.email],

@@ -156,10 +156,6 @@ function PedidoDetalhe({
     ["Itens da especificação", d.especificacaoItens.join(" | ")],
     ["Complemento", d.complemento ?? "—"],
     [
-      "Porte do titular",
-      `${d.tipoRequerente === "pj" ? "pessoa jurídica" : "pessoa física"}, ${d.regime.replace(/_/g, " ")}`,
-    ],
-    [
       "GRU a emitir",
       `serviço ${d.especificacaoLivre ? "394 (especificação livre)" : "389 (especificação pré-aprovada)"}, ${fmtReais(d.gruCentavos)}${d.gruComDesconto ? " (com 50% de desconto)" : ""}; confirme o valor na tela de emissão`,
     ],

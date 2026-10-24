@@ -263,8 +263,8 @@ export default function PedidoStep({
             <Campo
               id="regime"
               erro={erros.regime}
-              rotulo="Porte da empresa"
-              ajuda="O porte define o desconto na taxa do INPI."
+              rotulo="Natureza jurídica"
+              ajuda="É a mesma opção que vai no cadastro do e-INPI e define o desconto na taxa do INPI."
             >
               <select
                 {...attrs("regime")}

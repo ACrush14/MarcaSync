@@ -122,6 +122,15 @@ export default function ContatoStep({
               você avisar.
             </li>
             <li>
+              <b>Você cria o seu cadastro no e-INPI</b> (opção &quot;Cliente&quot;, com os mesmos
+              dados do formulário e a natureza jurídica escolhida) em{" "}
+              <a href="https://meu.inpi.gov.br/pag/cliente/form" target="_blank" rel="noreferrer">
+                meu.inpi.gov.br
+              </a>
+              . É ele que dá o desconto na taxa. <b>Nunca me passe a senha:</b> eu não preciso dela
+              para emitir a guia.
+            </li>
+            <li>
               <b>Você assina a procuração</b> que eu envio. Ela precisa estar no processo em até 60
               dias do protocolo.
             </li>
