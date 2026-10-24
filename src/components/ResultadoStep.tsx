@@ -234,6 +234,16 @@ export default function ResultadoStep({
         </div>
       </div>
 
+      {/* CTA no topo: quem já viu o resultado resumido não precisa rolar a lista inteira. */}
+      <div className="cta-topo">
+        <button className="btn" onClick={onVerPlano}>
+          Ver preço do registro →
+        </button>
+        <span className="cta-topo-nota">
+          Você só paga depois de preencher os dados do pedido. Se não der certo, o dinheiro volta.
+        </span>
+      </div>
+
       {matches.length > 0 && !grupos.separavel && (
         <div style={{ marginBottom: 24 }}>
           {ncl.confidence === "baixa" && (
@@ -327,16 +337,16 @@ export default function ResultadoStep({
 
       <AvisoAnterioridadeBox aviso={aviso} />
 
-      <div className="cta-row">
+      <div className="cta-row cta-fixo">
         <button className="btn ghost" onClick={onRefazer}>
           ← Refazer consulta
         </button>
-        <button className="btn secondary" onClick={onVerPlano}>
-          Ver preço do registro
+        <button className="btn" onClick={onVerPlano}>
+          Ver preço do registro →
         </button>
         {whatsappHref ? (
           <a
-            className="btn"
+            className="btn secondary"
             href={whatsappHref}
             target="_blank"
             rel="noopener noreferrer"
@@ -348,7 +358,7 @@ export default function ResultadoStep({
             Falar comigo no WhatsApp →
           </a>
         ) : (
-          <button className="btn" onClick={onContato}>
+          <button className="btn secondary" onClick={onContato}>
             Quero que me chamem →
           </button>
         )}
