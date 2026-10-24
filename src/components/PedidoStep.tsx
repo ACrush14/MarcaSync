@@ -3,6 +3,7 @@
 import { useState } from "react";
 import TrackView from "./TrackView";
 import AvisoAnterioridadeBox from "./AvisoAnterioridadeBox";
+import GarantiaDevolucao from "./GarantiaDevolucao";
 import EspecificacaoPicker from "./EspecificacaoPicker";
 import ImagemMarcaUpload from "./ImagemMarcaUpload";
 import { track } from "@/lib/track";
@@ -593,6 +594,8 @@ export default function PedidoStep({
           aviso antes de qualquer pagamento.
         </p>
       </div>
+
+      <GarantiaDevolucao />
 
       {avisoAtivo && (
         <div className="field" style={{ marginBottom: 10 }}>
