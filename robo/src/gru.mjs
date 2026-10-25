@@ -1,15 +1,11 @@
 /**
  * O ensaio da GRU: abre a emissão, escolhe o serviço, confirma para ver a PRÉVIA, lê o valor e
  * sai. Não gera boleto, não paga, não aperta "Cancelar Serviço" (que abre uma janela de
- * confirmação): sai navegando para a página inicial, o que abandona a prévia sem deixar nada.
+ * confirmação): abandona a prévia navegando para outra página, o que não deixa nada gerado.
  */
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
-import {
-  PASTA_CAPTURAS,
-  URL_GRU,
-  URL_INICIO,
-} from "./navegador.mjs";
+import { PASTA_CAPTURAS, URL_GRU } from "./navegador.mjs";
 import {
   botaoProibido,
   compararValor,
@@ -105,8 +101,9 @@ export async function conferirServico(page, { servico, comDesconto, capturas = t
     });
   }
 
-  // 6) sai da prévia sem gerar nada
-  await page.goto(URL_INICIO, { waitUntil: "domcontentloaded", timeout: ESPERA_MS }).catch(() => undefined);
+  // 6) A prévia é abandonada pela próxima navegação (a conferência seguinte abre a emissão do zero)
+  // ou ao fechar o Chrome. NÃO vamos para a raiz /pag/: no e-INPI ela é a tela de login e, ao que
+  // tudo indica, derruba a sessão. E nunca aperta "Cancelar Serviço" (abre uma janela de confirmação).
 
   const comparacao = compararValor({ lidoCentavos, esperadoCentavos });
   const ok = comparacao.ok && servicoCerto;
