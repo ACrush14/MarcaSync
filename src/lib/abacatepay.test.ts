@@ -5,14 +5,23 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   ErroAbacatePay,
+  consultarCheckout,
   consultarCobranca,
+  consultarPagamento,
+  criarCheckout,
   criarCobrancaPix,
+  criarPagador,
+  ehCheckout,
+  esquecerProdutos,
+  estornarCheckout,
   estornarCobranca,
+  estornarPorId,
   extrairIdCobranca,
+  extrairIdsCobranca,
   segredoConfere,
   statusDoPagamento,
 } from "./abacatepay";
-import { planoDeEstorno, podeEstornar } from "./estorno";
+import { planoDeEstorno, planoDoPacote, podeEstornar } from "./estorno";
 
 function resposta(corpo: unknown, status = 200): Response {
   return new Response(JSON.stringify(corpo), {
@@ -44,9 +53,21 @@ describe("extrairIdCobranca", () => {
     });
     expect(extrairIdCobranca(corpo)).toBe("pix_char_AbC123xyz");
   });
-  it("devolve null se não houver id de Pix", () => {
-    expect(extrairIdCobranca('{"data":{"id":"bill_123"}}')).toBe(null);
+  it("acha o id de um checkout (bill_...)", () => {
+    expect(extrairIdCobranca('{"data":{"checkout":{"id":"bill_Abc123"}}}')).toBe("bill_Abc123");
+  });
+  it("devolve null se não houver id de cobrança", () => {
+    expect(extrairIdCobranca('{"data":{"id":"cus_123"}}')).toBe(null);
     expect(extrairIdCobranca("")).toBe(null);
+  });
+  it("extrairIdsCobranca lista todos, sem repetir, na ordem do texto", () => {
+    const corpo = '{"a":"bill_X1","b":{"id":"pix_char_Y2"},"c":"bill_X1"}';
+    expect(extrairIdsCobranca(corpo)).toEqual(["bill_X1", "pix_char_Y2"]);
+    expect(extrairIdsCobranca("nada")).toEqual([]);
+  });
+  it("ehCheckout separa checkout de Pix", () => {
+    expect(ehCheckout("bill_abc")).toBe(true);
+    expect(ehCheckout("pix_char_abc")).toBe(false);
   });
 });
 
@@ -186,5 +207,214 @@ describe("regra de estorno", () => {
 
   it("monitoramento nunca é estornado por esta regra", () => {
     expect(podeEstornar("monitoramento", { gruPagaAoInpi: false, protocolado: false })).toBe(false);
+  });
+});
+
+describe("checkout (pagamento único)", () => {
+  const original = process.env.ABACATEPAY_API_KEY;
+  beforeEach(() => {
+    process.env.ABACATEPAY_API_KEY = "abc_dev_chave_de_teste";
+    esquecerProdutos();
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    if (original === undefined) delete process.env.ABACATEPAY_API_KEY;
+    else process.env.ABACATEPAY_API_KEY = original;
+  });
+
+  const produtos = {
+    success: true,
+    data: [
+      { id: "prod_AAA", externalId: "marcasync-registro-389-desconto", status: "ACTIVE" },
+      { id: "prod_BBB", externalId: "marcasync-registro-394-desconto", status: "ACTIVE" },
+      { id: "prod_ZZZ", externalId: "marcasync-registro-389-integral", status: "ARCHIVED" },
+    ],
+  };
+  const checkoutCriado = {
+    success: true,
+    data: { id: "bill_1", url: "https://app.abacatepay.com/pay/bill_1", amount: 93900, paidAmount: null, status: "PENDING" },
+  };
+
+  it("criarCheckout acha o produto pelo externalId e cobra só aquele item, por Pix e cartão", async () => {
+    const falso = vi.fn().mockResolvedValueOnce(resposta(produtos)).mockResolvedValueOnce(resposta(checkoutCriado));
+    vi.stubGlobal("fetch", falso);
+
+    const c = await criarCheckout({
+      produtoExternalId: "marcasync-registro-389-desconto",
+      externalId: "pg_1",
+      metadata: { processoId: "p1" },
+      urlDeRetorno: "https://www.marcasync.com.br/pedido/p1",
+      parcelasMax: 3,
+    });
+
+    expect(c).toEqual({
+      id: "bill_1",
+      status: "PENDING",
+      valorCentavos: 93900,
+      pagoCentavos: null,
+      url: "https://app.abacatepay.com/pay/bill_1",
+    });
+    const [urlLista] = falso.mock.calls[0] as [string, RequestInit];
+    expect(urlLista).toBe("https://api.abacatepay.com/v2/products/list");
+    const [url, init] = falso.mock.calls[1] as [string, RequestInit];
+    expect(url).toBe("https://api.abacatepay.com/v2/checkouts/create");
+    const corpo = JSON.parse(init.body as string);
+    expect(corpo).toEqual({
+      items: [{ id: "prod_AAA", quantity: 1 }],
+      methods: ["PIX", "CARD"],
+      card: { maxInstallments: 3, passFeesToCustomer: false },
+      externalId: "pg_1",
+      metadata: { processoId: "p1" },
+      returnUrl: "https://www.marcasync.com.br/pedido/p1",
+      completionUrl: "https://www.marcasync.com.br/pedido/p1",
+    });
+    // o valor nunca é enviado: ele vem do produto
+    expect(JSON.stringify(corpo)).not.toContain("amount");
+  });
+
+  it("criarPagador manda os dados do pedido e devolve o id; o checkout usa esse id", async () => {
+    const falso = vi.fn().mockImplementation((url: string) =>
+      Promise.resolve(
+        resposta(
+          url.endsWith("/customers/create")
+            ? { success: true, data: { id: "cust_9" } }
+            : url.endsWith("/products/list")
+              ? produtos
+              : checkoutCriado
+        )
+      )
+    );
+    vi.stubGlobal("fetch", falso);
+    const id = await criarPagador({
+      nome: "Doces Kaza LTDA",
+      email: "k@x.com",
+      documento: "69355003000144",
+      celular: "(85) 99999-1234",
+      cep: "60000000",
+      logradouro: "Rua das Flores",
+      numero: "100",
+      complemento: "sala 2",
+      bairro: "Centro",
+      cidade: "Fortaleza",
+      uf: "CE",
+    });
+    expect(id).toBe("cust_9");
+    const corpoCliente = JSON.parse((falso.mock.calls[0] as [string, RequestInit])[1].body as string);
+    expect(corpoCliente).toMatchObject({
+      name: "Doces Kaza LTDA",
+      taxId: "69355003000144",
+      cellphone: "(85) 99999-1234",
+      address: { street: "Rua das Flores", state: "CE", complement: "sala 2" },
+    });
+    await criarCheckout({
+      produtoExternalId: "marcasync-registro-389-desconto",
+      externalId: "x",
+      urlDeRetorno: "https://x",
+      parcelasMax: 1,
+      pagadorId: id,
+    });
+    const corpoCheckout = JSON.parse((falso.mock.calls[2] as [string, RequestInit])[1].body as string);
+    expect(corpoCheckout.customerId).toBe("cust_9");
+  });
+
+  it("checkout sem pagador não manda customerId", async () => {
+    const falso = vi.fn().mockImplementation((url: string) =>
+      Promise.resolve(resposta(url.endsWith("/products/list") ? produtos : checkoutCriado))
+    );
+    vi.stubGlobal("fetch", falso);
+    await criarCheckout({ produtoExternalId: "marcasync-registro-389-desconto", externalId: "x", urlDeRetorno: "https://x", parcelasMax: 1 });
+    const corpo = JSON.parse((falso.mock.calls[1] as [string, RequestInit])[1].body as string);
+    expect("customerId" in corpo).toBe(false);
+  });
+
+  it("guarda a lista de produtos: o segundo checkout não consulta de novo", async () => {
+    // cada chamada precisa de uma resposta nova (o corpo de uma Response só pode ser lido uma vez)
+    const falso = vi.fn().mockImplementation((url: string) =>
+      Promise.resolve(resposta(url.endsWith("/products/list") ? produtos : checkoutCriado))
+    );
+    vi.stubGlobal("fetch", falso);
+    const base = { externalId: "x", urlDeRetorno: "https://x", parcelasMax: 1 };
+    await criarCheckout({ ...base, produtoExternalId: "marcasync-registro-389-desconto" });
+    await criarCheckout({ ...base, produtoExternalId: "marcasync-registro-394-desconto" });
+    const chamadas = falso.mock.calls.map((c) => (c as [string])[0]);
+    expect(chamadas.filter((u) => u.endsWith("/products/list"))).toHaveLength(1);
+  });
+
+  it("produto que não existe no AbacatePay (ou está arquivado) dá erro claro", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(resposta(produtos)));
+    await expect(
+      criarCheckout({ produtoExternalId: "marcasync-registro-389-integral", externalId: "x", urlDeRetorno: "https://x", parcelasMax: 1 })
+    ).rejects.toThrow("não existe no AbacatePay");
+    await expect(
+      criarCheckout({ produtoExternalId: "nao-existe", externalId: "x", urlDeRetorno: "https://x", parcelasMax: 1 })
+    ).rejects.toBeInstanceOf(ErroAbacatePay);
+  });
+
+  it("consultarCheckout lê status, valor e quanto foi pago", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        resposta({ success: true, data: { id: "bill_1", url: "u", amount: 93900, paidAmount: 93900, status: "PAID" } })
+      )
+    );
+    expect(await consultarCheckout("bill_1")).toMatchObject({ status: "PAID", valorCentavos: 93900, pagoCentavos: 93900 });
+  });
+
+  it("consultarPagamento usa a rota certa para checkout e para Pix antigo", async () => {
+    const falso = vi
+      .fn()
+      .mockResolvedValueOnce(resposta({ success: true, data: { id: "bill_1", url: "u", amount: 100, status: "PAID" } }))
+      .mockResolvedValueOnce(resposta({ success: true, data: { id: "pix_char_1", status: "PAID" } }));
+    vi.stubGlobal("fetch", falso);
+    await consultarPagamento("bill_1");
+    await consultarPagamento("pix_char_1");
+    expect((falso.mock.calls[0] as [string])[0]).toContain("/checkouts/get?id=bill_1");
+    expect((falso.mock.calls[1] as [string])[0]).toContain("/transparents/check?id=pix_char_1");
+  });
+
+  it("estornarCheckout manda só o id e o motivo, nunca um valor (a API não faz estorno parcial)", async () => {
+    const falso = vi.fn().mockResolvedValue(resposta({ success: true, data: { id: "refund_1", status: "REFUNDED" } }));
+    vi.stubGlobal("fetch", falso);
+    await estornarCheckout("bill_1", "pedido cancelado");
+    const [url, init] = falso.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("https://api.abacatepay.com/v2/checkouts/refund");
+    expect(JSON.parse(init.body as string)).toEqual({ id: "bill_1", reason: "pedido cancelado" });
+  });
+
+  it("estornarPorId escolhe checkout ou Pix pelo id", async () => {
+    const falso = vi
+      .fn()
+      .mockImplementation(() => Promise.resolve(resposta({ success: true, data: { id: "r", status: "REFUNDED" } })));
+    vi.stubGlobal("fetch", falso);
+    await estornarPorId("bill_1");
+    await estornarPorId("pix_char_1");
+    expect((falso.mock.calls[0] as [string])[0]).toContain("/checkouts/refund");
+    expect((falso.mock.calls[1] as [string])[0]).toContain("/transparents/refund");
+  });
+});
+
+describe("regra de estorno do pagamento único", () => {
+  it("antes de pagar a taxa ao INPI: tudo volta, pela API", () => {
+    const p = planoDoPacote({ gruPagaAoInpi: false, protocolado: false }, 93900, 49900);
+    expect(p).toMatchObject({ acao: "total", devolverCentavos: 93900 });
+    expect(podeEstornar("pacote", { gruPagaAoInpi: false, protocolado: false })).toBe(true);
+  });
+
+  it("taxa já paga ao INPI: só o serviço volta, e à mão (a API não estorna parte)", () => {
+    const p = planoDoPacote({ gruPagaAoInpi: true, protocolado: false }, 93900, 49900);
+    expect(p).toMatchObject({ acao: "parcial_manual", devolverCentavos: 49900 });
+    expect(podeEstornar("pacote", { gruPagaAoInpi: true, protocolado: false })).toBe(false);
+  });
+
+  it("nunca devolve mais do que o cliente pagou", () => {
+    expect(planoDoPacote({ gruPagaAoInpi: true, protocolado: false }, 30000, 49900).devolverCentavos).toBe(30000);
+  });
+
+  it("depois do protocolo, nada volta", () => {
+    for (const gru of [false, true]) {
+      const p = planoDoPacote({ gruPagaAoInpi: gru, protocolado: true }, 93900, 49900);
+      expect(p).toMatchObject({ acao: "nenhuma", devolverCentavos: 0 });
+      expect(podeEstornar("pacote", { gruPagaAoInpi: gru, protocolado: true })).toBe(false);
+    }
   });
 });

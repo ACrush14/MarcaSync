@@ -50,8 +50,9 @@ export default function TermosPage() {
 
       <h2 style={H2}>3. Pagamento</h2>
       <p>
-        O pagamento é feito por Pix, em duas cobranças separadas (o serviço e a taxa do INPI),
-        geradas pela plataforma AbacatePay. O pedido só segue depois que o pagamento é confirmado.
+        O pagamento é um só, que cobre o serviço e a taxa do INPI, e é feito por Pix ou cartão de
+        crédito (em até 3 vezes) na página da plataforma AbacatePay. O pedido só segue depois que o
+        pagamento é confirmado.
       </p>
 
       <h2 style={H2}>4. Garantia de devolução</h2>

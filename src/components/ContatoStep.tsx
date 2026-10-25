@@ -5,7 +5,7 @@ import { track } from "@/lib/track";
 import { fmtReais } from "@/lib/planos";
 import type { ResumoPedido } from "./PedidoStep";
 import { useState } from "react";
-import PagamentoPix from "./PagamentoPix";
+import PagamentoCheckout from "./PagamentoCheckout";
 
 interface ContatoStepProps {
   nomeCliente: string;
@@ -62,7 +62,7 @@ export default function ContatoStep({
       </div>
 
       {resumo && processoId && (
-        <PagamentoPix processoId={processoId} onTudoPago={() => setPago(true)} />
+        <PagamentoCheckout processoId={processoId} onTudoPago={() => setPago(true)} />
       )}
 
       {whatsappHref ? (
