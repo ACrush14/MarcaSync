@@ -1,14 +1,34 @@
 /**
  * Comandos do robô:
- *   npm run login    abre o Chrome do robô para você entrar no e-INPI (uma vez; a sessão fica)
- *   npm run ensaio   confere na tela da GRU os valores do 389 e do 394 e sai, sem gerar nada
+ *   npm run ensaio   abre o Chrome do robô, espera você entrar no e-INPI (se ainda não estiver), e na
+ *                    MESMA janela confere os valores do 389 e do 394 na prévia da GRU, sem gerar nada
+ *   npm run login    só abre a janela para você entrar (o e-INPI usa um cookie de sessão: ao fechar a
+ *                    janela o login se perde, por isso o ensaio faz o login e a conferência juntos)
  *                    (--sem-desconto: o cadastro NÃO é MEI/ME/EPP, então o esperado é o valor cheio)
  */
-import { ErroSessao, abrirEmissao, conferirServico } from "./gru.mjs";
+import { ErroSessao, conferirServico } from "./gru.mjs";
 import { URL_GRU, abrirChrome } from "./navegador.mjs";
 import { estaLogado, resumirResultado } from "./logica.mjs";
 
 const [comando, ...args] = process.argv.slice(2);
+
+/** Espera você entrar na conta (na janela). Devolve true se entrou, false se o tempo acabou. */
+async function aguardarLogin(pagina, minutos = 10) {
+  await pagina.goto(URL_GRU, { waitUntil: "domcontentloaded" });
+  const limite = Date.now() + minutos * 60_000;
+  let avisou = false;
+  while (Date.now() < limite) {
+    const texto = await pagina.locator("body").innerText().catch(() => "");
+    if (estaLogado(texto)) return true;
+    if (!avisou) {
+      console.log("\nA conta do e-INPI ainda não está aberta. ENTRE NA JANELA DO CHROME que abriu (GOV.BR ou login e senha).");
+      console.log(`Eu espero até ${minutos} minutos. A sua senha não passa por este programa.`);
+      avisou = true;
+    }
+    await new Promise((r) => setTimeout(r, 2000));
+  }
+  return false;
+}
 
 async function login() {
   const { contexto, pagina } = await abrirChrome({ visivel: true, bloquearBoleto: true });
@@ -37,7 +57,11 @@ async function ensaio() {
   const comDesconto = !args.includes("--sem-desconto");
   const { contexto, pagina } = await abrirChrome({ visivel: true, bloquearBoleto: true });
   try {
-    await abrirEmissao(pagina);
+    if (!(await aguardarLogin(pagina))) {
+      console.log("\nTempo esgotado sem login. Rode `npm run ensaio` de novo.");
+      return 2;
+    }
+    console.log("\nLogin detectado.");
     console.log(`\nEnsaio da GRU (cadastro ${comDesconto ? "COM" : "SEM"} desconto de 50%). Nada será gerado nem pago.\n`);
     const resultados = [];
     for (const servico of ["389", "394"]) {
