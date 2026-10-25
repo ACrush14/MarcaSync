@@ -49,7 +49,8 @@ export async function verificarSituacao(processo: {
     }),
     prisma.processo.update({
       where: { id: processo.id },
-      data: { situacaoInpi: situacao, situacaoVerificadaEm: agora },
+      // Mudou algo no INPI: pode haver prazo correndo, então volta a olhar toda semana.
+      data: { situacaoInpi: situacao, situacaoVerificadaEm: agora, monitoramentoMensalDesde: null },
     }),
   ]);
   return "mudou";

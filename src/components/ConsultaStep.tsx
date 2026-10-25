@@ -72,7 +72,7 @@ export default function ConsultaStep({ marca, descricao, onAnalisar }: ConsultaS
               mais comuns)
             </li>
             <li>
-              <b>Leitura da RPI</b> — a mesma fonte oficial alimenta o monitoramento semanal caso
+              <b>Leitura da RPI</b> — a mesma fonte oficial alimenta o monitoramento (semanal, e depois mensal) caso
               você contrate o acompanhamento.
             </li>
             <li>

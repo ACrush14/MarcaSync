@@ -591,7 +591,7 @@ export default function LandingPage() {
                 <ul>
                   <li>
                     <IconCheck size={16} stroke={1.5} />
-                    Leitura da RPI toda semana, automática
+                    Leitura da RPI automática: toda semana até o protocolo ficar certo, depois todo mês
                   </li>
                   <li>
                     <IconCheck size={16} stroke={1.5} />
