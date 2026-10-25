@@ -184,6 +184,12 @@ O plano de R$ 29/mês agora tem processo real por trás:
 3. A rotina (`src/lib/monitor-rpi.ts`) baixa o XML oficial da edição, procura só os processos monitorados e grava um `Alerta` por despacho (chave única: reprocessar não duplica). Despacho com "oposição" no texto ganha **prazo estimado de 60 dias** da publicação (Lei 9.279/96, art. 158) — é estimativa, confira na RPI.
 4. No `/admin`, seção **Alertas da RPI**: botão "Avisar no WhatsApp" (abre a conversa com o cliente com a mensagem pronta e marca como avisado) e "Verificar RPI agora" para forçar a leitura.
 
+**Frequência** (`src/lib/cadencia.ts`): todo processo monitorado é **semanal** (a situação no INPI a cada 6+ dias, e toda edição nova da RPI)
+até você confirmar que está tudo certo com o protocolo. No `/admin`, o botão **"Protocolo OK: passar para mensal"** (só depois de protocolar e
+preencher o nº do INPI) passa o processo para **mensal** (situação a cada 27+ dias, e a RPI só quando completa o mês). Se o INPI mudar a
+situação ou publicar um despacho, o processo **volta para semanal sozinho** (pode haver prazo correndo). "Voltar para semanal" também existe
+no `/admin`. Atenção: no modo mensal, um despacho publicado numa edição que não foi lida só aparece pela mudança de situação, até 27 dias depois.
+
 A rota do cron exige `Authorization: Bearer $CRON_SECRET` (a Vercel envia sozinha); sem a variável ela se recusa a rodar. `RPI_BASE_URL` existe só para testar contra uma edição simulada — não defina em produção.
 
 **Limites honestos**: o aviso ao cliente é por WhatsApp, enviado por você (não há e-mail/push nem envio automático de mensagem). Não calcula decênio nem outros prazos — só lista despachos e o prazo de oposição. Se o INPI estiver fora do ar, a rotina falha com 502 e tenta de novo no dia seguinte.

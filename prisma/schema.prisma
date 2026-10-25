@@ -38,6 +38,11 @@ model Processo {
   situacaoVerificadaEm DateTime?
   situacoes            SituacaoProcesso[]
 
+  // Frequência do monitoramento (ver src/lib/cadencia.ts): semanal até você marcar "protocolo OK"
+  // no /admin; depois, mensal. Uma mudança do INPI volta o processo para semanal sozinha.
+  monitoramentoMensalDesde DateTime?
+  rpiVerificadaEm          DateTime? // última leitura da RPI feita por causa deste processo
+
   marca     String
   descricao String
 

@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { buscarProcessosNaEdicao, descobrirEdicaoMaisRecente } from "@/lib/inpi/fetch-rpi";
+import { estaDevido, modoDoMonitoramento } from "./cadencia";
 
 /** Prazo legal de oposição / manifestação: 60 dias da publicação (Lei 9.279/96, art. 158). */
 const PRAZO_OPOSICAO_DIAS = 60;
@@ -47,10 +48,16 @@ export async function rodarMonitoramento(
     };
   }
 
-  const monitorados = await prisma.processo.findMany({
+  // No modo semanal, toda edição nova é lida. No mensal, só entra quem já completou o intervalo
+  // desde a última leitura da RPI por causa dele (a situação, essa, é conferida à parte, no INPI).
+  const agora = new Date();
+  const todos = await prisma.processo.findMany({
     where: { monitoramento: true, numeroProcesso: { not: null } },
-    select: { id: true, numeroProcesso: true },
+    select: { id: true, numeroProcesso: true, monitoramentoMensalDesde: true, rpiVerificadaEm: true },
   });
+  const monitorados = todos.filter(
+    (p) => modoDoMonitoramento(p) === "semanal" || estaDevido("mensal", p.rpiVerificadaEm, agora)
+  );
   const porNumero = new Map<string, string[]>();
   for (const p of monitorados) {
     const numero = p.numeroProcesso?.replace(/\D/g, "");
@@ -91,6 +98,20 @@ export async function rodarMonitoramento(
   const criados = linhas.length
     ? await prisma.alerta.createMany({ data: linhas, skipDuplicates: true })
     : { count: 0 };
+
+  // Quem teve despacho nesta edição volta para o modo semanal (pode haver prazo correndo) e todos
+  // os lidos agora ganham a data da leitura.
+  const comDespacho = [...new Set(linhas.map((l) => l.processoId))];
+  if (comDespacho.length > 0) {
+    await prisma.processo.updateMany({
+      where: { id: { in: comDespacho } },
+      data: { monitoramentoMensalDesde: null },
+    });
+  }
+  await prisma.processo.updateMany({
+    where: { id: { in: monitorados.map((p) => p.id) } },
+    data: { rpiVerificadaEm: agora },
+  });
 
   await prisma.leituraRpi.upsert({
     where: { edicao: edicao.numero },

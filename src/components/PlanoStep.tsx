@@ -89,7 +89,7 @@ export default function PlanoStep({
             {fmtReaisCurto(MONITORAMENTO_CENTAVOS)} <small>por mês</small>
           </div>
           <ul>
-            <li>Leitura semanal da RPI, automática, do seu processo</li>
+            <li>Leitura da RPI automática do seu processo: toda semana enquanto o pedido é protocolado e examinado; depois que está tudo certo, todo mês</li>
             <li>Aviso de qualquer despacho publicado, inclusive oposição de terceiros</li>
             <li>Prazo estimado de manifestação quando houver oposição</li>
             <li>Aviso por WhatsApp, com explicação do que fazer</li>

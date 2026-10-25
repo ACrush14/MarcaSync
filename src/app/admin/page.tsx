@@ -7,6 +7,7 @@ import { camposEmarcas } from "@/lib/campos-emarcas";
 import type { Prontidao } from "@/lib/prontidao";
 import ProtocoloAdmin, { type PrazoAdmin } from "@/components/ProtocoloAdmin";
 import AcompanhamentoLead from "@/components/AcompanhamentoLead";
+import { modoDoMonitoramento, podeIrParaMensal } from "@/lib/cadencia";
 import {
   ROTULO_INTERESSE,
   contar,
@@ -62,6 +63,7 @@ interface Processo {
   monitoramento: boolean;
   protocolo: string | null;
   numeroProcesso: string | null;
+  monitoramentoMensalDesde?: string | null;
   logoUrl: string | null;
   createdAt: string;
   interesse: string;
@@ -472,6 +474,25 @@ export default function AdminPage() {
    * pagar a GRU ao INPI volta tudo; depois, só o serviço; após o protocolo, nada). Se a regra
    * recusar, você pode forçar, e isso fica registrado nas notas do pagamento.
    */
+  /** Troca a frequência do monitoramento: mensal depois que o protocolo está certo, ou volta a semanal. */
+  async function mudarCadencia(id: string, modo: "mensal" | "semanal") {
+    setConfirmando(id);
+    try {
+      const res = await fetch(`/api/admin/processos/${id}/cadencia`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ modo }),
+      });
+      const corpo = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(corpo.error ?? "Falha ao mudar a frequência.");
+      await carregar();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : "Falha ao mudar a frequência.");
+    } finally {
+      setConfirmando(null);
+    }
+  }
+
   async function estornarPagamento(id: string, rotulo: string) {
     const motivo = window.prompt(
       `Estornar "${rotulo}". Motivo (vai para o histórico):`,
@@ -778,9 +799,44 @@ Estornar mesmo assim?`)
                           )}
                         </div>
                         {p.monitoramento ? (
-                          <span className="pill safe" style={{ marginTop: 4 }}>
-                            monitorando
-                          </span>
+                          <div style={{ marginTop: 4, display: "grid", gap: 6 }}>
+                            <span className="pill safe">
+                              monitorando ({modoDoMonitoramento({ monitoramentoMensalDesde: p.monitoramentoMensalDesde ?? null })})
+                            </span>
+                            {modoDoMonitoramento({ monitoramentoMensalDesde: p.monitoramentoMensalDesde ?? null }) === "semanal" ? (
+                              <button
+                                className="btn ghost"
+                                style={{ padding: "6px 12px", fontSize: 12, minHeight: 32 }}
+                                disabled={
+                                  confirmando === p.id ||
+                                  !podeIrParaMensal({
+                                    protocoladoEm: p.protocoladoEm,
+                                    numeroProcesso: p.numeroProcesso,
+                                  }).ok
+                                }
+                                title={
+                                  podeIrParaMensal({
+                                    protocoladoEm: p.protocoladoEm,
+                                    numeroProcesso: p.numeroProcesso,
+                                  }).ok
+                                    ? "Está tudo certo com o protocolo: monitorar uma vez por mês"
+                                    : "Só depois de protocolar e preencher o número do INPI"
+                                }
+                                onClick={() => mudarCadencia(p.id, "mensal")}
+                              >
+                                Protocolo OK: passar para mensal
+                              </button>
+                            ) : (
+                              <button
+                                className="btn ghost"
+                                style={{ padding: "6px 12px", fontSize: 12, minHeight: 32 }}
+                                disabled={confirmando === p.id}
+                                onClick={() => mudarCadencia(p.id, "semanal")}
+                              >
+                                Voltar para semanal
+                              </button>
+                            )}
+                          </div>
                         ) : null}
                       </td>
                       <td className="tab-nums">{p.riscoPct != null ? `${p.riscoPct}%` : "—"}</td>
