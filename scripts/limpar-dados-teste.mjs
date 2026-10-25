@@ -7,6 +7,7 @@
  *       final do WhatsApp, marca, etapa, pagamentos) para você decidir o que é teste.
  *
  *   APAGAR_CLIENTES=abc123,def456 node scripts/limpar-dados-teste.mjs apagar
+ *       (ou APAGAR_CLIENTES=todos para reiniciar o painel: apaga TODOS os clientes e processos.)
  *       Apaga só os clientes cujo id TERMINA com um dos códigos (os 6 últimos caracteres que o
  *       "listar" mostra), com os processos, pagamentos, pedido, imagem, recibo, prazos, alertas,
  *       situações e avisos deles. Tudo numa transação: se algo falhar, nada é apagado.
@@ -70,13 +71,18 @@ try {
       console.error("Falta CONFIRMAR=SIM. Nada foi apagado.");
       process.exit(1);
     }
-    const codigos = (process.env.APAGAR_CLIENTES ?? "").split(",").map((s) => s.trim()).filter(Boolean);
-    if (codigos.length === 0 || codigos.some((s) => !/^[A-Za-z0-9_-]{6}$/i.test(s))) {
-      console.error("APAGAR_CLIENTES precisa listar códigos de 6 caracteres, separados por vírgula.");
+    const todos = (process.env.APAGAR_CLIENTES ?? "").trim().toLowerCase() === "todos";
+    const codigos = todos
+      ? []
+      : (process.env.APAGAR_CLIENTES ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+    if (!todos && (codigos.length === 0 || codigos.some((s) => !/^[A-Za-z0-9_-]{6}$/i.test(s)))) {
+      console.error('APAGAR_CLIENTES precisa listar códigos de 6 caracteres, separados por vírgula, ou ser "todos".');
       process.exit(1);
     }
     await c.query("BEGIN");
-    const clientes = await q(`select * from "Cliente" where right(id, 6) = any($1)`, [codigos]);
+    const clientes = todos
+      ? await q(`select * from "Cliente"`)
+      : await q(`select * from "Cliente" where right(id, 6) = any($1)`, [codigos]);
     const achados = new Set(clientes.map((x) => fim(x.id)));
     const naoAchados = codigos.filter((x) => !achados.has(x));
     if (naoAchados.length) throw new Error(`Códigos que não existem: ${naoAchados.join(", ")}. Nada foi apagado.`);
