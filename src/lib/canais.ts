@@ -1,5 +1,5 @@
 /**
- * Os canais de aviso (e-mail pela Resend e Telegram) e a escolha de quais usar. Fica separado de
+ * Os canais de aviso (e-mail pela Resend, Telegram e WhatsApp pelo CallMeBot) e a escolha de quais usar. Fica separado de
  * `notificar.ts` para não depender do banco e poder ser testado sozinho.
  */
 
@@ -56,10 +56,34 @@ export async function enviarTelegram(entrada: {
   }
 }
 
+/**
+ * Manda uma mensagem de WhatsApp para o SEU número pelo CallMeBot (serviço gratuito e não oficial:
+ * só serve para avisar o dono da chave). Lança erro se o serviço recusar. A chave vai na URL, então
+ * a mensagem de erro nunca repete a URL.
+ */
+export async function enviarWhatsapp(entrada: {
+  telefone: string;
+  chave: string;
+  texto: string;
+}): Promise<void> {
+  const telefone = entrada.telefone.replace(/\D/g, "");
+  const params = new URLSearchParams({
+    phone: `+${telefone}`,
+    text: entrada.texto.slice(0, 1500),
+    apikey: entrada.chave,
+  });
+  const res = await fetch(`https://api.callmebot.com/whatsapp.php?${params.toString()}`, {
+    signal: AbortSignal.timeout(TEMPO_LIMITE_MS),
+  });
+  if (!res.ok) {
+    throw new Error(`CallMeBot respondeu ${res.status}.`);
+  }
+}
+
 /** As variáveis de ambiente que interessam (aceita `process.env` ou um objeto de teste). */
 export type Ambiente = Record<string, string | undefined>;
 
-type Tentativa = { canal: "email" | "telegram"; enviar: () => Promise<void> };
+type Tentativa = { canal: "email" | "telegram" | "whatsapp"; enviar: () => Promise<void> };
 
 /** Quais envios existem para este aviso, conforme as variáveis de ambiente. */
 export function tentativasPara(aviso: Aviso, env: Ambiente = process.env): Tentativa[] {
@@ -89,6 +113,14 @@ export function tentativasPara(aviso: Aviso, env: Ambiente = process.env): Tenta
     const token = env.TELEGRAM_BOT_TOKEN;
     const chatId = env.TELEGRAM_CHAT_ID;
     lista.push({ canal: "telegram", enviar: () => enviarTelegram({ token, chatId, texto }) });
+  }
+  if (env.CALLMEBOT_TELEFONE && env.CALLMEBOT_APIKEY) {
+    const telefone = env.CALLMEBOT_TELEFONE;
+    const chaveWhatsapp = env.CALLMEBOT_APIKEY;
+    lista.push({
+      canal: "whatsapp",
+      enviar: () => enviarWhatsapp({ telefone, chave: chaveWhatsapp, texto }),
+    });
   }
   if (chave && de && env.EMAIL_OPERADOR) {
     const para = env.EMAIL_OPERADOR;
