@@ -1,0 +1,15 @@
+{
+  "name": "marcasync-robo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Robô do e-INPI: confere (e, depois, emite) a GRU do pedido. Roda no PC do operador, com o Chrome visível.",
+  "type": "module",
+  "scripts": {
+    "login": "node src/cli.mjs login",
+    "ensaio": "node src/cli.mjs ensaio",
+    "teste-local": "node teste/ensaio-local.mjs"
+  },
+  "dependencies": {
+    "playwright": "1.64.0"
+  }
+}

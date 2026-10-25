@@ -35,3 +35,7 @@ next-env.d.ts
 
 .env*
 env.txt
+# Robô do e-INPI: dependências, perfil do Chrome com o login e capturas de tela ficam só neste computador.
+robo/node_modules/
+robo/.perfil/
+robo/ensaios/
