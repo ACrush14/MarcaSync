@@ -140,6 +140,9 @@ Canais de envio (todos opcionais; sem nenhum, o aviso fica só no painel):
 | `RESEND_API_KEY` e `EMAIL_REMETENTE` (ex.: `MarcaSync <avisos@marcasync.com.br>`) | e-mail ao cliente pela [Resend](https://resend.com), com o domínio verificado |
 | `EMAIL_OPERADOR` | e-mail avisando você (precisa das duas de cima) |
 | `TELEGRAM_BOT_TOKEN` e `TELEGRAM_CHAT_ID` | aviso instantâneo para você pelo Telegram |
+| `CALLMEBOT_TELEFONE` (55 + DDD + número) e `CALLMEBOT_APIKEY` | aviso para você pelo WhatsApp, pelo [CallMeBot](https://www.callmebot.com/blog/free-api-whatsapp-messages/): serviço gratuito e não oficial, que só manda para o número de quem ativou a chave (você manda uma frase de ativação pelo seu WhatsApp e ele devolve a chave). A chave vai na URL, então fica só no Vercel, como sensível. |
+
+**Aviso de novo interesse:** quando alguém deixa nome e WhatsApp no Plano, você recebe nos canais ligados (Telegram, WhatsApp) quem é, a marca, o risco e a classe. No máximo 10 por hora, para um cadastro em massa não encher o seu celular.
 
 ## Imagem da marca (`src/lib/imagem-marca.ts`)
 

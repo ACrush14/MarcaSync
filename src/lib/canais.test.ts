@@ -3,7 +3,7 @@
  * de verdade. A parte que grava no banco é coberta pelo teste de ponta a ponta no ambiente de teste.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { enviarEmail, enviarTelegram, tentativasPara, type Aviso } from "./canais";
+import { enviarEmail, enviarTelegram, enviarWhatsapp, tentativasPara, type Aviso } from "./canais";
 
 const cliente: Aviso = {
   para: "cliente",
@@ -46,6 +46,59 @@ describe("tentativasPara", () => {
       EMAIL_OPERADOR: "eu@exemplo.com",
     };
     expect(tentativasPara(operador, ambos).map((t) => t.canal)).toEqual(["telegram", "email"]);
+  });
+});
+
+describe("WhatsApp (CallMeBot)", () => {
+  const env = { CALLMEBOT_TELEFONE: "5585999991234", CALLMEBOT_APIKEY: "1234567" };
+
+  it("o operador recebe também por WhatsApp quando o telefone e a chave estão configurados", () => {
+    expect(tentativasPara(operador, env).map((t) => t.canal)).toEqual(["whatsapp"]);
+    expect(tentativasPara(operador, { CALLMEBOT_TELEFONE: "5585999991234" })).toEqual([]);
+    expect(tentativasPara(operador, { CALLMEBOT_APIKEY: "1" })).toEqual([]);
+  });
+
+  it("a ordem é Telegram, WhatsApp e e-mail", () => {
+    const todos = {
+      ...env,
+      TELEGRAM_BOT_TOKEN: "t",
+      TELEGRAM_CHAT_ID: "1",
+      RESEND_API_KEY: "k",
+      EMAIL_REMETENTE: "MarcaSync <a@b.com>",
+      EMAIL_OPERADOR: "eu@exemplo.com",
+    };
+    expect(tentativasPara(operador, todos).map((t) => t.canal)).toEqual(["telegram", "whatsapp", "email"]);
+  });
+
+  it("o cliente nunca recebe pelo WhatsApp do operador", () => {
+    expect(tentativasPara(cliente, env)).toEqual([]);
+  });
+
+  it("enviarWhatsapp chama o CallMeBot com o telefone em formato internacional, o texto e a chave", async () => {
+    const falso = vi.fn().mockResolvedValue(new Response("Message queued", { status: 200 }));
+    vi.stubGlobal("fetch", falso);
+    await enviarWhatsapp({ telefone: "(55) 85 99999-1234", chave: "1234567", texto: "Novo interesse: Ana\nMarca X" });
+    const url = new URL((falso.mock.calls[0] as [string])[0]);
+    expect(url.origin + url.pathname).toBe("https://api.callmebot.com/whatsapp.php");
+    expect(url.searchParams.get("phone")).toBe("+5585999991234");
+    expect(url.searchParams.get("apikey")).toBe("1234567");
+    expect(url.searchParams.get("text")).toBe("Novo interesse: Ana\nMarca X");
+  });
+
+  it("corta mensagens muito longas", async () => {
+    const falso = vi.fn().mockResolvedValue(new Response("ok", { status: 200 }));
+    vi.stubGlobal("fetch", falso);
+    await enviarWhatsapp({ telefone: "5585999991234", chave: "k", texto: "x".repeat(5000) });
+    const url = new URL((falso.mock.calls[0] as [string])[0]);
+    expect(url.searchParams.get("text")?.length).toBe(1500);
+  });
+
+  it("erro do serviço vira exceção SEM repetir a URL (a chave vai nela)", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("erro", { status: 403 })));
+    const erro = await enviarWhatsapp({ telefone: "5585999991234", chave: "segredo-123", texto: "oi" }).catch((e) => e);
+    expect(erro).toBeInstanceOf(Error);
+    expect(erro.message).toBe("CallMeBot respondeu 403.");
+    expect(erro.message).not.toContain("segredo-123");
   });
 });
 

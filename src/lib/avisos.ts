@@ -23,6 +23,53 @@ function linhaOperador(marca: string): string {
   return `Marca: ${marca}\nPainel: ${SITE}/admin`;
 }
 
+/** No máximo tantos avisos de "novo interesse" por hora (contra cadastros em massa). */
+export const MAX_AVISOS_INTERESSE_POR_HORA = 10;
+
+/**
+ * Chamado quando alguém deixa nome e WhatsApp no Plano: ou seja, quando demonstra interesse de
+ * verdade. Avisa você na hora, com o que ele consultou, para você poder chamar. Limita a
+ * quantidade por hora: um cadastro em massa não pode encher o seu WhatsApp.
+ */
+export async function avisarNovoInteresse(
+  processoId: string,
+  agora: Date = new Date()
+): Promise<{ avisou: boolean }> {
+  const processo = await prisma.processo.findUnique({
+    where: { id: processoId },
+    select: {
+      marca: true,
+      riscoPct: true,
+      nclCode: true,
+      createdAt: true,
+      cliente: { select: { nome: true, whatsapp: true } },
+    },
+  });
+  if (!processo) return { avisou: false };
+
+  const recentes = await prisma.notificacao.count({
+    where: {
+      destino: "operador",
+      assunto: { startsWith: "Novo interesse" },
+      createdAt: { gte: new Date(agora.getTime() - 3600_000) },
+    },
+  });
+  if (recentes >= MAX_AVISOS_INTERESSE_POR_HORA) return { avisou: false };
+
+  const risco = processo.riscoPct != null ? `\nRisco de colisão: ${processo.riscoPct}%` : "";
+  const classe = processo.nclCode ? `\nClasse sugerida: ${processo.nclCode}` : "";
+  await notificar({
+    processoId,
+    para: "operador",
+    assunto: `Novo interesse: ${processo.cliente.nome.split(" ")[0]} (${processo.marca})`,
+    texto:
+      `${processo.cliente.nome} deixou o contato.\n` +
+      `WhatsApp: ${processo.cliente.whatsapp}\nMarca: ${processo.marca}${risco}${classe}\n` +
+      `Painel: ${SITE}/admin`,
+  });
+  return { avisou: true };
+}
+
 /** Chamado quando um pagamento do AbacatePay é confirmado (uma vez por pagamento). */
 export async function avisarPagamentoConfirmado(processoId: string): Promise<void> {
   const processo = await prisma.processo.findUnique({

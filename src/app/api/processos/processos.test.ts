@@ -10,6 +10,13 @@ const db = vi.hoisted(() => ({
   processo: { create: vi.fn(), findUnique: vi.fn(), update: vi.fn() },
 }));
 vi.mock("@/lib/db", () => ({ prisma: db }));
+const avisos = vi.hoisted(() => ({ avisarNovoInteresse: vi.fn() }));
+vi.mock("@/lib/avisos", () => avisos);
+// `after` só existe dentro de um pedido real; no teste ele roda na hora.
+vi.mock("next/server", async (original) => ({
+  ...(await original<typeof import("next/server")>()),
+  after: (fn: () => unknown) => void fn(),
+}));
 
 import { zerarLimites } from "@/lib/limite-publico";
 import { POST } from "./route";
@@ -38,6 +45,7 @@ beforeEach(() => {
   zerarLimites();
   db.cliente.upsert.mockResolvedValue({ id: "cli1", nome: "Nome Antigo", whatsapp: "x" });
   db.processo.create.mockResolvedValue({ id: "proc1", status: "resultado" });
+  avisos.avisarNovoInteresse.mockResolvedValue({ avisou: true });
 });
 
 describe("POST /api/processos", () => {
@@ -47,6 +55,19 @@ describe("POST /api/processos", () => {
     const corpo = await r.json();
     expect(corpo).toEqual({ processo: { id: "proc1", status: "resultado" } });
     expect(JSON.stringify(corpo)).not.toContain("Ana");
+  });
+
+  it("avisa você do novo interesse, e uma falha no aviso não derruba o cadastro", async () => {
+    const r = await POST(post(valido));
+    expect(r.status).toBe(201);
+    expect(avisos.avisarNovoInteresse).toHaveBeenCalledWith("proc1");
+    avisos.avisarNovoInteresse.mockRejectedValue(new Error("canal fora"));
+    expect((await POST(post(valido, "2.2.2.2"))).status).toBe(201);
+  });
+
+  it("cadastro recusado não gera aviso", async () => {
+    await POST(post({ ...valido, whatsapp: "123" }));
+    expect(avisos.avisarNovoInteresse).not.toHaveBeenCalled();
   });
 
   it("não troca o nome nem o e-mail de quem já é cliente (mesmo WhatsApp)", async () => {

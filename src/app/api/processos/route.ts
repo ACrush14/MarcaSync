@@ -1,6 +1,7 @@
 import { checarProntidao } from "@/lib/prontidao";
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { prisma } from "@/lib/db";
+import { avisarNovoInteresse } from "@/lib/avisos";
 import { barrarSeExceder } from "@/lib/limite-publico";
 import { limparTexto } from "@/lib/texto";
 import { whatsappValido } from "@/lib/whatsapp";
@@ -179,6 +180,9 @@ export async function POST(request: Request) {
     },
     select: { id: true, status: true },
   });
+
+  // Avisa você que alguém demonstrou interesse, depois de responder ao cliente (não atrasa a tela).
+  after(() => avisarNovoInteresse(processo.id).catch(() => undefined));
 
   // Só o id volta: quem cria o processo não precisa (nem deve) receber os dados do cliente.
   return NextResponse.json({ processo }, { status: 201 });
