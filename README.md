@@ -88,36 +88,44 @@ integração de Storage), mais `ADMIN_PASSWORD` (adicionada
 manualmente via `vercel env add`) `NEXT_PUBLIC_WHATSAPP_NUMBER` (ver "Contato pelo
 WhatsApp" — trocar exige novo deploy) e `CRON_SECRET` (monitoramento da RPI).
 
-## Pagamento por Pix (AbacatePay)
+## Pagamento único por Pix ou cartão (AbacatePay)
 
-O cliente paga duas cobranças Pix separadas (serviço de R$ 499 e taxa do INPI/GRU), porque a API de
-reembolso do AbacatePay só estorna a cobrança inteira. O AbacatePay é a fonte da verdade: nada é marcado
-como pago sem a API confirmar.
+O cliente paga **uma cobrança só**, que cobre o serviço (R$ 499) e a taxa do INPI (GRU), por Pix ou cartão (até 3x),
+na página de pagamento (checkout) do AbacatePay. O valor sai de um dos 4 produtos "pacote" do AbacatePay (GRU 389 ou 394,
+com ou sem desconto), escolhido pelo servidor. O AbacatePay é a fonte da verdade: nada é marcado como pago sem a API confirmar,
+e o checkout é descartado se o valor do produto não bater com o que o servidor calculou.
 
-- `src/lib/abacatepay.ts` — cliente da API v2 (criar cobrança, consultar, estornar, simular no modo de teste).
-- `src/lib/cobranca.ts` — cria os Pix do pedido, confere os pagos e estorna.
-- `src/lib/estorno.ts` — regra de devolução: antes de pagar a GRU ao INPI volta tudo; depois, só o serviço; após o protocolo, nada.
-- `GET /api/processos/[id]/cobrancas` — a tela de pagamento consulta a cada 5 s (cria o Pix que faltar, sincroniza o status).
-- `POST /api/webhooks/abacatepay?webhookSecret=...` — gatilho: acha o id da cobrança no corpo e **pergunta** o status à API.
-- `POST /api/admin/pagamentos/[id]/estornar` — estorno pelo `/admin` (protegido por senha).
+- `src/lib/pacotes.ts` — qual produto cobrar, parcelas do cartão e o endereço de retorno (`SITE_URL`, padrão `https://www.marcasync.com.br`).
+- `src/lib/abacatepay.ts` — cliente da API v2 (checkout, pagador, consultar, estornar).
+- `src/lib/cobranca.ts` — cria o checkout do pedido (cadastra antes o pagador com os dados do pedido, para ele não digitar de novo), confere o pago e estorna.
+- `src/lib/estorno.ts` — regra de devolução: antes de pagar a GRU ao INPI volta tudo (estorno do AbacatePay); depois, só o serviço, **à mão**
+  (o AbacatePay não estorna parte do valor): você devolve por Pix e registra no `/admin`; após o protocolo, nada.
+- `GET /api/processos/[id]/cobrancas` — a tela de pagamento consulta a cada 5 s (cria o checkout que faltar, sincroniza o status).
+- `/pedido/[id]` — para onde o AbacatePay devolve o cliente depois de pagar; ele também pode retomar o pagamento por ali.
+- `POST /api/webhooks/abacatepay?webhookSecret=...` — gatilho (`checkout.completed`): acha o id (`bill_...`) no corpo e **pergunta** o status à API.
+- `POST /api/admin/pagamentos/[id]/estornar` — estorno total pelo `/admin` (protegido por senha).
+- `POST /api/admin/pagamentos/[id]/devolucao-manual` — registra a devolução parcial feita por fora.
+- `POST /api/admin/processos/[id]/gru-paga` — marca que a taxa já foi paga ao INPI (muda a regra de devolução).
 
-Variáveis de ambiente: `ABACATEPAY_API_KEY` (chave `abc_dev_...` no modo de teste, outra em produção, só no
-Vercel como sensível) e `ABACATEPAY_WEBHOOK_SECRET` (o mesmo valor do `webhookSecret` da URL cadastrada no painel).
-Em modo de teste, `simularPagamento` finge o pagamento sem mover dinheiro.
+Variáveis de ambiente: `ABACATEPAY_API_KEY` (chave `abc_dev_...` no modo de teste, outra em produção, só no Vercel como
+sensível), `ABACATEPAY_WEBHOOK_SECRET` (o mesmo valor do `webhookSecret` da URL cadastrada no painel) e, se o site não for
+`www.marcasync.com.br`, `SITE_URL`. Permissões da chave: `CHECKOUT:CREATE`, `CHECKOUT:READ`, `REFUND:CREATE`,
+`CUSTOMER:CREATE` e `PRODUCT:READ` (e `PRODUCT:CREATE` só para rodar o script de produtos).
 
 ### Catálogo de produtos no AbacatePay
 
-O pedido cobra por valor (`/transparents/create`), então não depende de produtos. O catálogo serve para links de pagamento
-e para a assinatura do monitoramento. `node --env-file=.env.local scripts/criar-produtos-abacatepay.mjs` cria os produtos
-(4 pacotes com o serviço e a GRU 389 ou 394 embutidos, com e sem desconto; serviço e GRUs avulsos; monitoramento mensal) no ambiente da chave: `abc_dev_...` cria no modo de teste.
-É preciso criar de novo em produção, com a chave de produção (permissão `PRODUCT:CREATE`).
+O checkout cobra os produtos do catálogo, então eles precisam existir no ambiente da chave:
+`node --env-file=.env.local scripts/criar-produtos-abacatepay.mjs` cria os produtos (4 pacotes com o serviço e a GRU 389 ou 394
+embutidos, com e sem desconto; serviço e GRUs avulsos; monitoramento mensal). `abc_dev_...` cria no modo de teste; em produção
+é preciso rodar de novo com a chave de produção. `node --env-file=.env.local scripts/conferir-produtos-abacatepay.mjs` confere
+se os preços de lá batem com o catálogo do repositório.
 
 ## Protocolo, recibo, prazos e avisos
 
 Depois de pago, o pedido é protocolado por você no e-Marcas e registrado no `/admin`:
 
 - **Registrar o protocolo** (`POST /api/admin/processos/[id]/protocolo`): número do pedido (9 dígitos) e data e hora do
-  envio. Só aceita se o serviço e a GRU estiverem com pagamento confirmado. Muda o status, cria o **prazo da
+  envio. Só aceita se o pagamento estiver confirmado. Muda o status, cria o **prazo da
   procuração (60 dias)** e avisa o cliente. A regra de devolução passa a tratar o serviço como concluído.
 - **Recibo em PDF** (`POST/GET /api/admin/processos/[id]/recibo`): guardado no banco (até 2 MB, só PDF de verdade).
 - **Prazos** (`src/lib/prazos.ts`): a rotina diária (`/api/cron/rpi`) chama `avisarPrazos` e avisa quando faltam 30, 7 e 2

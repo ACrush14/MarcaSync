@@ -32,10 +32,12 @@ export async function avisarPagamentoConfirmado(processoId: string): Promise<voi
   if (!processo) return;
 
   const pagos = processo.pagamentos.filter(
-    (p) => ["setup", "gru"].includes(p.tipo) && p.status === "confirmado"
+    (p) => ["pacote", "setup", "gru"].includes(p.tipo) && p.status === "confirmado"
   );
   const totalPago = pagos.reduce((s, p) => s + p.valorCentavos, 0);
-  const completo = ["setup", "gru"].every((t) => pagos.some((p) => p.tipo === t));
+  // Pagamento único (pacote) ou, no modelo antigo, os dois Pix.
+  const completo =
+    pagos.some((p) => p.tipo === "pacote") || ["setup", "gru"].every((t) => pagos.some((p) => p.tipo === t));
 
   await notificar({
     processoId,
@@ -45,8 +47,8 @@ export async function avisarPagamentoConfirmado(processoId: string): Promise<voi
       : `Pagamento parcial: ${processo.marca}`,
     texto: `${linhaOperador(processo.marca)}\nTotal pago até agora: ${fmtReais(totalPago)}\n${
       completo
-        ? "Os dois Pix foram pagos: o pedido está pronto para você conferir a checklist e protocolar."
-        : "Falta o outro Pix."
+        ? "O pagamento foi confirmado: o pedido está pronto para você conferir a checklist e protocolar."
+        : "Falta o restante do pagamento."
     }`,
   });
 

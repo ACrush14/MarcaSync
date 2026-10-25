@@ -48,6 +48,8 @@ const PROTEGIDAS: [string, string][] = [
   ["POST", "/api/admin/prazos/abc/concluir"],
   ["PATCH", "/api/admin/processos/abc/acompanhamento"],
   ["POST", "/api/admin/processos/abc/cadencia"],
+  ["POST", "/api/admin/processos/abc/gru-paga"],
+  ["POST", "/api/admin/pagamentos/abc/devolucao-manual"],
   ["GET", "/api/rpi/lookup"],
   ["GET", "/rpi-teste"],
   ["GET", "/api/processos"],

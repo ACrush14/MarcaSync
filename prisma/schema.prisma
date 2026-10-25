@@ -86,7 +86,7 @@ model Pagamento {
   processoId String
   processo   Processo @relation(fields: [processoId], references: [id])
 
-  tipo          String // "setup" | "gru" | "monitoramento"
+  tipo          String // "pacote" (serviço + taxa do INPI, um pagamento só) | "monitoramento"; "setup" e "gru" são do modelo antigo, de dois Pix
   valorCentavos Int
 
   status        String    @default("pendente") // pendente | confirmado | estornado | expirado
@@ -94,12 +94,15 @@ model Pagamento {
   confirmadoVia String? // ex.: "abacatepay" ou "whatsapp" (reserva)
   notas         String?
 
-  // Cobrança Pix no AbacatePay (nula quando o pagamento foi combinado fora do site)
-  provedorId  String?   @unique // id da cobrança, ex.: pix_char_...
-  brCode      String? // Pix copia e cola
+  // Cobrança no AbacatePay (nula quando o pagamento foi combinado fora do site)
+  provedorId  String?   @unique // id da cobrança: checkout (bill_...) ou, no modelo antigo, Pix (pix_char_...)
+  brCode      String? // Pix copia e cola (só no modelo antigo)
+  checkoutUrl String? // página de pagamento do AbacatePay (Pix ou cartão)
   expiraEm    DateTime?
   estornadoEm DateTime?
   estornoId   String?
+  // Devolução parcial feita à mão (o AbacatePay não estorna parte do valor): quanto já voltou.
+  devolvidoCentavos Int @default(0)
 
   createdAt DateTime @default(now())
 }

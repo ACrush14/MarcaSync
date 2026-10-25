@@ -46,9 +46,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   // Só se protocola o que está pago: serviço e taxa do INPI confirmados.
   const pago = (tipo: string) =>
     processo.pagamentos.some((p) => p.tipo === tipo && p.status === "confirmado");
-  if (!pago("setup") || !pago("gru")) {
+  if (!pago("pacote") && !(pago("setup") && pago("gru"))) {
     return NextResponse.json(
-      { error: "O serviço e a taxa do INPI precisam estar com o pagamento confirmado." },
+      { error: "O pagamento do serviço e da taxa do INPI precisa estar confirmado." },
       { status: 409 }
     );
   }

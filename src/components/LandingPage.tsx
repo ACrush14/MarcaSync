@@ -210,11 +210,11 @@ const FAQ = [
   },
   {
     p: "Como funciona o pagamento?",
-    r: "Por Pix, em duas cobranças: o serviço e a taxa do INPI. A confirmação é automática, em segundos. O serviço é um pagamento único; o monitoramento é opcional, mensal, e você desliga quando quiser.",
+    r: "Num pagamento só, por Pix ou cartão (em até 3x), que cobre o serviço e a taxa do INPI. A confirmação é automática, em segundos. O monitoramento é opcional, mensal, e você desliga quando quiser.",
   },
   {
     p: "E se o processo não der certo?",
-    r: "Se não conseguirmos protocolar o seu pedido no INPI, o dinheiro volta por Pix: tudo, se ainda não tivermos pago a taxa ao INPI; só o valor do serviço, se a taxa já tiver sido paga (o INPI, em regra, não devolve a taxa). Depois do protocolo o serviço está concluído, mesmo que o INPI venha a indeferir o pedido, porque quem decide o registro é o INPI.",
+    r: "Se não conseguirmos protocolar o seu pedido no INPI, o dinheiro volta: tudo, se ainda não tivermos pago a taxa ao INPI; só o valor do serviço, se a taxa já tiver sido paga (o INPI, em regra, não devolve a taxa). Depois do protocolo o serviço está concluído, mesmo que o INPI venha a indeferir o pedido, porque quem decide o registro é o INPI.",
   },
 ];
 

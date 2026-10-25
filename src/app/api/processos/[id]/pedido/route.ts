@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
 import { analisarEspecificacao } from "@/lib/catalogo";
-import { garantirCobrancasPix } from "@/lib/cobranca";
+import { garantirCobrancas } from "@/lib/cobranca";
 import { calcularGru } from "@/lib/gru";
 import { barrarSeExceder } from "@/lib/limite-publico";
 import { validarPedido, type PedidoEntrada } from "@/lib/pedido";
@@ -62,7 +62,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   }
 
   const jaPago = processo.pagamentos.some(
-    (p) => (p.tipo === "setup" || p.tipo === "gru") && p.status === "confirmado"
+    (p) => (p.tipo === "pacote" || p.tipo === "setup" || p.tipo === "gru") && p.status === "confirmado"
   );
   if (jaPago) {
     return NextResponse.json(
@@ -143,42 +143,31 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     }),
   ];
 
-  // O preço do serviço e do monitoramento é sempre o do servidor. Se já houver uma cobrança
-  // pendente com outro valor (dado antigo ou adulterado), ela é corrigida e o Pix refeito.
-  const refazPix = { provedorId: null, brCode: null, expiraEm: null };
-  const setupPendente = pendente("setup");
-  if (setupPendente) {
-    if (setupPendente.valorCentavos !== SETUP_CENTAVOS) {
+  // O pagamento é um só: o serviço e a taxa do INPI juntos (Pix ou cartão). O valor é sempre o do
+  // servidor. Se já houver uma cobrança pendente com outro valor (dado antigo ou adulterado) ou do
+  // modelo antigo (serviço e taxa separados), ela é trocada e o checkout é refeito.
+  const refazCheckout = { provedorId: null, checkoutUrl: null, brCode: null, expiraEm: null };
+  const totalPacote = SETUP_CENTAVOS + gru.centavos;
+  for (const antigo of processo.pagamentos.filter(
+    (p) => (p.tipo === "setup" || p.tipo === "gru") && p.status === "pendente"
+  )) {
+    operacoes.push(prisma.pagamento.delete({ where: { id: antigo.id } }));
+  }
+  const pacotePendente = pendente("pacote");
+  if (pacotePendente) {
+    // Mesmo valor e mesma combinação de taxa: o checkout que já existe continua valendo.
+    if (pacotePendente.valorCentavos !== totalPacote) {
       operacoes.push(
         prisma.pagamento.update({
-          where: { id: setupPendente.id },
-          data: { valorCentavos: SETUP_CENTAVOS, ...refazPix },
+          where: { id: pacotePendente.id },
+          data: { valorCentavos: totalPacote, ...refazCheckout },
         })
       );
     }
-  } else if (!existe("setup")) {
+  } else if (!existe("pacote")) {
     operacoes.push(
       prisma.pagamento.create({
-        data: { processoId: id, tipo: "setup", valorCentavos: SETUP_CENTAVOS },
-      })
-    );
-  }
-  const gruPendente = pendente("gru");
-  if (gruPendente) {
-    operacoes.push(
-      prisma.pagamento.update({
-        where: { id: gruPendente.id },
-        // Valor mudou: o Pix antigo não vale mais, então a cobrança é refeita na próxima consulta.
-        data:
-          gruPendente.valorCentavos === gru.centavos
-            ? { valorCentavos: gru.centavos }
-            : { valorCentavos: gru.centavos, provedorId: null, brCode: null, expiraEm: null },
-      })
-    );
-  } else if (!existe("gru")) {
-    operacoes.push(
-      prisma.pagamento.create({
-        data: { processoId: id, tipo: "gru", valorCentavos: gru.centavos },
+        data: { processoId: id, tipo: "pacote", valorCentavos: totalPacote },
       })
     );
   }
@@ -188,7 +177,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       operacoes.push(
         prisma.pagamento.update({
           where: { id: monitoramentoPendente.id },
-          data: { valorCentavos: MONITORAMENTO_CENTAVOS, ...refazPix },
+          data: { valorCentavos: MONITORAMENTO_CENTAVOS, ...refazCheckout },
         })
       );
     }
@@ -206,7 +195,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     await prisma.$transaction(operacoes);
     // Cria os Pix agora para a tela de pagamento já abrir com o QR code. Se o AbacatePay estiver
     // fora, o pedido continua gravado e a tela tenta de novo (GET /api/processos/:id/cobrancas).
-    await garantirCobrancasPix(id);
+    await garantirCobrancas(id);
   } catch {
     return NextResponse.json(
       { error: "Não consegui salvar o pedido. Tente de novo." },

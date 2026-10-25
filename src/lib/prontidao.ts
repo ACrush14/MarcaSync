@@ -233,8 +233,11 @@ export function checarProntidao(
     ["setup", "Serviço MarcaSync pago"],
     ["gru", "Valor da GRU pago pelo cliente"],
   ] as const) {
-    const pg = pagamentos.find((p) => p.tipo === tipo);
-    const pago = pg?.status === "confirmado";
+    // O pagamento único (pacote) quita o serviço e a taxa de uma vez.
+    const pg = pagamentos.find((p) => p.tipo === tipo || p.tipo === "pacote");
+    const pago = pagamentos.some(
+      (p) => (p.tipo === tipo || p.tipo === "pacote") && p.status === "confirmado"
+    );
     add({
       id: `pagamento-${tipo}`,
       titulo,

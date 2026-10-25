@@ -92,7 +92,12 @@ try {
     console.log(`           ${r.tipo.padEnd(14)} ${r.status.padEnd(11)} ${reais(r.v).padStart(12)} x ${r.n}`);
   }
 
-  const PRECO = { setup: [49900], monitoramento: [2900], gru: [44000, 86000, 88000, 172000] };
+  const PRECO = {
+    pacote: [93900, 137900, 135900, 221900], // serviço + taxa do INPI, um pagamento só
+    setup: [49900],
+    monitoramento: [2900],
+    gru: [44000, 86000, 88000, 172000],
+  };
   const todos = await q(
     `select id, tipo, status, "valorCentavos" as v, "provedorId", "confirmadoEm", "confirmadoVia", "estornadoEm", "estornoId", "expiraEm", "createdAt" from "Pagamento"`
   );
@@ -158,6 +163,12 @@ try {
       where g."valorCentavos" <> d."gruCentavos"`
   );
   achado(gruErrada === 0, `GRU pendente com valor diferente do pedido: ${gruErrada}`);
+  const [{ n: pacoteErrado }] = await q(
+    `select count(*)::int as n from "PedidoRegistro" d
+       join "Pagamento" g on g."processoId"=d."processoId" and g.tipo='pacote' and g.status='pendente'
+      where g."valorCentavos" <> d."servicoCentavos" + d."gruCentavos"`
+  );
+  achado(pacoteErrado === 0, `pagamento único pendente com valor diferente do pedido: ${pacoteErrado}`);
 
   // ------------------------------------------------------------------ outros
   titulo("PRAZOS E AVISOS");
