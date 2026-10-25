@@ -64,7 +64,9 @@ export default function PrivacidadePage() {
           o nome do titular e a marca, conforme a lei, e isso foge ao nosso controle.
         </li>
         <li>
-          <b>AbacatePay:</b> plataforma que gera e confirma os pagamentos por Pix.
+          <b>AbacatePay:</b> plataforma que gera e confirma os pagamentos por Pix e cartão. Para
+          isso ela recebe o seu nome, CPF ou CNPJ, e-mail, telefone e endereço, e na página dela
+          você informa os dados do pagamento. Nós não guardamos dados de cartão nem de conta.
         </li>
         <li>
           <b>Vercel e Neon:</b> empresas de hospedagem do site e do banco de dados onde os dados

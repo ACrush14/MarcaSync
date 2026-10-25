@@ -115,7 +115,7 @@ export default function PlanoStep({
       <div className="helpbox" style={{ margin: "0 0 16px" }}>
         <h3>Para onde mandamos o andamento?</h3>
         <p style={{ fontSize: 13, color: "var(--ink-dim)", marginBottom: 10 }}>
-          Só usamos para falar sobre o seu pedido: o Pix, o protocolo e os prazos.
+          Só usamos para falar sobre o seu pedido: o pagamento, o protocolo e os prazos.
         </p>
         <div className="grid-2">
           <div className="field" style={{ marginBottom: 0 }}>

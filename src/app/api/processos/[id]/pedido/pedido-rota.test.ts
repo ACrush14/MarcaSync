@@ -15,7 +15,7 @@ const db = vi.hoisted(() => {
   return m;
 });
 vi.mock("@/lib/db", () => ({ prisma: db }));
-vi.mock("@/lib/cobranca", () => ({ garantirCobrancasPix: vi.fn().mockResolvedValue(undefined) }));
+vi.mock("@/lib/cobranca", () => ({ garantirCobrancas: vi.fn().mockResolvedValue(undefined) }));
 
 import { zerarLimites } from "@/lib/limite-publico";
 import { MONITORAMENTO_CENTAVOS, SETUP_CENTAVOS } from "@/lib/planos";
@@ -81,26 +81,51 @@ describe("POST /api/processos/:id/pedido", () => {
     expect(corpo.resumo.gruCentavos).toBe(44_000);
     expect(JSON.stringify(corpo)).not.toContain("52998224725");
     const criados = db.pagamento.create.mock.calls.map((c) => c[0].data);
-    expect(criados).toContainEqual(expect.objectContaining({ tipo: "setup", valorCentavos: SETUP_CENTAVOS }));
-    expect(criados).toContainEqual(expect.objectContaining({ tipo: "gru", valorCentavos: 44_000 }));
+    // um pagamento só: o serviço e a taxa juntos
+    expect(criados).toContainEqual(expect.objectContaining({ tipo: "pacote", valorCentavos: SETUP_CENTAVOS + 44_000 }));
+    expect(criados.some((d) => d.tipo === "setup" || d.tipo === "gru")).toBe(false);
     expect(criados).toContainEqual(
       expect.objectContaining({ tipo: "monitoramento", valorCentavos: MONITORAMENTO_CENTAVOS })
     );
   });
 
-  it("corrige uma cobrança do serviço pendente com valor adulterado e refaz o Pix", async () => {
+  it("corrige o pagamento pendente com valor adulterado e refaz o checkout", async () => {
     db.processo.findUnique.mockResolvedValue({
       id: "p1",
       riscoPct: 10,
-      pagamentos: [{ id: "pg1", tipo: "setup", status: "pendente", valorCentavos: 100, provedorId: "pix_char_x" }],
+      pagamentos: [{ id: "pg1", tipo: "pacote", status: "pendente", valorCentavos: 100, provedorId: "bill_x" }],
     });
     await enviar(pedidoValido);
     expect(db.pagamento.update).toHaveBeenCalledWith({
       where: { id: "pg1" },
-      data: { valorCentavos: SETUP_CENTAVOS, provedorId: null, brCode: null, expiraEm: null },
+      data: { valorCentavos: SETUP_CENTAVOS + 44_000, provedorId: null, checkoutUrl: null, brCode: null, expiraEm: null },
     });
-    // e não cria um segundo "setup"
-    expect(db.pagamento.create.mock.calls.some((c) => c[0].data.tipo === "setup")).toBe(false);
+    // e não cria um segundo pacote
+    expect(db.pagamento.create.mock.calls.some((c) => c[0].data.tipo === "pacote")).toBe(false);
+  });
+
+  it("não mexe no pagamento pendente que já está com o valor certo (o checkout continua valendo)", async () => {
+    db.processo.findUnique.mockResolvedValue({
+      id: "p1",
+      riscoPct: 10,
+      pagamentos: [{ id: "pg1", tipo: "pacote", status: "pendente", valorCentavos: SETUP_CENTAVOS + 44_000, provedorId: "bill_x" }],
+    });
+    await enviar(pedidoValido);
+    expect(db.pagamento.update.mock.calls.some((c) => c[0].where.id === "pg1")).toBe(false);
+  });
+
+  it("troca os dois Pix pendentes do modelo antigo por um pagamento só", async () => {
+    db.processo.findUnique.mockResolvedValue({
+      id: "p1",
+      riscoPct: 10,
+      pagamentos: [
+        { id: "a", tipo: "setup", status: "pendente", valorCentavos: SETUP_CENTAVOS },
+        { id: "b", tipo: "gru", status: "pendente", valorCentavos: 44_000 },
+      ],
+    });
+    await enviar(pedidoValido);
+    expect(db.pagamento.delete.mock.calls.map((c) => c[0].where.id).sort()).toEqual(["a", "b"]);
+    expect(db.pagamento.create.mock.calls.map((c) => c[0].data.tipo)).toContain("pacote");
   });
 
   it("corrige o monitoramento pendente com valor errado", async () => {
@@ -113,16 +138,6 @@ describe("POST /api/processos/:id/pedido", () => {
     expect(db.pagamento.update).toHaveBeenCalledWith(
       expect.objectContaining({ where: { id: "pg2" }, data: expect.objectContaining({ valorCentavos: MONITORAMENTO_CENTAVOS }) })
     );
-  });
-
-  it("não mexe numa cobrança do serviço que já está certa", async () => {
-    db.processo.findUnique.mockResolvedValue({
-      id: "p1",
-      riscoPct: 10,
-      pagamentos: [{ id: "pg1", tipo: "setup", status: "pendente", valorCentavos: SETUP_CENTAVOS, provedorId: "pix_char_x" }],
-    });
-    await enviar(pedidoValido);
-    expect(db.pagamento.update.mock.calls.some((c) => c[0].where.id === "pg1")).toBe(false);
   });
 
   it("recusa (409) quando já há pagamento confirmado", async () => {
@@ -150,6 +165,7 @@ describe("POST /api/processos/:id/pedido", () => {
     const corpo = await r.json();
     expect(corpo.resumo.servicoCentavos).toBe(SETUP_CENTAVOS);
     expect(corpo.resumo.gruCentavos).toBe(44_000);
+    expect(corpo.resumo.totalCentavos).toBe(SETUP_CENTAVOS + 44_000);
   });
 
   it("marca de pessoa sócia de empresa do ramo paga a GRU cheia", async () => {

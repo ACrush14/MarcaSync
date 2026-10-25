@@ -18,6 +18,7 @@ interface Pagamento {
   id: string;
   tipo: string;
   valorCentavos: number;
+  devolvidoCentavos?: number;
   status: string;
   confirmadoEm: string | null;
   confirmadoVia: string | null;
@@ -62,6 +63,7 @@ interface Processo {
   monitoramento: boolean;
   protocolo: string | null;
   numeroProcesso: string | null;
+  gruPagaInpiEm?: string | null;
   logoUrl: string | null;
   createdAt: string;
   interesse: string;
@@ -134,6 +136,7 @@ function mensagemAlerta(a: Alerta): string {
 }
 
 const ROTULO_PAGAMENTO: Record<string, string> = {
+  pacote: "Serviço + taxa do INPI",
   setup: "Setup",
   gru: "Taxa do INPI (GRU)",
   monitoramento: "Monitoramento",
@@ -466,6 +469,52 @@ export default function AdminPage() {
       cancelado = true;
     };
   }, []);
+
+  /** Marca que a taxa do INPI (GRU) deste pedido já foi paga ao INPI: a partir daí ela não volta. */
+  async function marcarGruPaga(id: string, marca: string) {
+    if (
+      !window.confirm(
+        `Confirme só DEPOIS de ter pago a GRU de "${marca}" ao INPI. Daqui para frente, se o pedido não for protocolado, só o valor do serviço volta para o cliente.`
+      )
+    )
+      return;
+    setConfirmando(id);
+    try {
+      const res = await fetch(`/api/admin/processos/${id}/gru-paga`, { method: "POST" });
+      const corpo = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(corpo.error ?? "Falha ao marcar a taxa como paga.");
+      await carregar();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : "Falha ao marcar a taxa como paga.");
+    } finally {
+      setConfirmando(null);
+    }
+  }
+
+  /** Anota que você devolveu o valor do serviço por Pix (o AbacatePay não estorna só uma parte). */
+  async function registrarDevolucao(id: string, centavos: number) {
+    if (
+      !window.confirm(
+        `Confirme só DEPOIS de ter feito o Pix de ${fmtReais(centavos)} para o cliente. Isto apenas registra a devolução no painel; não move dinheiro.`
+      )
+    )
+      return;
+    setConfirmando(id);
+    try {
+      const res = await fetch(`/api/admin/pagamentos/${id}/devolucao-manual`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ centavos, nota: "Pix feito por fora" }),
+      });
+      const corpo = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(corpo.error ?? "Falha ao registrar a devolução.");
+      await carregar();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : "Falha ao registrar a devolução.");
+    } finally {
+      setConfirmando(null);
+    }
+  }
 
   /**
    * Estorna um pagamento feito pelo AbacatePay. O servidor aplica a regra de devolução (antes de
@@ -818,6 +867,43 @@ Estornar mesmo assim?`)
                                     {confirmando === pg.id ? "Estornando…" : "Estornar"}
                                   </button>
                                 )}
+                                {pg.tipo === "pacote" && p.gruPagaInpiEm && (
+                                  <span className="pill">taxa paga ao INPI</span>
+                                )}
+                                {pg.tipo === "pacote" && !p.gruPagaInpiEm && !p.protocoladoEm && (
+                                  <button
+                                    className="btn ghost"
+                                    style={{ padding: "6px 12px", fontSize: 12, minHeight: 32 }}
+                                    disabled={confirmando === p.id}
+                                    onClick={() => marcarGruPaga(p.id, p.marca)}
+                                  >
+                                    Paguei a taxa ao INPI
+                                  </button>
+                                )}
+                                {pg.tipo === "pacote" &&
+                                  (pg.devolvidoCentavos ?? 0) > 0 && (
+                                    <span className="pill warm">
+                                      devolvido à mão: {fmtReais(pg.devolvidoCentavos ?? 0)}
+                                    </span>
+                                  )}
+                                {pg.tipo === "pacote" &&
+                                  p.gruPagaInpiEm &&
+                                  !p.protocoladoEm &&
+                                  (pg.devolvidoCentavos ?? 0) === 0 &&
+                                  p.pedidoRegistro && (
+                                    <button
+                                      className="btn ghost"
+                                      style={{ padding: "6px 12px", fontSize: 12, minHeight: 32 }}
+                                      disabled={confirmando === pg.id}
+                                      title="A taxa já foi paga ao INPI: só o serviço volta, por Pix seu"
+                                      onClick={() =>
+                                        registrarDevolucao(pg.id, p.pedidoRegistro?.servicoCentavos ?? 0)
+                                      }
+                                    >
+                                      Registrei a devolução do serviço (
+                                      {fmtReais(p.pedidoRegistro.servicoCentavos)})
+                                    </button>
+                                  )}
                               </>
                             ) : pg.status === "estornado" ? (
                               <span className="pill warm">estornado</span>

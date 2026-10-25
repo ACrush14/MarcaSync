@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { extrairIdCobranca, segredoConfere } from "@/lib/abacatepay";
+import { extrairIdsCobranca, segredoConfere } from "@/lib/abacatepay";
 import { confirmarPorProvedor } from "@/lib/cobranca";
 
 export const runtime = "nodejs";
@@ -30,8 +30,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Corpo grande demais." }, { status: 413 });
   }
   const corpo = await request.text();
-  const id = extrairIdCobranca(corpo);
-  if (id) await confirmarPorProvedor(id);
+  // O corpo pode citar mais de um id (o checkout e o Pix por baixo dele): tenta cada um até
+  // achar o pagamento nosso. Cada um é conferido na API antes de qualquer mudança.
+  for (const id of extrairIdsCobranca(corpo)) {
+    if (await confirmarPorProvedor(id)) break;
+  }
 
   return NextResponse.json({ ok: true });
 }

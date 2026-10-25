@@ -89,8 +89,10 @@ const pedidoValido = (n) => ({
   reg(![200, 201].includes(forjar.status), "ninguém cria cobrança com valor escolhido (POST /pagamentos)", `status ${forjar.status}`);
   await req(`/api/processos/${id}/pedido`, { method: "POST", body: pedidoValido(1) });
   const cob = await req(`/api/processos/${id}/cobrancas`);
-  const setup = (cob.json?.cobrancas ?? []).find((c) => c.tipo === "setup");
-  reg(setup?.valorCentavos === 49900, "o serviço sempre sai pelo preço do servidor (R$ 499)", `valor cobrado: ${setup?.valorCentavos}`);
+  const pacote = (cob.json?.cobrancas ?? []).find((c) => c.tipo === "pacote");
+  reg(pacote?.valorCentavos === 93900, "o pagamento sai pelo preço do servidor (R$ 499 + R$ 440)", `valor cobrado: ${pacote?.valorCentavos}`);
+  const texto = JSON.stringify(cob.json ?? {});
+  reg(!/provedorId|confirmadoVia|notas/.test(texto), "a rota de pagamento não vaza campos internos", texto.slice(0, 80));
 }
 
 // ------------------------------------------------------------------ 2. vazamento de dados de outro cliente
