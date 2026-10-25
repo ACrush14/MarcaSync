@@ -1,86 +1,24 @@
 "use client";
 
-import { Fragment, useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { linkParaCliente } from "@/lib/whatsapp";
-import { camposEmarcas } from "@/lib/campos-emarcas";
-import type { Prontidao } from "@/lib/prontidao";
-import ProtocoloAdmin, { type PrazoAdmin } from "@/components/ProtocoloAdmin";
-import AcompanhamentoLead from "@/components/AcompanhamentoLead";
-import { modoDoMonitoramento, podeIrParaMensal } from "@/lib/cadencia";
 import {
   ROTULO_INTERESSE,
   contar,
   precisaContatar,
   type Interesse,
 } from "@/lib/acompanhamento";
-
-interface Pagamento {
-  id: string;
-  tipo: string;
-  valorCentavos: number;
-  devolvidoCentavos?: number;
-  status: string;
-  confirmadoEm: string | null;
-  confirmadoVia: string | null;
-}
-
-interface PedidoRegistro {
-  tipoRequerente: string;
-  regime: string;
-  participaEmpresaDoRamo: boolean;
-  nome: string;
-  documento: string;
-  email: string;
-  cep: string;
-  logradouro: string;
-  numero: string;
-  complemento: string | null;
-  bairro: string;
-  cidade: string;
-  uf: string;
-  apresentacao: string;
-  elementoNominativo: string | null;
-  classeNice: string;
-  especificacao: string;
-  especificacaoItens: string[];
-  especificacaoLivre: boolean;
-  palavraEstrangeira: boolean;
-  traducao: string | null;
-  cienteAnterioridade: boolean;
-  atividade: string;
-  servicoCentavos: number;
-  gruCentavos: number;
-  gruComDesconto: boolean;
-  aceitoEm: string;
-}
-
-interface Processo {
-  id: string;
-  marca: string;
-  status: string;
-  riscoPct: number | null;
-  nclCode: string | null;
-  monitoramento: boolean;
-  protocolo: string | null;
-  numeroProcesso: string | null;
-  monitoramentoMensalDesde?: string | null;
-  gruPagaInpiEm?: string | null;
-  logoUrl: string | null;
-  createdAt: string;
-  interesse: string;
-  proximoContatoEm: string | null;
-  ultimoContatoEm: string | null;
-  anotacoes: string | null;
-  cliente: { nome: string; whatsapp: string };
-  pagamentos: Pagamento[];
-  pedidoRegistro: PedidoRegistro | null;
-  protocoladoEm: string | null;
-  prazos: PrazoAdmin[];
-  reciboProtocolo: { nomeArquivo: string; tamanho: number } | null;
-  imagemMarca: { largura: number; altura: number; ampliada: boolean } | null;
-  prontidao: Prontidao | null;
-}
+import {
+  ROTULO_ORDEM,
+  buscaCombina,
+  fmtDia,
+  ordenar,
+  type Ordem,
+} from "@/lib/admin-dados";
+import { fmtReais } from "@/lib/planos";
+import ProcessoCard, { jaPagouServico, type AcoesDoCartao } from "@/components/admin/ProcessoCard";
+import type { Processo } from "@/components/admin/tipos";
 
 interface AvisoSistema {
   id: string;
@@ -117,9 +55,7 @@ interface UltimaLeitura {
   encontrados: number;
 }
 
-function fmtData(iso: string): string {
-  return new Date(iso).toLocaleDateString("pt-BR", { timeZone: "UTC" });
-}
+const fmtData = fmtDia;
 
 function mensagemAlerta(a: Alerta): string {
   if (a.tipo === "situacao") {
@@ -137,139 +73,12 @@ function mensagemAlerta(a: Alerta): string {
   );
 }
 
-const ROTULO_PAGAMENTO: Record<string, string> = {
-  pacote: "Serviço + taxa do INPI",
-  setup: "Setup",
-  gru: "Taxa do INPI (GRU)",
-  monitoramento: "Monitoramento",
-};
-
-/** CPF (11 dígitos) ou CNPJ (14) com máscara, só para ler na tela. */
-function fmtDocumento(d: string): string {
-  if (d.length === 11) return d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
-  if (d.length === 14) {
-    return d.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
-  }
-  return d;
-}
-
-function fmtReais(centavos: number): string {
-  return (centavos / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-}
-
-/**
- * Os dados do pedido de registro, na ordem em que o e-Marcas os pede (Manual de Marcas do
- * INPI, itens 3.1 e 3.5.2), para você conferir e copiar na hora de emitir a GRU e protocolar.
- * Só aparece aqui, na área com senha: CPF/CNPJ e endereço não saem desta tela.
- */
-function PedidoDetalhe({
-  pedido: d,
-  processoId,
-  prontidao,
-  temImagem,
-  marca,
-  rotulo,
-}: {
-  pedido: PedidoRegistro;
-  processoId: string;
-  prontidao: Prontidao | null;
-  temImagem: boolean;
-  marca: string;
-  rotulo: string;
-}) {
-  const linhas: Array<[string, string]> = [
-    ...camposEmarcas(d).map(([nome, valor]): [string, string] => [
-      nome,
-      nome === "CPF/CNPJ"
-        ? fmtDocumento(d.documento)
-        : (valor ?? "— (não se aplica a este pedido)"),
-    ]),
-    ["Itens da especificação", d.especificacaoItens.join(" | ")],
-    ["Complemento", d.complemento ?? "—"],
-    [
-      "GRU a emitir",
-      `serviço ${d.especificacaoLivre ? "394 (especificação livre)" : "389 (especificação pré-aprovada)"}, ${fmtReais(d.gruCentavos)}${d.gruComDesconto ? " (com 50% de desconto)" : ""}; confirme o valor na tela de emissão`,
-    ],
-    ["Serviço MarcaSync", fmtReais(d.servicoCentavos)],
-    ["Aceites dados em", new Date(d.aceitoEm).toLocaleString("pt-BR")],
-  ];
-  return (
-    <details style={{ margin: "4px 0 8px" }}>
-      <summary style={{ cursor: "pointer", fontSize: 13, fontWeight: 600 }}>{rotulo}</summary>
-      <dl
-        style={{
-          display: "grid",
-          gridTemplateColumns: "190px 1fr",
-          gap: "4px 12px",
-          fontSize: 12.5,
-          marginTop: 8,
-        }}
-        aria-label={`Dados do pedido da marca ${marca}`}
-      >
-        {linhas.map(([nome, valor]) => (
-          <Fragment key={nome}>
-            <dt style={{ color: "var(--ink-dim)" }}>{nome}</dt>
-            <dd style={{ margin: 0 }}>{valor}</dd>
-          </Fragment>
-        ))}
-      </dl>
-      {temImagem && (
-        <p style={{ fontSize: 12.5, margin: "10px 0 0" }}>
-          Imagem da marca:{" "}
-          <a href={`/api/processos/${processoId}/imagem`} target="_blank" rel="noreferrer">
-            JPG pronto para o e-Marcas
-          </a>
-          {" · "}
-          <a
-            href={`/api/processos/${processoId}/imagem?tipo=original`}
-            target="_blank"
-            rel="noreferrer"
-          >
-            arquivo original
-          </a>
-        </p>
-      )}
-      <p style={{ fontSize: 13, fontWeight: 600, margin: "12px 0 4px" }}>
-        {prontidao?.pronto ? "Pronto para protocolar" : "Antes de protocolar"}
-      </p>
-      <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12.5 }}>
-        {(prontidao?.itens ?? []).map((i) => (
-          <li key={i.id} style={{ marginBottom: 3 }}>
-            <strong>
-              {i.estado === "ok" ? "✓" : i.estado === "atencao" ? "Conferir:" : "Falta:"} {i.titulo}
-            </strong>
-            {i.estado !== "ok" && (
-              <span style={{ color: "var(--ink-dim)" }}>
-                {" "}
-                ({i.quem === "cliente" ? "cliente" : "você"}) {i.detalhe}
-              </span>
-            )}
-          </li>
-        ))}
-      </ul>
-    </details>
-  );
-}
-
-const STATUS_LABEL: Record<string, string> = {
-  consulta: "Em consulta",
-  resultado: "Resultado visto",
-  plano: "Vendo plano",
-  pedido: "Dados do pedido enviados",
-  contato: "Pediu contato",
-  protocolado: "Protocolado",
-};
-
 /**
  * /admin — o "caderno de anotações": todo processo que já passou pela
  * análise, com os pagamentos ligados a ele. Sem login ainda (ver README,
  * item de persistência/contas) — não exponha esta rota publicamente antes
  * de colocar autenticação.
  */
-function jaPagouServico(p: Processo): boolean {
-  return p.pagamentos.some((g) => g.tipo === "setup" && g.status === "confirmado");
-}
-
 function passaNoFiltro(p: Processo, filtro: "todos" | "hoje" | Interesse): boolean {
   if (filtro === "todos") return true;
   if (filtro === "hoje") return precisaContatar(p, new Date(), jaPagouServico(p));
@@ -335,6 +144,18 @@ export default function AdminPage() {
   const [numeros, setNumeros] = useState<Record<string, string>>({});
   const [salvandoNumero, setSalvandoNumero] = useState<string | null>(null);
   const [filtro, setFiltro] = useState<"todos" | "hoje" | Interesse>("todos");
+  const [busca, setBusca] = useState("");
+  const [ordem, setOrdem] = useState<Ordem>("recentes");
+  const [abrirTudo, setAbrirTudo] = useState(false);
+
+  const visiveis = useMemo(
+    () =>
+      ordenar(
+        (processos ?? []).filter((p) => passaNoFiltro(p, filtro) && buscaCombina(p, busca)),
+        ordem
+      ),
+    [processos, filtro, busca, ordem]
+  );
 
   async function carregar() {
     try {
@@ -750,266 +571,79 @@ Estornar mesmo assim?`)
         )}
 
         {processos && processos.length > 0 && (
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Cliente</th>
-                  <th>Marca</th>
-                  <th>Acompanhamento</th>
-                  <th>Logotipo</th>
-                  <th>Etapa</th>
-                  <th>Nº no INPI</th>
-                  <th>Risco</th>
-                  <th>Pagamentos</th>
-                </tr>
-              </thead>
-              <tbody>
-                {processos.filter((p) => passaNoFiltro(p, filtro)).map((p) => (
-                  <Fragment key={p.id}>
-                    <tr>
-                      <td className="celula-texto">
-                        {p.cliente.nome}
-                        <br />
-                        <span style={{ fontSize: 11.5, color: "var(--ink-faint)" }}>
-                          {p.cliente.whatsapp}
-                        </span>
-                      </td>
-                      <td className="celula-texto">
-                        {p.marca}
-                        {p.protocolo && (
-                          <>
-                            <br />
-                            <span
-                              className="mono"
-                              style={{ fontSize: 11.5, color: "var(--ink-faint)" }}
-                            >
-                              protocolo {p.protocolo}
-                            </span>
-                          </>
-                        )}
-                      </td>
-                      <td className="celula-texto celula-larga">
-                        <AcompanhamentoLead
-                          processoId={p.id}
-                          marca={p.marca}
-                          acompanhamento={p}
-                          jaPagou={jaPagouServico(p)}
-                          onSalvo={carregar}
-                        />
-                      </td>
-                      <td>
-                        {p.logoUrl ? (
-                          <a href={p.logoUrl} target="_blank" rel="noreferrer">
-                            {/* eslint-disable-next-line @next/next/no-img-element -- URL externa (Blob), next/image não se aplica */}
-                            <img
-                              src={p.logoUrl}
-                              alt={`Logotipo de ${p.marca}`}
-                              style={{
-                                width: 40,
-                                height: 40,
-                                objectFit: "contain",
-                                borderRadius: 6,
-                                border: "1px solid var(--border)",
-                                background: "var(--surface)",
-                              }}
-                            />
-                          </a>
-                        ) : (
-                          <span style={{ fontSize: 12, color: "var(--ink-faint)" }}>—</span>
-                        )}
-                      </td>
-                      <td>
-                        <span className="pill accent">{STATUS_LABEL[p.status] ?? p.status}</span>
-                      </td>
-                      <td>
-                        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                          <label className="sr-only" htmlFor={`num-${p.id}`}>
-                            Número do processo no INPI — {p.marca}
-                          </label>
-                          <input
-                            id={`num-${p.id}`}
-                            inputMode="numeric"
-                            autoComplete="off"
-                            placeholder="9 dígitos"
-                            value={numeros[p.id] ?? p.numeroProcesso ?? ""}
-                            onChange={(e) => setNumeros((n) => ({ ...n, [p.id]: e.target.value }))}
-                            style={{ width: 120, minHeight: 40 }}
-                          />
-                          {p.id in numeros && numeros[p.id] !== (p.numeroProcesso ?? "") && (
-                            <button
-                              className="btn ghost"
-                              style={{ minHeight: 40, padding: "10px 14px", fontSize: 13 }}
-                              disabled={salvandoNumero === p.id}
-                              onClick={() => salvarNumero(p.id)}
-                            >
-                              {salvandoNumero === p.id ? "Salvando…" : "Salvar"}
-                            </button>
-                          )}
-                        </div>
-                        {p.monitoramento ? (
-                          <div style={{ marginTop: 4, display: "grid", gap: 6 }}>
-                            <span className="pill safe">
-                              monitorando ({modoDoMonitoramento({ monitoramentoMensalDesde: p.monitoramentoMensalDesde ?? null })})
-                            </span>
-                            {modoDoMonitoramento({ monitoramentoMensalDesde: p.monitoramentoMensalDesde ?? null }) === "semanal" ? (
-                              <button
-                                className="btn ghost"
-                                style={{ padding: "6px 12px", fontSize: 12, minHeight: 32 }}
-                                disabled={
-                                  confirmando === p.id ||
-                                  !podeIrParaMensal({
-                                    protocoladoEm: p.protocoladoEm,
-                                    numeroProcesso: p.numeroProcesso,
-                                  }).ok
-                                }
-                                title={
-                                  podeIrParaMensal({
-                                    protocoladoEm: p.protocoladoEm,
-                                    numeroProcesso: p.numeroProcesso,
-                                  }).ok
-                                    ? "Está tudo certo com o protocolo: monitorar uma vez por mês"
-                                    : "Só depois de protocolar e preencher o número do INPI"
-                                }
-                                onClick={() => mudarCadencia(p.id, "mensal")}
-                              >
-                                Protocolo OK: passar para mensal
-                              </button>
-                            ) : (
-                              <button
-                                className="btn ghost"
-                                style={{ padding: "6px 12px", fontSize: 12, minHeight: 32 }}
-                                disabled={confirmando === p.id}
-                                onClick={() => mudarCadencia(p.id, "semanal")}
-                              >
-                                Voltar para semanal
-                              </button>
-                            )}
-                          </div>
-                        ) : null}
-                      </td>
-                      <td className="tab-nums">{p.riscoPct != null ? `${p.riscoPct}%` : "—"}</td>
-                      <td>
-                        {p.pagamentos.length === 0 && (
-                          <span style={{ fontSize: 12, color: "var(--ink-faint)" }}>—</span>
-                        )}
-                        {p.pagamentos.map((pg) => (
-                          <div
-                            key={pg.id}
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 8,
-                              marginBottom: 4,
-                            }}
-                          >
-                            <span style={{ fontSize: 12.5 }}>
-                              {ROTULO_PAGAMENTO[pg.tipo] ?? pg.tipo} — {fmtReais(pg.valorCentavos)}
-                            </span>
-                            {pg.status === "confirmado" ? (
-                              <>
-                                <span className="pill safe">
-                                  confirmado{pg.confirmadoVia === "abacatepay" ? " (Pix)" : ""}
-                                </span>
-                                {pg.confirmadoVia === "abacatepay" && (
-                                  <button
-                                    className="btn ghost"
-                                    style={{ padding: "6px 12px", fontSize: 12, minHeight: 32 }}
-                                    disabled={confirmando === pg.id}
-                                    onClick={() =>
-                                      estornarPagamento(pg.id, ROTULO_PAGAMENTO[pg.tipo] ?? pg.tipo)
-                                    }
-                                  >
-                                    {confirmando === pg.id ? "Estornando…" : "Estornar"}
-                                  </button>
-                                )}
-                                {pg.tipo === "pacote" && p.gruPagaInpiEm && (
-                                  <span className="pill">taxa paga ao INPI</span>
-                                )}
-                                {pg.tipo === "pacote" && !p.gruPagaInpiEm && !p.protocoladoEm && (
-                                  <button
-                                    className="btn ghost"
-                                    style={{ padding: "6px 12px", fontSize: 12, minHeight: 32 }}
-                                    disabled={confirmando === p.id}
-                                    onClick={() => marcarGruPaga(p.id, p.marca)}
-                                  >
-                                    Paguei a taxa ao INPI
-                                  </button>
-                                )}
-                                {pg.tipo === "pacote" &&
-                                  (pg.devolvidoCentavos ?? 0) > 0 && (
-                                    <span className="pill warm">
-                                      devolvido à mão: {fmtReais(pg.devolvidoCentavos ?? 0)}
-                                    </span>
-                                  )}
-                                {pg.tipo === "pacote" &&
-                                  p.gruPagaInpiEm &&
-                                  !p.protocoladoEm &&
-                                  (pg.devolvidoCentavos ?? 0) === 0 &&
-                                  p.pedidoRegistro && (
-                                    <button
-                                      className="btn ghost"
-                                      style={{ padding: "6px 12px", fontSize: 12, minHeight: 32 }}
-                                      disabled={confirmando === pg.id}
-                                      title="A taxa já foi paga ao INPI: só o serviço volta, por Pix seu"
-                                      onClick={() =>
-                                        registrarDevolucao(pg.id, p.pedidoRegistro?.servicoCentavos ?? 0)
-                                      }
-                                    >
-                                      Registrei a devolução do serviço (
-                                      {fmtReais(p.pedidoRegistro.servicoCentavos)})
-                                    </button>
-                                  )}
-                              </>
-                            ) : pg.status === "estornado" ? (
-                              <span className="pill warm">estornado</span>
-                            ) : (
-                              <button
-                                className="btn ghost"
-                                // 44px de altura visual — abaixo disso é
-                                // difícil de acertar no toque do celular,
-                                // e essa é a ação que você mais vai usar lá.
-                                style={{ padding: "10px 14px", fontSize: 13, minHeight: 40 }}
-                                disabled={confirmando === pg.id}
-                                onClick={() => confirmarPagamento(pg.id)}
-                              >
-                                {confirmando === pg.id
-                                  ? "Confirmando…"
-                                  : "Marcar como pago (reserva)"}
-                              </button>
-                            )}
-                          </div>
-                        ))}
-                      </td>
-                    </tr>
-                    {p.pedidoRegistro && (
-                      <tr>
-                        <td colSpan={8}>
-                          <PedidoDetalhe
-                            pedido={p.pedidoRegistro}
-                            processoId={p.id}
-                            prontidao={p.prontidao}
-                            temImagem={p.imagemMarca !== null}
-                            marca={p.marca}
-                            rotulo={`Dados do pedido de ${p.marca}`}
-                          />
-                          <ProtocoloAdmin
-                            processoId={p.id}
-                            numeroProcesso={p.numeroProcesso}
-                            protocoladoEm={p.protocoladoEm}
-                            prazos={p.prazos}
-                            recibo={p.reciboProtocolo}
-                            onMudou={carregar}
-                          />
-                        </td>
-                      </tr>
-                    )}
-                  </Fragment>
+          <div
+            style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "end", margin: "0 0 14px" }}
+          >
+            <div style={{ flex: "1 1 260px" }}>
+              <label htmlFor="busca-admin" style={{ fontSize: 12.5, display: "block", marginBottom: 4 }}>
+                Buscar por nome, marca, WhatsApp, e-mail, CPF/CNPJ ou nº do INPI
+              </label>
+              <input
+                id="busca-admin"
+                type="search"
+                value={busca}
+                onChange={(e) => setBusca(e.target.value)}
+                placeholder="Ex.: kaza, 85 9999, 905922891…"
+                autoComplete="off"
+                style={{ width: "100%", minHeight: 40 }}
+              />
+            </div>
+            <div>
+              <label htmlFor="ordem-admin" style={{ fontSize: 12.5, display: "block", marginBottom: 4 }}>
+                Ordenar por
+              </label>
+              <select
+                id="ordem-admin"
+                value={ordem}
+                onChange={(e) => setOrdem(e.target.value as Ordem)}
+                style={{ minHeight: 40 }}
+              >
+                {(Object.keys(ROTULO_ORDEM) as Ordem[]).map((o) => (
+                  <option key={o} value={o}>
+                    {ROTULO_ORDEM[o]}
+                  </option>
                 ))}
-              </tbody>
-            </table>
+              </select>
+            </div>
+            <button
+              type="button"
+              className="btn ghost"
+              style={{ minHeight: 40, padding: "10px 14px", fontSize: 13 }}
+              aria-pressed={abrirTudo}
+              onClick={() => setAbrirTudo((v) => !v)}
+            >
+              {abrirTudo ? "Recolher os dados completos" : "Abrir os dados completos de todos"}
+            </button>
           </div>
         )}
+
+        {processos && processos.length > 0 && (
+          <p role="status" style={{ fontSize: 12.5, color: "var(--ink-dim)", margin: "0 0 10px" }}>
+            Mostrando {visiveis.length} de {processos.length}.
+            {visiveis.length === 0 && " Nenhum processo combina com o filtro e a busca."}
+          </p>
+        )}
+
+        {visiveis.map((p) => (
+          <ProcessoCard
+            key={p.id}
+            p={p}
+            aberto={abrirTudo}
+            acoes={{
+              confirmando,
+              salvandoNumero: salvandoNumero === p.id,
+              numeroEditado: numeros[p.id],
+              onNumero: (v) => setNumeros((n) => ({ ...n, [p.id]: v })),
+              onSalvarNumero: () => salvarNumero(p.id),
+              onConfirmarPagamento: confirmarPagamento,
+              onEstornar: estornarPagamento,
+              onDevolucao: registrarDevolucao,
+              onGruPaga: () => marcarGruPaga(p.id, p.marca),
+              onCadencia: (modo) => mudarCadencia(p.id, modo),
+              onMudou: carregar,
+            } satisfies AcoesDoCartao}
+          />
+        ))}
 
         <details style={{ marginTop: 28 }}>
           <summary style={{ cursor: "pointer", fontWeight: 600 }}>
