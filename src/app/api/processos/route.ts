@@ -22,6 +22,9 @@ export async function GET() {
       pagamentos: true,
       pedidoRegistro: true,
       prazos: { where: { concluidoEm: null }, orderBy: { venceEm: "asc" } },
+      // As últimas situações vistas no INPI e quantos alertas da RPI já houve.
+      situacoes: { orderBy: { vistaEm: "desc" }, take: 5 },
+      _count: { select: { alertas: true } },
       reciboProtocolo: { select: { nomeArquivo: true, tamanho: true } },
       // Só os números da imagem: os bytes saem pela rota /imagem, nunca nesta lista.
       imagemMarca: {
@@ -38,9 +41,35 @@ export async function GET() {
   });
   // A checklist "pronto para protocolar" é calculada aqui, no servidor, porque usa o catálogo
   // de termos do INPI (grande demais para mandar ao navegador).
+  // Os avisos do sistema ligados a cada processo (a tabela não tem vínculo no banco, então a busca é à parte).
+  const avisosPorProcesso = new Map<string, Array<Record<string, unknown>>>();
+  if (processos.length > 0) {
+    const avisos = await prisma.notificacao.findMany({
+      where: { processoId: { in: processos.map((p) => p.id) } },
+      orderBy: { createdAt: "desc" },
+      take: 500,
+      select: {
+        id: true,
+        processoId: true,
+        destino: true,
+        canal: true,
+        assunto: true,
+        enviadaEm: true,
+        erro: true,
+        createdAt: true,
+      },
+    });
+    for (const v of avisos) {
+      const lista = avisosPorProcesso.get(v.processoId ?? "") ?? [];
+      if (lista.length < 5) lista.push(v);
+      avisosPorProcesso.set(v.processoId ?? "", lista);
+    }
+  }
+
   return NextResponse.json({
     processos: processos.map((p) => ({
       ...p,
+      avisos: avisosPorProcesso.get(p.id) ?? [],
       prontidao: p.pedidoRegistro
         ? checarProntidao(p.pedidoRegistro, p.pagamentos, {
             marca: p.marca,
