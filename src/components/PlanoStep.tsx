@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import GarantiaDevolucao from "./GarantiaDevolucao";
 import TrackView from "./TrackView";
 import { track } from "@/lib/track";
-import { whatsappValido } from "@/lib/whatsapp";
+import { formatarWhatsapp, whatsappValido } from "@/lib/whatsapp";
 import { MONITORAMENTO_CENTAVOS, SETUP_CENTAVOS, fmtReais, fmtReaisCurto } from "@/lib/planos";
 
 interface PlanoStepProps {
@@ -23,6 +23,9 @@ interface PlanoStepProps {
   /** Link wa.me já com o plano escolhido; null se o número não estiver configurado. */
   whatsappHref: string | null;
 }
+
+const ERRO_WHATSAPP =
+  "Informe um celular com DDD válido, por exemplo (85) 91234-5678. Telefone fixo não tem WhatsApp.";
 
 export default function PlanoStep({
   nomeCliente,
@@ -48,7 +51,7 @@ export default function PlanoStep({
       return false;
     }
     if (!whatsappValido(whatsapp)) {
-      setErroContato("Informe o WhatsApp com DDD, por exemplo (85) 91234-5678.");
+      setErroContato(ERRO_WHATSAPP);
       whatsappRef.current?.focus();
       return false;
     }
@@ -61,56 +64,14 @@ export default function PlanoStep({
       <TrackView nome="plano_visto" />
       <div className="panel-head">
         <h2>Plano de registro</h2>
-        <p className="help">
-          Sem &quot;fale com um consultor&quot; — o valor do serviço abaixo é fechado, sem orçamento
-          por telefone. Setup cobre a análise já feita, a petição e o protocolo. A taxa oficial do
-          INPI (GRU) é cobrada à parte, e o valor exato aparece antes de você confirmar. O
-          monitoramento é opcional e recorrente — desligue para conduzir o acompanhamento
-          manualmente.
+        <p className="help" style={{ maxWidth: "none" }}>
+          O serviço do MarcaSync tem preço fechado: {fmtReais(SETUP_CENTAVOS)}, sem orçamento e sem
+          precisar falar com ninguém antes. Ele cobre a análise que você acabou de ver, a petição, a
+          procuração e o protocolo do pedido no INPI. A taxa oficial do INPI (GRU) é paga junto, no
+          mesmo pagamento (Pix ou cartão), e o valor exato aparece antes de você confirmar. O
+          monitoramento da RPI é opcional e você desliga quando quiser.
         </p>
       </div>
-
-      <div className="plans">
-        <div className="plan-card">
-          <h3>Setup — Análise e Protocolo</h3>
-          <div className="price">
-            {fmtReaisCurto(SETUP_CENTAVOS)} <small>pagamento único</small>
-          </div>
-          <ul>
-            <li>Busca de anterioridade fonética</li>
-            <li>Inferência e conferência da classe NCL</li>
-            <li>Petição, guia (GRU) e procuração prontas</li>
-            <li>Protocolo do pedido no INPI</li>
-          </ul>
-        </div>
-        <div className="plan-card">
-          <h3>Monitoramento RPI</h3>
-          <div className="price">
-            {fmtReaisCurto(MONITORAMENTO_CENTAVOS)} <small>por mês</small>
-          </div>
-          <ul>
-            <li>Leitura da RPI automática do seu processo: toda semana enquanto o pedido é protocolado e examinado; depois que está tudo certo, todo mês</li>
-            <li>Aviso de qualquer despacho publicado, inclusive oposição de terceiros</li>
-            <li>Prazo estimado de manifestação quando houver oposição</li>
-            <li>Aviso por WhatsApp, com explicação do que fazer</li>
-          </ul>
-          <div className="toggle-row">
-            <label className="t" htmlFor="sw-monitoramento">
-              Contratar monitoramento
-            </label>
-            <button
-              id="sw-monitoramento"
-              type="button"
-              className={`switch ${monitoramento ? "on" : ""}`}
-              role="switch"
-              aria-checked={monitoramento}
-              onClick={onToggleMonitoramento}
-            />
-          </div>
-        </div>
-      </div>
-
-      <GarantiaDevolucao margem="0 0 16px" />
 
       <div className="helpbox" style={{ margin: "0 0 16px" }}>
         <h3>Para onde mandamos o andamento?</h3>
@@ -141,12 +102,16 @@ export default function PlanoStep({
               type="tel"
               inputMode="tel"
               id="in-whatsapp"
-              autoComplete="tel"
+              autoComplete="tel-national"
               value={whatsapp}
               onChange={(e) => {
-                onWhatsappChange(e.target.value);
+                onWhatsappChange(formatarWhatsapp(e.target.value));
                 setErroContato(null);
               }}
+              onBlur={() => {
+                if (whatsapp.trim() && !whatsappValido(whatsapp)) setErroContato(ERRO_WHATSAPP);
+              }}
+              aria-invalid={erroContato === ERRO_WHATSAPP}
               placeholder="Ex.: (85) 91234-5678"
               aria-describedby={erroContato ? "erro-contato" : undefined}
             />
@@ -236,6 +201,48 @@ export default function PlanoStep({
           </button>
         )}
       </p>
+
+      <div className="plans" style={{ marginTop: 24 }}>
+        <div className="plan-card">
+          <h3>Setup — Análise e Protocolo</h3>
+          <div className="price">
+            {fmtReaisCurto(SETUP_CENTAVOS)} <small>pagamento único</small>
+          </div>
+          <ul>
+            <li>Busca de anterioridade fonética</li>
+            <li>Inferência e conferência da classe NCL</li>
+            <li>Petição, guia (GRU) e procuração prontas</li>
+            <li>Protocolo do pedido no INPI</li>
+          </ul>
+        </div>
+        <div className="plan-card">
+          <h3>Monitoramento RPI</h3>
+          <div className="price">
+            {fmtReaisCurto(MONITORAMENTO_CENTAVOS)} <small>por mês</small>
+          </div>
+          <ul>
+            <li>Leitura da RPI automática do seu processo: toda semana enquanto o pedido é protocolado e examinado; depois que está tudo certo, todo mês</li>
+            <li>Aviso de qualquer despacho publicado, inclusive oposição de terceiros</li>
+            <li>Prazo estimado de manifestação quando houver oposição</li>
+            <li>Aviso por WhatsApp, com explicação do que fazer</li>
+          </ul>
+          <div className="toggle-row">
+            <label className="t" htmlFor="sw-monitoramento">
+              Contratar monitoramento
+            </label>
+            <button
+              id="sw-monitoramento"
+              type="button"
+              className={`switch ${monitoramento ? "on" : ""}`}
+              role="switch"
+              aria-checked={monitoramento}
+              onClick={onToggleMonitoramento}
+            />
+          </div>
+        </div>
+      </div>
+
+      <GarantiaDevolucao margem="0 0 16px" />
     </>
   );
 }

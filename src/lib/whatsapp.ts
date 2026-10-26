@@ -73,16 +73,44 @@ export function linkWhatsapp(d: DadosContato): string | null {
   return `https://wa.me/${NUMERO}?text=${encodeURIComponent(mensagemWhatsapp(d))}`;
 }
 
+/** DDDs que existem no Brasil (11 a 99, com lacunas). */
+const DDDS_VALIDOS = new Set(
+  (
+    "11 12 13 14 15 16 17 18 19 21 22 24 27 28 31 32 33 34 35 37 38 41 42 43 44 45 46 47 48 49 " +
+    "51 53 54 55 61 62 63 64 65 66 67 68 69 71 73 74 75 77 79 81 82 83 84 85 86 87 88 89 91 92 93 94 95 96 97 98 99"
+  ).split(" ")
+);
+
 /**
- * O WhatsApp digitado no formulário é aceitável? Aceita DDD + número (10 ou 11
- * dígitos, no formato brasileiro), com ou sem o 55 na frente, com ou sem máscara. Qualquer caractere que
- * não seja dígito é ignorado antes de contar: "(85) 91234-5678" vale 11 dígitos.
+ * O WhatsApp digitado no formulário é aceitável? Só vale UM número de celular brasileiro: DDD que
+ * existe + 9 + 8 dígitos, com ou sem o 55 na frente e com ou sem máscara. Telefone fixo não tem
+ * WhatsApp, então é recusado; letras, dois números colados e números de outros países também.
+ * "(85) 91234-5678" vale.
  */
 export function whatsappValido(v: string): boolean {
-  const d = v.replace(/\D/g, "");
-  // DDD de 11 a 99; celular tem 9 na frente (11 dígitos), fixo começa de 2 a 9 (10 dígitos).
-  // Isso barra números de outros países, como "+1 555 123 4567", que têm 11 dígitos.
-  return /^(55)?[1-9][1-9](9\d{8}|[2-9]\d{7})$/.test(d);
+  if (typeof v !== "string") return false;
+  // Só dígitos e a pontuação comum de telefone ("+" apenas na frente): letras não passam.
+  if (!/^\+?[\d\s().-]+$/.test(v.trim())) return false;
+  const m = /^(?:55)?(\d{2})(9\d{8})$/.exec(v.replace(/\D/g, ""));
+  const ddd = m?.[1];
+  const numero = m?.[2];
+  if (!ddd || !numero) return false;
+  if (!DDDS_VALIDOS.has(ddd)) return false;
+  // 99999-9999, 91111-1111 e afins são número inventado.
+  return !/^(\d)\1{7}$/.test(numero.slice(1));
+}
+
+/**
+ * Máscara enquanto a pessoa digita: só dígitos, no máximo 11 (DDD + celular), no formato
+ * "(85) 91234-5678". Se colar com o 55 do país na frente, ele é tirado.
+ */
+export function formatarWhatsapp(v: string): string {
+  let d = v.replace(/\D/g, "");
+  if (d.length > 11 && d.startsWith("55")) d = d.slice(2);
+  d = d.slice(0, 11);
+  if (d.length <= 2) return d.length ? `(${d}` : "";
+  if (d.length <= 7) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
+  return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
 }
 
 /** Link wa.me para falar com o CLIENTE (usado no /admin). Aceita número com máscara, com ou sem DDI. */

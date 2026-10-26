@@ -11,24 +11,18 @@
 import { describe, expect, it } from "vitest";
 import type { ColidenciaMatch, ColidenciaResultado } from "./colidencia";
 import { calcularRisco } from "./risco-area";
-import { linkParaCliente, mensagemWhatsapp, whatsappValido } from "./whatsapp";
+import { formatarWhatsapp, linkParaCliente, mensagemWhatsapp, whatsappValido } from "./whatsapp";
 
 describe("whatsappValido", () => {
-  // DDD (2 dígitos) + número (8 ou 9 dígitos), sem o 55 do país.
+  // Só vale UM celular brasileiro: DDD que existe + 9 + 8 dígitos, com ou sem o 55 do país.
   it.each([
     ["8591234-5678", "sem parênteses, com hífen"],
     ["(85) 91234-5678", "celular com máscara (11 dígitos)"],
     ["85912345678", "celular só com dígitos (11 dígitos)"],
-    ["(85) 3123-4567", "fixo com máscara (10 dígitos)"],
-    ["8531234567", "fixo só com dígitos (10 dígitos)"],
-  ])("aceita %s (%s)", (entrada) => {
-    expect(whatsappValido(entrada)).toBe(true);
-  });
-
-  it.each([
     ["5585912345678", "celular com o 55 do país (13 dígitos)"],
     ["+55 (85) 91234-5678", "celular com +55 e máscara"],
-    ["558531234567", "fixo com o 55 do país (12 dígitos)"],
+    ["(55) 98123-4567", "DDD 55 (RS) sem o código do país"],
+    ["  (11) 98765-4321  ", "com espaços nas pontas"],
   ])("aceita %s (%s)", (entrada) => {
     expect(whatsappValido(entrada)).toBe(true);
   });
@@ -41,13 +35,51 @@ describe("whatsappValido", () => {
     ["859123456", "9 dígitos, falta um"],
     ["859123456789", "12 dígitos que não começam com 55"],
     ["55859123456789", "14 dígitos, sobra um"],
+    ["(85) 3123-4567", "telefone fixo (sem WhatsApp)"],
+    ["8531234567", "fixo só com dígitos"],
+    ["558531234567", "fixo com o 55 do país"],
+    ["(20) 91234-5678", "DDD que não existe"],
+    ["(10) 91234-5678", "DDD que não existe (10)"],
+    ["(85) 81234-5678", "celular que não começa com 9"],
+    ["(85) 99999-9999", "número inventado (tudo 9)"],
+    ["(85) 91111-1111", "número inventado (repetido)"],
+    ["zap: 85 91234 5678!", "letras no meio"],
+    ["(85) 91234-5678 / (85) 98888-7777", "dois números colados"],
+    ["(85) 91234-5678 ou 85 98888-7777", "dois números com texto"],
+    ["85 91234-5678+", "mais no fim"],
+    ["+1 555 123 4567", "número de outro país"],
   ])("recusa %s (%s)", (entrada) => {
     expect(whatsappValido(entrada)).toBe(false);
   });
 
-  // Comportamento atual: letras no meio do número são ignoradas antes de contar.
-  it("ignora caracteres que não são dígitos antes de contar", () => {
-    expect(whatsappValido("zap: 85 91234 5678!")).toBe(true);
+  it("não quebra com algo que não é texto", () => {
+    expect(whatsappValido(undefined as unknown as string)).toBe(false);
+    expect(whatsappValido(null as unknown as string)).toBe(false);
+    expect(whatsappValido(85912345678 as unknown as string)).toBe(false);
+  });
+});
+
+describe("formatarWhatsapp", () => {
+  it.each([
+    ["", ""],
+    ["8", "(8"],
+    ["85", "(85"],
+    ["859", "(85) 9"],
+    ["8591234", "(85) 91234"],
+    ["85912345", "(85) 91234-5"],
+    ["85912345678", "(85) 91234-5678"],
+    ["(85) 91234-5678", "(85) 91234-5678"],
+    ["+55 85 91234-5678", "(85) 91234-5678"],
+    ["5585912345678", "(85) 91234-5678"],
+    ["85912345678999", "(85) 91234-5678"],
+    ["abc85x91234-5678", "(85) 91234-5678"],
+    ["(55) 98123-4567", "(55) 98123-4567"],
+  ])("%j vira %j", (entrada, esperado) => {
+    expect(formatarWhatsapp(entrada)).toBe(esperado);
+  });
+
+  it("o que a máscara devolve de um celular válido continua válido", () => {
+    expect(whatsappValido(formatarWhatsapp("+55 (85) 91234-5678"))).toBe(true);
   });
 });
 

@@ -138,6 +138,17 @@ describe("POST /api/processos", () => {
     expect((await POST(post({ ...valido, whatsapp: "+1 555 123 4567" }))).status).toBe(400);
   });
 
+  it.each([
+    ["telefone fixo", "(85) 3123-4567"],
+    ["DDD que não existe", "(20) 91234-5678"],
+    ["número inventado", "(85) 99999-9999"],
+    ["dois números", "(85) 91234-5678 / (85) 98888-7777"],
+  ])("recusa WhatsApp que não é um celular válido: %s", async (_nome, whatsapp) => {
+    const r = await POST(post({ ...valido, whatsapp }));
+    expect(r.status).toBe(400);
+    expect(db.cliente.upsert).not.toHaveBeenCalled();
+  });
+
   it("freia a rajada: depois de 12 cadastros do mesmo IP responde 429", async () => {
     const codigos: number[] = [];
     for (let i = 0; i < 20; i++) codigos.push((await POST(post(valido, "9.9.9.9"))).status);

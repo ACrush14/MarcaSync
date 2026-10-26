@@ -152,7 +152,7 @@ export async function POST(request: Request) {
 
   if (!whatsappValido(whatsapp)) {
     return NextResponse.json(
-      { error: "whatsapp inválido — informe DDD + número." },
+      { error: "whatsapp inválido — informe um celular com DDD (ex.: (85) 91234-5678)." },
       { status: 400 }
     );
   }

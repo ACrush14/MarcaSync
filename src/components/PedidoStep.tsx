@@ -10,7 +10,7 @@ import ImagemMarcaUpload from "./ImagemMarcaUpload";
 import { track } from "@/lib/track";
 import type { AvisoAnterioridade } from "@/lib/anterioridade";
 import { detectarPalavraEstrangeira } from "@/lib/idioma";
-import { CLASS_LABELS } from "@/lib/ncl";
+import { CLASSES_DE_PRODUTOS, CLASSES_DE_SERVICOS, rotuloDaClasse } from "@/lib/classes-nice";
 import { REGIMES, REGIMES_PJ, ROTULO_REGIME, calcularGru, type Regime } from "@/lib/gru";
 import { MONITORAMENTO_CENTAVOS, SETUP_CENTAVOS, fmtReais } from "@/lib/planos";
 import {
@@ -65,8 +65,6 @@ function mascararCep(v: string): string {
   const d = somenteDigitos(v).slice(0, 8);
   return d.replace(/^(\d{5})(\d)/, "$1-$2");
 }
-
-const CLASSES = Array.from({ length: 45 }, (_, i) => String(i + 1));
 
 /** Os campos que precisam estar certos para liberar a criação da logo com IA. */
 const CAMPOS_PARA_IA = [
@@ -552,12 +550,20 @@ export default function PedidoStep({
               }}
             >
               <option value="">Escolha</option>
-              {CLASSES.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                  {CLASS_LABELS[c] ? ` — ${CLASS_LABELS[c]}` : ""}
-                </option>
-              ))}
+              <optgroup label="Produtos (classes 1 a 34)">
+                {CLASSES_DE_PRODUTOS.map((c) => (
+                  <option key={c} value={c}>
+                    {rotuloDaClasse(c)}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="Serviços (classes 35 a 45)">
+                {CLASSES_DE_SERVICOS.map((c) => (
+                  <option key={c} value={c}>
+                    {rotuloDaClasse(c)}
+                  </option>
+                ))}
+              </optgroup>
             </select>
           </Campo>
           <EspecificacaoPicker
