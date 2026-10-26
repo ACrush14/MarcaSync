@@ -966,3 +966,50 @@ td.celula-larga {
     border-top: 1px solid var(--border);
   }
 }
+
+/* Área de envio da logo: arrastar o arquivo ou escolher. O campo de arquivo fica escondido (sr-only)
+   e o rótulo faz o papel de botão; o foco do teclado aparece na área toda. */
+.upload-zona {
+  border: 2px dashed var(--border-strong);
+  border-radius: 12px;
+  background: var(--surface-2);
+  padding: 18px;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+.upload-zona:focus-within {
+  outline: 2px solid var(--accent-strong);
+  outline-offset: 2px;
+}
+.upload-zona.arrastando {
+  border-color: var(--accent-strong);
+  background: var(--mint-100, #e6f6ee);
+}
+.upload-zona.com-erro {
+  border-color: var(--risk);
+}
+.upload-vazio {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  font-size: 13.5px;
+  color: var(--ink-dim);
+}
+.upload-vazio .btn,
+.upload-previa .btn {
+  cursor: pointer;
+}
+.upload-previa {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+.upload-previa img {
+  flex: none;
+  width: 96px;
+  height: 96px;
+  object-fit: contain;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}

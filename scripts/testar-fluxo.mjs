@@ -100,6 +100,34 @@ try {
     reg(borda === bordaRef && fundo === fundoRef && raio === raioRef, `o campo ${nome} tem o mesmo visual do campo de texto`, `${borda}/${fundo}/${raio}`);
   }
 
+  // ---------------------------------------------------------------- 4b. logo (marca mista)
+  const sharp = (await import("sharp")).default;
+  await p.selectOption("#campo-apresentacao", "mista");
+  await p.locator(".upload-zona").waitFor({ timeout: 10000 });
+  reg(/arraste/i.test(await p.locator(".upload-zona").innerText()), "marca mista mostra a área de envio da logo, com 'arraste o arquivo'");
+  reg(/Nominativa/.test(await p.locator("main, .panel").first().innerText()), "a área da logo diz o que fazer quem não tem logo (escolher Nominativa)");
+  await p.setInputFiles("#campo-imagem", { name: "nao-e-imagem.txt", mimeType: "text/plain", buffer: Buffer.from("oi") });
+  await p.waitForTimeout(300);
+  reg(/PNG ou JPG/.test(await p.locator("#erro-imagem").innerText().catch(() => "")), "arquivo que não é PNG nem JPG é recusado na tela");
+  const png = await sharp({ create: { width: 1000, height: 1000, channels: 3, background: "#1f7a5a" } }).png().toBuffer();
+  await p.setInputFiles("#campo-imagem", { name: "logo.png", mimeType: "image/png", buffer: png });
+  await p.getByText(/Guardada\./).waitFor({ timeout: 30000 });
+  reg(/logo\.png/.test(await p.locator(".upload-previa").innerText()), "escolher a logo mostra a prévia, o nome do arquivo e 'Guardada'");
+  reg((await p.getByText("Trocar a imagem").count()) === 1, "depois do envio há o botão para trocar a imagem");
+  // arrastar e soltar uma segunda imagem troca a primeira
+  const jpg = await sharp({ create: { width: 1200, height: 1200, channels: 3, background: "#d9822b" } }).jpeg().toBuffer();
+  await p.evaluate((b64) => {
+    const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+    const dt = new DataTransfer();
+    dt.items.add(new File([bytes], "logo-arrastada.jpg", { type: "image/jpeg" }));
+    document.querySelector(".upload-zona").dispatchEvent(new DragEvent("drop", { dataTransfer: dt, bubbles: true, cancelable: true }));
+  }, jpg.toString("base64"));
+  await p.getByText("logo-arrastada.jpg").waitFor({ timeout: 30000 });
+  await p.getByText(/Guardada\./).waitFor({ timeout: 30000 });
+  reg(true, "arrastar e soltar uma imagem na área também envia e troca a anterior");
+  await p.selectOption("#campo-apresentacao", "nominativa");
+  reg((await p.locator(".upload-zona").count()) === 0, "voltando para Nominativa a área da logo some (não precisa de imagem)");
+
   // ---------------------------------------------------------------- 5. pedido: bloqueios
   await p.getByRole("button", { name: /Confirmar e continuar/ }).click();
   await p.waitForTimeout(500);

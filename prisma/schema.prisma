@@ -78,7 +78,6 @@ model Processo {
   prazos          Prazo[]
   reciboProtocolo ReciboProtocolo?
   conferenciasGru ConferenciaGru[]
-  geracoesLogo    GeracaoLogo[]
 }
 
 /// Uma cobrança (setup ou mensalidade de monitoramento) — confirmada à mão
@@ -263,20 +262,6 @@ model ImagemMarca {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-}
-
-/// Uma logo criada pela IA (Gemini) para o pedido. Só guardamos que foi gerada, para limitar quantas
-/// o pedido pode gerar e quantas o site gera por dia (cada uma custa centavos); a imagem em si não é
-/// guardada: o cliente escolhe uma e ela entra pelo envio normal da imagem da marca.
-model GeracaoLogo {
-  id         String   @id @default(cuid())
-  processoId String
-  processo   Processo @relation(fields: [processoId], references: [id])
-  estilo     String
-  createdAt  DateTime @default(now())
-
-  @@index([processoId])
-  @@index([createdAt])
 }
 
 /// Um prazo que corre contra o pedido (ex.: a procuração, até 60 dias do protocolo). A rotina diária
