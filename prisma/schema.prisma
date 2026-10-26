@@ -77,6 +77,7 @@ model Processo {
   imagemMarca     ImagemMarca?
   prazos          Prazo[]
   reciboProtocolo ReciboProtocolo?
+  conferenciasGru ConferenciaGru[]
 }
 
 /// Uma cobrança (setup ou mensalidade de monitoramento) — confirmada à mão
@@ -310,4 +311,29 @@ model ReciboProtocolo {
   tamanho     Int
 
   createdAt DateTime @default(now())
+}
+
+/// O que o robô do e-INPI viu ao conferir a GRU de um pedido (só leitura: ele não gera boleto).
+model ConferenciaGru {
+  id         String   @id @default(cuid())
+  processoId String
+  processo   Processo @relation(fields: [processoId], references: [id])
+
+  servico          String // "389" | "394"
+  esperadoCentavos Int // o que o site cobrou do cliente pela GRU
+  lidoCentavos     Int? // o que o e-INPI mostrou na prévia
+  resultado        String // ok | divergente | erro
+  detalhe          String?
+
+  createdAt DateTime @default(now())
+
+  @@index([processoId, createdAt])
+}
+
+/// O último sinal de vida do robô (uma linha só, com id "principal").
+model RoboEstado {
+  id      String   @id
+  vistoEm DateTime
+  sessao  String // ok | expirada | erro (a sessão do e-INPI no Chrome do robô)
+  detalhe String?
 }

@@ -2,6 +2,7 @@
  * Comandos do robô:
  *   npm run ensaio   abre o Chrome do robô, espera você entrar no e-INPI (se ainda não estiver), e na
  *                    MESMA janela confere os valores do 389 e do 394 na prévia da GRU, sem gerar nada
+ *   npm run iniciar  liga o robô de verdade: confere a GRU dos pedidos pagos e avisa o site (só leitura)
  *   npm run login    só abre a janela para você entrar (o e-INPI usa um cookie de sessão: ao fechar a
  *                    janela o login se perde, por isso o ensaio faz o login e a conferência juntos)
  *                    (--sem-desconto: o cadastro NÃO é MEI/ME/EPP, então o esperado é o valor cheio)
@@ -85,6 +86,22 @@ async function ensaio() {
   }
 }
 
+async function iniciar() {
+  const { iniciar: ligar } = await import("./rodada.mjs");
+  try {
+    return await ligar();
+  } catch (e) {
+    console.error(`\n${e instanceof Error ? e.message : e}`);
+    return 2;
+  }
+}
+
 const codigo =
-  comando === "login" ? await login() : comando === "ensaio" ? await ensaio() : (console.log("Use: npm run login | npm run ensaio"), 64);
+  comando === "login"
+    ? await login()
+    : comando === "ensaio"
+      ? await ensaio()
+      : comando === "iniciar"
+        ? await iniciar()
+        : (console.log("Use: npm run iniciar | npm run login | npm run ensaio"), 64);
 process.exit(codigo);

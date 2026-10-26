@@ -60,10 +60,11 @@ export async function abrirEmissao(page) {
 /**
  * Confere UM serviço (389 ou 394, com 1 classe). Devolve o que leu e se bate com o esperado.
  * @param {import("playwright").Page} page
- * @param {{ servico: "389" | "394", comDesconto: boolean, capturas?: boolean }} opcoes
+ * @param {{ servico: "389" | "394", comDesconto: boolean, capturas?: boolean, esperadoCentavos?: number }} opcoes
+ * `esperadoCentavos` (o que o site cobrou do cliente) tem preferência sobre a tabela do robô.
  */
-export async function conferirServico(page, { servico, comDesconto, capturas = true }) {
-  const esperadoCentavos = valorEsperado(servico, comDesconto);
+export async function conferirServico(page, { servico, comDesconto, capturas = true, esperadoCentavos: esperadoDoSite }) {
+  const esperadoCentavos = esperadoDoSite ?? valorEsperado(servico, comDesconto);
   const inicio = Date.now();
   await abrirEmissao(page);
 

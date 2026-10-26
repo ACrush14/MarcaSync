@@ -42,6 +42,28 @@ export function jaPagouServico(p: Processo): boolean {
 
 const BOTAO_PEQUENO = { padding: "6px 12px", fontSize: 12, minHeight: 32 } as const;
 
+/** A última conferência da GRU feita pelo robô (só leitura: o robô não gera boleto nem paga). */
+function ConferenciaDoRobo({ p }: { p: Processo }) {
+  const c = p.conferenciasGru?.[0];
+  if (!c) return null;
+  const quando = new Date(c.createdAt).toLocaleString("pt-BR");
+  const classe = c.resultado === "ok" ? "pill safe" : c.resultado === "divergente" ? "pill risk" : "pill warm";
+  const texto =
+    c.resultado === "ok"
+      ? `GRU conferida pelo robô: ${fmtReais(c.lidoCentavos ?? 0)}`
+      : c.resultado === "divergente"
+        ? `GRU diferente: o e-INPI mostrou ${fmtReais(c.lidoCentavos ?? 0)}, o cliente pagou ${fmtReais(c.esperadoCentavos)}`
+        : `Robô não conseguiu conferir${c.detalhe ? `: ${c.detalhe}` : ""}`;
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
+      <span className={classe}>{texto}</span>
+      <span className="help" style={{ fontSize: 12 }}>
+        {quando}
+      </span>
+    </div>
+  );
+}
+
 /** Os ganchos do painel que o cartão chama; quem muda o banco continua sendo a página. */
 export interface AcoesDoCartao {
   confirmando: string | null;
@@ -271,6 +293,7 @@ export default function ProcessoCard({
               )}
             </div>
           ))}
+          <ConferenciaDoRobo p={p} />
         </Secao>
 
         <Secao titulo="INPI e monitoramento">

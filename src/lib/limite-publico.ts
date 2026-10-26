@@ -70,6 +70,7 @@ export const REGRAS = {
   enviarPedido: { max: 15, janelaMs: 60_000 },
   enviarImagem: { max: 10, janelaMs: 60_000 },
   buscar: { max: 30, janelaMs: 60_000 },
+  robo: { max: 120, janelaMs: 60_000 },
 } as const satisfies Record<string, Regra>;
 
 /**

@@ -50,6 +50,7 @@ const PROTEGIDAS: [string, string][] = [
   ["POST", "/api/admin/processos/abc/cadencia"],
   ["POST", "/api/admin/processos/abc/gru-paga"],
   ["POST", "/api/admin/pagamentos/abc/devolucao-manual"],
+  ["GET", "/api/admin/robo"],
   ["GET", "/api/rpi/lookup"],
   ["GET", "/rpi-teste"],
   ["GET", "/api/processos"],
@@ -71,6 +72,10 @@ const PUBLICAS: [string, string][] = [
   ["GET", "/api/catalogo"],
   ["POST", "/api/eventos"],
   ["GET", "/api/health"],
+  // o robô não usa a senha do painel: tem o próprio token (Bearer) conferido dentro das rotas
+  ["GET", "/api/robo/tarefas"],
+  ["POST", "/api/robo/tarefas/abc/conferencia"],
+  ["POST", "/api/robo/estado"],
 ];
 
 describe("proxy: o que pede senha", () => {
