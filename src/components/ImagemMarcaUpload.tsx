@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import LogosIa from "./LogosIa";
 
 interface ImagemGuardada {
   largura: number;
@@ -15,6 +16,14 @@ interface ImagemMarcaUploadProps {
   /** Avisa o formulário se já há imagem guardada no servidor. */
   onGuardada: (guardada: boolean) => void;
   erro?: string;
+  /** Com estes dados, o cliente pode criar a logo com IA (some se o servidor não tiver a chave). */
+  ia?: {
+    marca: string;
+    atividade: string;
+    apresentacao: "figurativa" | "mista";
+    /** Os dados do titular e da marca já estão preenchidos e válidos. */
+    dadosProntos: boolean;
+  };
 }
 
 /**
@@ -28,6 +37,7 @@ export default function ImagemMarcaUpload({
   processoId,
   onGuardada,
   erro,
+  ia,
 }: ImagemMarcaUploadProps) {
   const [preview, setPreview] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
@@ -77,6 +87,17 @@ export default function ImagemMarcaUpload({
 
   return (
     <div className="field">
+      {ia && (
+        <LogosIa
+          processoId={processoId}
+          marca={ia.marca}
+          atividade={ia.atividade}
+          apresentacao={ia.apresentacao}
+          dadosProntos={ia.dadosProntos}
+          onUsar={(arquivo) => void enviar(arquivo)}
+          ocupado={enviando}
+        />
+      )}
       <label htmlFor="campo-imagem">Imagem da marca</label>
       <p style={{ fontSize: 12, color: "var(--ink-dim)", margin: "2px 0 8px" }}>
         PNG ou JPG, até 5 MB, com uma única imagem do símbolo, sem ™ ou ®. Eu converto para o JPG
