@@ -1,7 +1,6 @@
 "use client";
 
 import { useRef, useState } from "react";
-import LogosIa from "./LogosIa";
 
 interface ImagemGuardada {
   largura: number;
@@ -16,14 +15,6 @@ interface ImagemMarcaUploadProps {
   /** Avisa o formulário se já há imagem guardada no servidor. */
   onGuardada: (guardada: boolean) => void;
   erro?: string;
-  /** Com estes dados, o cliente pode criar a logo com IA (some se o servidor não tiver a chave). */
-  ia?: {
-    marca: string;
-    atividade: string;
-    apresentacao: "figurativa" | "mista";
-    /** Os dados do titular e da marca já estão preenchidos e válidos. */
-    dadosProntos: boolean;
-  };
 }
 
 /**
@@ -37,12 +28,13 @@ export default function ImagemMarcaUpload({
   processoId,
   onGuardada,
   erro,
-  ia,
 }: ImagemMarcaUploadProps) {
   const [preview, setPreview] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [guardada, setGuardada] = useState<ImagemGuardada | null>(null);
   const [erroEnvio, setErroEnvio] = useState<string | null>(null);
+  const [arrastando, setArrastando] = useState(false);
+  const [nomeArquivo, setNomeArquivo] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   async function enviar(arquivo: File) {
@@ -64,6 +56,7 @@ export default function ImagemMarcaUpload({
 
     if (preview) URL.revokeObjectURL(preview);
     setPreview(URL.createObjectURL(arquivo));
+    setNomeArquivo(arquivo.name);
     setEnviando(true);
     try {
       const dados = new FormData();
@@ -85,63 +78,93 @@ export default function ImagemMarcaUpload({
     }
   }
 
+  function escolher(lista: FileList | null | undefined) {
+    const arquivo = lista?.[0];
+    if (arquivo) void enviar(arquivo);
+  }
+
   return (
     <div className="field">
-      {ia && (
-        <LogosIa
-          processoId={processoId}
-          marca={ia.marca}
-          atividade={ia.atividade}
-          apresentacao={ia.apresentacao}
-          dadosProntos={ia.dadosProntos}
-          onUsar={(arquivo) => void enviar(arquivo)}
-          ocupado={enviando}
-        />
-      )}
-      <label htmlFor="campo-imagem">Imagem da marca</label>
-      <p style={{ fontSize: 12, color: "var(--ink-dim)", margin: "2px 0 8px" }}>
-        PNG ou JPG, até 5 MB, com uma única imagem do símbolo, sem ™ ou ®. Eu converto para o JPG
-        que o INPI pede (300 dpi, no mínimo 945 x 945 px). Imagem colorida equivale a reivindicar as
-        cores.
+      <label htmlFor="campo-imagem">Logo da marca</label>
+      <p style={{ fontSize: 12.5, color: "var(--ink-dim)", margin: "2px 0 8px" }}>
+        Se você já tem a logo, envie aqui. PNG ou JPG, até 5 MB, só com o símbolo (sem ™ ou ®).
+        Eu converto para o JPG que o INPI pede (300 dpi, no mínimo 945 x 945 px); se a sua for menor,
+        ela é ampliada. Imagem colorida equivale a reivindicar as cores.
       </p>
-      <input
-        ref={inputRef}
-        id="campo-imagem"
-        type="file"
-        accept="image/png,image/jpeg"
-        aria-invalid={!!erro}
-        aria-describedby={erro ? "erro-imagem" : undefined}
-        onChange={(e) => {
-          const arquivo = e.target.files?.[0];
-          if (arquivo) void enviar(arquivo);
-        }}
-      />
 
-      {preview && (
-        <div style={{ display: "flex", gap: 12, alignItems: "center", marginTop: 10 }}>
-          {/* eslint-disable-next-line @next/next/no-img-element -- prévia local (blob:), next/image não se aplica */}
-          <img
-            src={preview}
-            alt="Prévia da imagem da marca enviada"
-            style={{ width: 96, height: 96, objectFit: "contain", background: "#fff" }}
-          />
-          <div style={{ fontSize: 13 }} role="status">
-            {enviando && "Enviando…"}
-            {!enviando && guardada && (
-              <>
-                <b>Guardada.</b> Ficou com {guardada.largura} x {guardada.altura} px em JPG.
-                {guardada.ampliada && (
-                  <span style={{ display: "block", color: "var(--ink-dim)" }}>
-                    A original ({guardada.larguraOriginal} x {guardada.alturaOriginal} px) era menor
-                    que o mínimo do INPI e foi ampliada. Se puder, envie uma maior para ficar mais
-                    nítida.
-                  </span>
-                )}
-              </>
-            )}
+      <div
+        className={`upload-zona${arrastando ? " arrastando" : ""}${erro || erroEnvio ? " com-erro" : ""}`}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setArrastando(true);
+        }}
+        onDragLeave={() => setArrastando(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setArrastando(false);
+          if (!enviando) escolher(e.dataTransfer.files);
+        }}
+      >
+        <input
+          ref={inputRef}
+          id="campo-imagem"
+          className="sr-only"
+          type="file"
+          accept="image/png,image/jpeg"
+          disabled={enviando}
+          aria-invalid={!!erro}
+          aria-describedby={erro ? "erro-imagem" : undefined}
+          onChange={(e) => {
+            escolher(e.target.files);
+            // permite escolher o mesmo arquivo de novo depois de um erro
+            e.target.value = "";
+          }}
+        />
+        {preview ? (
+          <div className="upload-previa">
+            {/* eslint-disable-next-line @next/next/no-img-element -- prévia local (blob:), next/image não se aplica */}
+            <img src={preview} alt="Prévia da logo enviada" />
+            <div role="status" style={{ fontSize: 13, minWidth: 0 }}>
+              <div style={{ fontWeight: 600, overflowWrap: "anywhere" }}>{nomeArquivo}</div>
+              {enviando && "Enviando…"}
+              {!enviando && guardada && (
+                <>
+                  <span style={{ color: "var(--safe)", fontWeight: 600 }}>Guardada.</span> Ficou com{" "}
+                  {guardada.largura} x {guardada.altura} px em JPG.
+                  {guardada.ampliada && (
+                    <span style={{ display: "block", color: "var(--ink-dim)" }}>
+                      A original ({guardada.larguraOriginal} x {guardada.alturaOriginal} px) era
+                      menor que o mínimo do INPI e foi ampliada. Se puder, envie uma maior para
+                      ficar mais nítida.
+                    </span>
+                  )}
+                </>
+              )}
+              <div style={{ marginTop: 8 }}>
+                <label
+                  htmlFor="campo-imagem"
+                  className="btn ghost"
+                  style={{ padding: "6px 12px", fontSize: 12.5, minHeight: 32 }}
+                >
+                  Trocar a imagem
+                </label>
+              </div>
+            </div>
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="upload-vazio">
+            <label htmlFor="campo-imagem" className="btn secondary">
+              Escolher a logo
+            </label>
+            <span>ou arraste o arquivo para cá</span>
+          </div>
+        )}
+      </div>
+
+      <p style={{ fontSize: 12, color: "var(--ink-dim)", marginTop: 8 }}>
+        Ainda não tem logo? Em &quot;Como a marca se apresenta&quot;, escolha &quot;Nominativa&quot;
+        (só o nome): não precisa de imagem.
+      </p>
 
       {(erroEnvio || erro) && (
         <p

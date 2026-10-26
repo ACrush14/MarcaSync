@@ -67,8 +67,6 @@ const PUBLICAS: [string, string][] = [
   ["PATCH", "/api/processos/abc"],
   ["POST", "/api/processos/abc/pedido"],
   ["POST", "/api/processos/abc/imagem"],
-  ["GET", "/api/processos/abc/logo-ia"],
-  ["POST", "/api/processos/abc/logo-ia"],
   ["GET", "/api/processos/abc/cobrancas"],
   ["GET", "/api/colidencia"],
   ["GET", "/api/catalogo"],
