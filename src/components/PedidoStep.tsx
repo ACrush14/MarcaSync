@@ -68,6 +68,22 @@ function mascararCep(v: string): string {
 
 const CLASSES = Array.from({ length: 45 }, (_, i) => String(i + 1));
 
+/** Os campos que precisam estar certos para liberar a criação da logo com IA. */
+const CAMPOS_PARA_IA = [
+  "nome",
+  "documento",
+  "email",
+  "cep",
+  "logradouro",
+  "numero",
+  "bairro",
+  "cidade",
+  "uf",
+  "classeNice",
+  "atividade",
+  "elementoNominativo",
+];
+
 /** Um campo do formulário: rótulo, a entrada e (se houver) a ajuda ou a mensagem de erro. */
 function Campo({
   id,
@@ -161,6 +177,12 @@ export default function PedidoStep({
   const avisoAtivo = aviso.nivel !== "nenhum";
   const suspeitaIdioma = detectarPalavraEstrangeira(f.elementoNominativo);
   const total = SETUP_CENTAVOS + gru.centavos;
+  // A IA só é liberada com os dados do titular e da marca preenchidos e válidos (as confirmações do
+  // fim do formulário e a imagem, que é o que a IA cria, ficam de fora).
+  const errosDosDados = validarPedido({ ...f, monitoramento });
+  const dadosProntos =
+    errosDosDados.ok ||
+    !CAMPOS_PARA_IA.some((campo) => campo in errosDosDados.erros);
 
   function set<K extends keyof typeof f>(campo: K, valor: (typeof f)[K]) {
     setF((antes) => ({ ...antes, [campo]: valor }));
@@ -428,6 +450,12 @@ export default function PedidoStep({
               processoId={processoId}
               onGuardada={setImagemGuardada}
               erro={erros.imagem}
+              ia={{
+                marca: f.apresentacao === "mista" ? f.elementoNominativo.trim() || marca : marca,
+                atividade: f.atividade,
+                apresentacao: f.apresentacao === "mista" ? "mista" : "figurativa",
+                dadosProntos,
+              }}
             />
           )}
           {f.apresentacao !== "figurativa" && (
