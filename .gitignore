@@ -39,3 +39,6 @@ env.txt
 robo/node_modules/
 robo/.perfil/
 robo/ensaios/
+
+# imagem de teste da chave do Gemini
+scripts/logo-teste.png

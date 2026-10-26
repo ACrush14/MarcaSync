@@ -97,7 +97,7 @@ try {
 
     const procs = await q(`select * from "Processo" where "clienteId" = any($1)`, [ids]);
     const pids = procs.map((p) => p.id);
-    const filhas = ["Pagamento", "Alerta", "SituacaoProcesso", "Prazo", "PedidoRegistro", "ImagemMarca", "ReciboProtocolo", "Notificacao", "ConferenciaGru"];
+    const filhas = ["Pagamento", "Alerta", "SituacaoProcesso", "Prazo", "PedidoRegistro", "ImagemMarca", "ReciboProtocolo", "Notificacao", "ConferenciaGru", "GeracaoLogo"];
 
     // cópia de segurança (sem as colunas binárias grandes: imagem e PDF)
     const copia = { feitoEm: new Date().toISOString(), clientes, processos: procs };
