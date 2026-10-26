@@ -61,17 +61,3 @@ export function inferNCL(descricao: string): InferenciaNCL {
     confidence: "baixa",
   };
 }
-
-export const CLASS_LABELS: Record<string, string> = {
-  "2": "Tintas e vernizes",
-  "3": "Cosméticos e perfumaria",
-  "20": "Móveis e decoração",
-  "25": "Vestuário",
-  "29": "Alimentos processados",
-  "30": "Padaria e confeitaria",
-  "32": "Bebidas não alcoólicas",
-  "35": "Publicidade e gestão",
-  "39": "Transporte e logística",
-  "41": "Educação e esporte",
-  "42": "Tecnologia e software",
-};
