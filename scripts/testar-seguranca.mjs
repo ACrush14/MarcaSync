@@ -193,6 +193,67 @@ const pedidoValido = (n) => ({
   reg(!/stack|at .*\.ts|prisma|postgres/i.test(api.text), "a resposta de /api/health não vaza detalhe interno", api.text.slice(0, 80));
 }
 
+// ------------------------------------------------------------------ 9. WhatsApp, robô do e-INPI e painel
+// O limite de cadastros por IP é de 12 por minuto e as seções acima já usaram parte dele: espera a janela passar.
+await new Promise((r) => setTimeout(r, 62_000));
+{
+  for (const [nome, numero] of [
+    ["telefone fixo", "(85) 3123-4567"],
+    ["DDD que não existe", "(20) 91234-5678"],
+    ["número inventado", "(85) 99999-9999"],
+    ["dois números colados", "(85) 91234-5678 / (85) 98888-7777"],
+    ["com letras", "zap: 85 91234 5678"],
+    ["de outro país", "+1 555 123 4567"],
+  ]) {
+    const r = await criarProcesso("Teste WhatsApp", numero);
+    reg(r.status === 400, `WhatsApp inválido (${nome}) é recusado pela API`, String(r.status));
+  }
+
+  const tokenRobo = process.env.ROBO_TOKEN || env.ROBO_TOKEN || "";
+  const rotasRobo = [
+    ["GET", "/api/robo/tarefas"],
+    ["POST", "/api/robo/estado"],
+    ["POST", "/api/robo/tarefas/qualquer/conferencia"],
+  ];
+  for (const [method, path] of rotasRobo) {
+    const sem = await req(path, { method, body: method === "POST" ? { sessao: "ok" } : undefined });
+    reg([401, 503].includes(sem.status), `${method} ${path} sem token do robô não abre`, String(sem.status));
+    const errado = await req(path, { method, body: method === "POST" ? { sessao: "ok" } : undefined, headers: { Authorization: "Bearer token-errado-" + unico } });
+    reg([401, 503].includes(errado.status), `${method} ${path} com token errado não abre`, String(errado.status));
+    // a senha do painel NÃO vale como token do robô
+    const senhaDoPainel = await req(path, { method, body: method === "POST" ? { sessao: "ok" } : undefined, headers: { Authorization: "Bearer " + (env.ADMIN_PASSWORD ?? "x") } });
+    reg([401, 503].includes(senhaDoPainel.status), `${method} ${path}: a senha do painel não vale como token do robô`, String(senhaDoPainel.status));
+  }
+  const semSenha = await req("/api/admin/robo");
+  reg(semSenha.status === 401, "o estado do robô no painel pede a senha", String(semSenha.status));
+  const comSenha = await req("/api/admin/robo", { auth: true });
+  reg(comSenha.status === 200 && typeof comSenha.json?.ligado === "boolean", "o estado do robô abre com a senha do painel", String(comSenha.status));
+
+  if (tokenRobo) {
+    const tokenNoPainel = await req("/api/admin/robo", { headers: { Authorization: "Bearer " + tokenRobo } });
+    reg(tokenNoPainel.status === 401, "o token do robô NÃO abre o painel", String(tokenNoPainel.status));
+    const auth = { Authorization: "Bearer " + tokenRobo };
+    const tarefas = await req("/api/robo/tarefas", { headers: auth });
+    reg(tarefas.status === 200 && Array.isArray(tarefas.json?.tarefas), "com o token certo, o robô recebe a lista de tarefas", String(tarefas.status));
+    reg(!/documento|cpf|cnpj|email|logradouro|whatsapp|nome/i.test(JSON.stringify(tarefas.json?.tarefas ?? [])), "as tarefas do robô não trazem dado pessoal do cliente");
+    // um pedido que não foi pago não aceita conferência
+    const p = await criarProcesso("Cliente Robo", zap(40));
+    const id = p.json?.processo?.id;
+    await req(`/api/processos/${id}/pedido`, { method: "POST", body: pedidoValido(40) });
+    const corpo = { resultado: "ok", servico: "389", esperadoCentavos: 44000, lidoCentavos: 44000 };
+    const naoPago = await req(`/api/robo/tarefas/${id}/conferencia`, { method: "POST", body: corpo, headers: auth });
+    reg(naoPago.status === 409, "o robô não registra conferência de pedido não pago", String(naoPago.status));
+    const mentira = await req(`/api/robo/tarefas/${id}/conferencia`, { method: "POST", body: { ...corpo, lidoCentavos: 88000 }, headers: auth });
+    reg(mentira.status === 400, 'conferência "ok" com valor diferente do esperado é recusada', String(mentira.status));
+    const estadoRuim = await req("/api/robo/estado", { method: "POST", body: { sessao: "dormindo" }, headers: auth });
+    reg(estadoRuim.status === 400, "estado do robô inventado é recusado", String(estadoRuim.status));
+    const jsonRuim = await req("/api/robo/estado", { method: "POST", raw: "{nao é json", headers: { ...auth, "Content-Type": "application/json" } });
+    reg(jsonRuim.status === 400, "estado do robô com JSON quebrado dá 400 (não 500)", String(jsonRuim.status));
+  } else {
+    reg(true, "(sem ROBO_TOKEN no ambiente do teste: as provas com o token certo ficaram de fora)");
+  }
+}
+
 // ------------------------------------------------------------------ 8. limite de abusos
 {
   const codigos = [];
