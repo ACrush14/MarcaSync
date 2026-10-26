@@ -130,6 +130,24 @@ function FiltroAcompanhamento({
   );
 }
 
+interface EstadoRobo {
+  visto: boolean;
+  vistoEm: string | null;
+  sessao: "ok" | "expirada" | "erro" | null;
+  detalhe: string | null;
+  semSinal: boolean;
+  ligado: boolean;
+}
+
+function textoDoRobo(r: EstadoRobo): string {
+  if (!r.visto) return "Ainda não deu sinal. Abra o robô no seu computador (npm run iniciar, na pasta robo).";
+  const quando = r.vistoEm ? new Date(r.vistoEm).toLocaleString("pt-BR") : "";
+  if (r.semSinal) return `Sem sinal desde ${quando}. O computador do robô está ligado e com o Chrome aberto?`;
+  if (r.sessao === "expirada") return `Ligado (visto ${quando}), mas a sessão do e-INPI expirou: entre na sua conta na janela do robô.`;
+  if (r.sessao === "erro") return `Ligado (visto ${quando}), com erro${r.detalhe ? `: ${r.detalhe}` : ""}.`;
+  return `Ligado e com a sessão do e-INPI aberta (visto ${quando}).`;
+}
+
 export default function AdminPage() {
   const [processos, setProcessos] = useState<Processo[] | null>(null);
   const [erro, setErro] = useState<string | null>(null);
@@ -139,6 +157,7 @@ export default function AdminPage() {
   const [testandoAviso, setTestandoAviso] = useState(false);
   const [resultadoTeste, setResultadoTeste] = useState<string | null>(null);
   const [ultimaLeitura, setUltimaLeitura] = useState<UltimaLeitura | null>(null);
+  const [robo, setRobo] = useState<EstadoRobo | null>(null);
   const [verificando, setVerificando] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
   const [numeros, setNumeros] = useState<Record<string, string>>({});
@@ -159,14 +178,16 @@ export default function AdminPage() {
 
   async function carregar() {
     try {
-      const [res, resAlertas, resAvisos] = await Promise.all([
+      const [res, resAlertas, resAvisos, resRobo] = await Promise.all([
         fetch("/api/processos"),
         fetch("/api/admin/alertas"),
         fetch("/api/admin/notificacoes"),
+        fetch("/api/admin/robo"),
       ]);
       const body = await res.json();
       if (!res.ok) throw new Error(body?.error ?? "Falha ao carregar.");
       setProcessos(body.processos);
+      if (resRobo.ok) setRobo(await resRobo.json());
       if (resAvisos.ok) setAvisosSistema((await resAvisos.json()).avisos);
       if (resAlertas.ok) {
         const a = await resAlertas.json();
@@ -266,17 +287,20 @@ export default function AdminPage() {
     let cancelado = false;
     (async () => {
       try {
-        const [res, resAlertas, resAvisos] = await Promise.all([
+        const [res, resAlertas, resAvisos, resRobo] = await Promise.all([
           fetch("/api/processos"),
           fetch("/api/admin/alertas"),
           fetch("/api/admin/notificacoes"),
+          fetch("/api/admin/robo"),
         ]);
         const body = await res.json();
         if (!res.ok) throw new Error(body?.error ?? "Falha ao carregar.");
         const a = resAlertas.ok ? await resAlertas.json() : null;
         const av = resAvisos.ok ? await resAvisos.json() : null;
+        const rb = resRobo.ok ? await resRobo.json() : null;
         if (!cancelado) {
           setProcessos(body.processos);
+          if (rb) setRobo(rb);
           if (av) setAvisosSistema(av.avisos);
           if (a) {
             setAlertas(a.alertas);
@@ -442,6 +466,15 @@ Estornar mesmo assim?`)
           <div className="helpbox" style={{ borderColor: "var(--risk)", marginBottom: 16 }}>
             <h3 style={{ color: "var(--risk)" }}>Erro</h3>
             <p style={{ fontSize: 13, color: "var(--ink-dim)" }}>{erro}</p>
+          </div>
+        )}
+
+        {robo?.ligado && (
+          <div className="helpbox" style={{ marginBottom: 16 }} role="status">
+            <h3 style={{ margin: 0 }}>Robô do e-INPI</h3>
+            <p style={{ fontSize: 13, color: "var(--ink-dim)", margin: "6px 0 0" }}>
+              {textoDoRobo(robo)}
+            </p>
           </div>
         )}
 

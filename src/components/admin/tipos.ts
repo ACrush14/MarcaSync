@@ -63,6 +63,16 @@ export interface AvisoDoProcesso {
   createdAt: string;
 }
 
+export interface ConferenciaGru {
+  id: string;
+  servico: string;
+  esperadoCentavos: number;
+  lidoCentavos: number | null;
+  resultado: "ok" | "divergente" | "erro";
+  detalhe: string | null;
+  createdAt: string;
+}
+
 export interface Processo {
   id: string;
   marca: string;
@@ -99,5 +109,7 @@ export interface Processo {
   situacoes?: SituacaoInpi[];
   /** Últimos avisos do sistema sobre este processo (mais recente primeiro). */
   avisos?: AvisoDoProcesso[];
+  /** Últimas conferências da GRU feitas pelo robô (mais recente primeiro). */
+  conferenciasGru?: ConferenciaGru[];
   _count?: { alertas: number };
 }

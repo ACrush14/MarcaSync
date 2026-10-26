@@ -5,9 +5,11 @@
   "description": "Robô do e-INPI: confere (e, depois, emite) a GRU do pedido. Roda no PC do operador, com o Chrome visível.",
   "type": "module",
   "scripts": {
+    "iniciar": "node src/cli.mjs iniciar",
     "login": "node src/cli.mjs login",
     "ensaio": "node src/cli.mjs ensaio",
-    "teste-local": "node teste/ensaio-local.mjs"
+    "teste-local": "node teste/ensaio-local.mjs",
+    "teste-rodada": "node teste/rodada-local.mjs"
   },
   "dependencies": {
     "playwright": "1.64.0"

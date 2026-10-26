@@ -84,3 +84,47 @@ export function resumirResultado(r) {
   const lido = r.lidoCentavos == null ? "—" : formatarReais(r.lidoCentavos);
   return `GRU ${r.servico}: lido ${lido}, esperado ${formatarReais(r.esperadoCentavos)} → ${r.ok ? "OK" : `PROBLEMA (${r.motivo})`}`;
 }
+
+/**
+ * O que o robô conta ao site depois de conferir uma tarefa. `r` é o resultado de `conferirServico`.
+ * Só vai o que o site precisa: nada de captura de tela nem dado pessoal.
+ */
+export function montarConferencia(tarefa, r) {
+  return {
+    resultado: r.ok ? "ok" : r.lidoCentavos == null ? "erro" : "divergente",
+    servico: tarefa.servico,
+    esperadoCentavos: tarefa.esperadoCentavos,
+    lidoCentavos: r.lidoCentavos ?? null,
+    detalhe: r.ok ? null : r.motivo,
+  };
+}
+
+/** Quando a conferência não saiu (tela mudou, rede caiu): conta como "erro", sem valor lido. */
+export function conferenciaComErro(tarefa, erro) {
+  const detalhe = String(erro instanceof Error ? erro.message : erro).split("\n")[0].slice(0, 300);
+  return { resultado: "erro", servico: tarefa.servico, esperadoCentavos: tarefa.esperadoCentavos, lidoCentavos: null, detalhe };
+}
+
+/** Confere se a tarefa que o site mandou tem a forma esperada (o robô não confia cegamente). */
+export function tarefaValida(t) {
+  return (
+    t !== null &&
+    typeof t === "object" &&
+    typeof t.processoId === "string" &&
+    t.processoId.length > 0 &&
+    (t.servico === "389" || t.servico === "394") &&
+    Number.isInteger(t.esperadoCentavos) &&
+    t.esperadoCentavos > 0 &&
+    typeof t.comDesconto === "boolean"
+  );
+}
+
+/** Lê o endereço do site, aceitando só https (ou http em localhost, para teste) e tirando a barra final. */
+export function enderecoDoSite(texto) {
+  const url = new URL(String(texto ?? "").trim());
+  const local = ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
+  if (url.protocol !== "https:" && !(url.protocol === "http:" && local)) {
+    throw new Error("MARCASYNC_URL precisa começar com https:// (só localhost pode usar http://).");
+  }
+  return url.origin;
+}

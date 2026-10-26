@@ -25,6 +25,7 @@ export async function GET() {
       prazos: { where: { concluidoEm: null }, orderBy: { venceEm: "asc" } },
       // As últimas situações vistas no INPI e quantos alertas da RPI já houve.
       situacoes: { orderBy: { vistaEm: "desc" }, take: 5 },
+      conferenciasGru: { orderBy: { createdAt: "desc" }, take: 3 },
       _count: { select: { alertas: true } },
       reciboProtocolo: { select: { nomeArquivo: true, tamanho: true } },
       // Só os números da imagem: os bytes saem pela rota /imagem, nunca nesta lista.

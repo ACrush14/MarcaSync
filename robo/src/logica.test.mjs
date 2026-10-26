@@ -137,3 +137,43 @@ describe("resumo", () => {
     expect(formatarReais(44_000).replace(/\s/g, " ")).toBe("R$ 440,00");
   });
 });
+
+describe("rodada do robô", () => {
+  const tarefa = { processoId: "p1", servico: "389", comDesconto: true, esperadoCentavos: 44_000 };
+
+  it("montarConferencia: ok, divergente e erro", async () => {
+    const { montarConferencia } = await import("./logica.mjs");
+    expect(montarConferencia(tarefa, { ok: true, lidoCentavos: 44_000 })).toEqual({
+      resultado: "ok", servico: "389", esperadoCentavos: 44_000, lidoCentavos: 44_000, detalhe: null,
+    });
+    expect(montarConferencia(tarefa, { ok: false, lidoCentavos: 88_000, motivo: "diferente" })).toMatchObject({
+      resultado: "divergente", lidoCentavos: 88_000, detalhe: "diferente",
+    });
+    expect(montarConferencia(tarefa, { ok: false, lidoCentavos: null, motivo: "não li o valor" })).toMatchObject({
+      resultado: "erro", lidoCentavos: null,
+    });
+  });
+
+  it("conferenciaComErro usa só a primeira linha da mensagem e corta o tamanho", async () => {
+    const { conferenciaComErro } = await import("./logica.mjs");
+    const c = conferenciaComErro(tarefa, new Error(`falhou\nlinha 2 com ${"x".repeat(500)}`));
+    expect(c).toMatchObject({ resultado: "erro", lidoCentavos: null, detalhe: "falhou" });
+    expect(conferenciaComErro(tarefa, "y".repeat(500)).detalhe).toHaveLength(300);
+  });
+
+  it("tarefaValida recusa o que não tem a forma certa", async () => {
+    const { tarefaValida } = await import("./logica.mjs");
+    expect(tarefaValida(tarefa)).toBe(true);
+    for (const ruim of [null, {}, { ...tarefa, servico: "999" }, { ...tarefa, esperadoCentavos: 0 }, { ...tarefa, esperadoCentavos: 440.5 }, { ...tarefa, processoId: "" }, { ...tarefa, comDesconto: "sim" }]) {
+      expect(tarefaValida(ruim)).toBe(false);
+    }
+  });
+
+  it("enderecoDoSite aceita https (e http só em localhost) e tira o caminho", async () => {
+    const { enderecoDoSite } = await import("./logica.mjs");
+    expect(enderecoDoSite("https://www.marcasync.com.br/")).toBe("https://www.marcasync.com.br");
+    expect(enderecoDoSite(" http://localhost:3002/x ")).toBe("http://localhost:3002");
+    expect(() => enderecoDoSite("http://www.marcasync.com.br")).toThrow(/https/);
+    expect(() => enderecoDoSite("")).toThrow();
+  });
+});
