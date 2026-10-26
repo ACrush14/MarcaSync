@@ -88,6 +88,13 @@ integração de Storage), mais `ADMIN_PASSWORD` (adicionada
 manualmente via `vercel env add`) `NEXT_PUBLIC_WHATSAPP_NUMBER` (ver "Contato pelo
 WhatsApp" — trocar exige novo deploy) e `CRON_SECRET` (monitoramento da RPI).
 
+## Testes de ponta a ponta (contra o site rodando)
+
+Além dos testes unitários (`npx vitest run`), há dois que usam o site de verdade e **só rodam contra localhost**, porque criam pedidos de teste:
+
+- `node scripts/testar-seguranca.mjs` ataca a API como um visitante mal-intencionado: preço adulterado, vazamento de dados, áreas protegidas, upload falso, cabeçalhos, WhatsApp inválido, rotas do robô (token, senha do painel não vale como token, pedido não pago) e limite de abuso. Leva uns 2 minutos (espera a janela do limitador). Passe `ROBO_TOKEN=...` no ambiente para incluir as provas com o token certo.
+- `node scripts/testar-fluxo.mjs` percorre o fluxo do cliente no navegador (precisa de `cd robo && npm install`): consulta, resultado, plano, pedido e pagamento, os bloqueios (WhatsApp, CPF, e-mail, confirmações), a lista de classes, o visual dos campos e a tela de celular sem rolagem lateral. Rode-o um minuto depois do de segurança, para o limitador de cadastros liberar.
+
 ## Pagamento único por Pix ou cartão (AbacatePay)
 
 O cliente paga **uma cobrança só**, que cobre o serviço (R$ 499) e a taxa do INPI (GRU), por Pix ou cartão (até 3x),
